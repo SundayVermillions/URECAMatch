@@ -69,6 +69,6 @@ See [DEV-PLAN.md](DEV-PLAN.md) for slices A to E, endpoints, tests and the timel
 
 ## Deploy
 
-- Web: import the repo into Vercel with root `web`. Env: `NEXT_PUBLIC_API_MODE=live`, `NEXT_PUBLIC_API_URL=<api url>`.
-- API: second Vercel project with root `api` (Python runtime, entry `api/index.py`), or Render. Env from `api/.env.example` with `API_MODE=supabase`.
+- Web: import the repo into Vercel with root `ureca-match-app/web`. Env: `NEXT_PUBLIC_API_MODE=live`, `NEXT_PUBLIC_API_URL=<api url>`.
+- API: second Vercel project with root `ureca-match-app/api` (Python runtime, entry `api/index.py`), or Render. Env from `api/.env.example` with `API_MODE=supabase`.
 - Database: run `supabase/schema.sql` then `supabase/seed.sql` in the Supabase SQL editor.
