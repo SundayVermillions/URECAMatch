@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* URECAMatch tokens. Source: mockups/style-guide 01 (colour) and 02 (typography).
+   Product roles are pinned to tonal-scale stops; components reference the role. */
+:root {
+  --bg: #faf9f6;
+  --surface: #ffffff;
+  --sunken: #f4f3f0;
+  --border: #e0dfda;
+  --border-strong: #cccac5;
+  --text: #1a2029;
+  --muted: #5d646e;
+  --faint: #878c95;
+  --accent: #2171cc;        /* blue 500 */
+  --accent-ink: #0058b1;    /* blue 600 */
+  --accent-soft: #e1eeff;   /* blue 100 */
+  --accent-border: #bfd6f5; /* blue 200 */
+  --navy: #122741;          /* blue 900 */
+  --good: #218740;          /* green 500 */
+  --good-ink: #006f29;      /* green 600 */
+  --good-soft: #e2f2e4;     /* green 100 */
+  --warn: #be853d;          /* amber 400 */
+  --warn-ink: #713600;      /* amber 700 */
+  --warn-soft: #f8eadc;     /* amber 100 */
+  --bad: #c13c3b;           /* red 500 */
+  --bad-ink: #a51e24;       /* red 600 */
+  --bad-soft: #ffe6e3;      /* red 100 */
+  --neutral-soft: #ebedef;  /* grey 100 */
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-border: var(--accent-border);
+  --color-navy: var(--navy);
+  --color-good: var(--good);
+  --color-good-ink: var(--good-ink);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-ink: var(--warn-ink);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-ink: var(--bad-ink);
+  --color-bad-soft: var(--bad-soft);
+  --color-neutral-soft: var(--neutral-soft);
+
+  --font-display: var(--font-jakarta), system-ui, sans-serif;
+  --font-sans: var(--font-plex), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  --radius-icon: 6px;
+  --radius-button: 8px;
+  --radius-row: 10px;
+  --radius-card: 12px;
+  --radius-modal: 14px;
+  --radius-pill: 20px;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, button, .font-display { font-family: var(--font-display); }
+h1 { font-size: 23px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+h2 { font-size: 16px; font-weight: 700; line-height: 1.3; }
+h3 { font-size: 15px; font-weight: 700; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-ink); }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+input, select, textarea { font-family: var(--font-sans); font-size: 13px; }
+::placeholder { color: var(--faint); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.overline { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

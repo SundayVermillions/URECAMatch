@@ -1,0 +1,4332 @@
+{
+  "users": [
+    {
+      "id": "adm-1",
+      "email": "jonathan.teo@ntu.edu.sg",
+      "name": "Jonathan Teo",
+      "role": "admin",
+      "status": "active",
+      "created_at": "2026-07-01T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "adm-2",
+      "email": "priscilla.lim@ntu.edu.sg",
+      "name": "Priscilla Lim",
+      "role": "admin",
+      "status": "active",
+      "created_at": "2026-07-01T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "adm-3",
+      "email": "weikiat.ong@ntu.edu.sg",
+      "name": "Wei Kiat Ong",
+      "role": "admin",
+      "status": "active",
+      "created_at": "2026-07-01T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "sup-1",
+      "email": "marcus.chua@ntu.edu.sg",
+      "name": "Prof. Marcus Chua",
+      "role": "supervisor",
+      "status": "active",
+      "created_at": "2026-07-03T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "sup-2",
+      "email": "daniel.ho@ntu.edu.sg",
+      "name": "Prof. Daniel Ho",
+      "role": "supervisor",
+      "status": "active",
+      "created_at": "2026-07-03T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "sup-3",
+      "email": "meilin.tan@ntu.edu.sg",
+      "name": "Assoc. Prof. Mei Lin Tan",
+      "role": "supervisor",
+      "status": "active",
+      "created_at": "2026-07-03T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "sup-4",
+      "email": "rajesh.kumar@ntu.edu.sg",
+      "name": "Dr. Rajesh Kumar",
+      "role": "supervisor",
+      "status": "active",
+      "created_at": "2026-07-03T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "sup-5",
+      "email": "sarah.goh@ntu.edu.sg",
+      "name": "Prof. Sarah Goh",
+      "role": "supervisor",
+      "status": "active",
+      "created_at": "2026-07-03T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "sup-6",
+      "email": "hafiz.rahman@ntu.edu.sg",
+      "name": "Dr. Hafiz Rahman",
+      "role": "supervisor",
+      "status": "active",
+      "created_at": "2026-07-03T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-1",
+      "email": "weiling001@e.ntu.edu.sg",
+      "name": "Wei Ling Tan",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-10T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-2",
+      "email": "bryan002@e.ntu.edu.sg",
+      "name": "Bryan Koh",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-11T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-3",
+      "email": "aisha003@e.ntu.edu.sg",
+      "name": "Aisha Rahman",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-12T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-4",
+      "email": "daniel004@e.ntu.edu.sg",
+      "name": "Daniel Ng",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-13T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-5",
+      "email": "priya005@e.ntu.edu.sg",
+      "name": "Priya Menon",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-14T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-6",
+      "email": "jason006@e.ntu.edu.sg",
+      "name": "Jason Lim",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-15T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-7",
+      "email": "huimin007@e.ntu.edu.sg",
+      "name": "Hui Min Chua",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-16T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-8",
+      "email": "arjun008@e.ntu.edu.sg",
+      "name": "Arjun Patel",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-17T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-9",
+      "email": "chloe009@e.ntu.edu.sg",
+      "name": "Chloe Lim",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-10T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-10",
+      "email": "kelvin010@e.ntu.edu.sg",
+      "name": "Kelvin Ong",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-11T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-11",
+      "email": "nurul011@e.ntu.edu.sg",
+      "name": "Nurul Aisyah",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-12T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-12",
+      "email": "marcus012@e.ntu.edu.sg",
+      "name": "Marcus Lee",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-13T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-13",
+      "email": "rachel013@e.ntu.edu.sg",
+      "name": "Rachel Ong",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-14T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-14",
+      "email": "ethan014@e.ntu.edu.sg",
+      "name": "Ethan Wong",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-15T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-15",
+      "email": "siti015@e.ntu.edu.sg",
+      "name": "Siti Nurhaliza",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-16T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-16",
+      "email": "ryan016@e.ntu.edu.sg",
+      "name": "Ryan Teo",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-17T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-17",
+      "email": "xinyi017@e.ntu.edu.sg",
+      "name": "Xin Yi Chen",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-10T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-18",
+      "email": "darren018@e.ntu.edu.sg",
+      "name": "Darren Goh",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-11T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-19",
+      "email": "farah019@e.ntu.edu.sg",
+      "name": "Farah Ismail",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-12T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-20",
+      "email": "isaac020@e.ntu.edu.sg",
+      "name": "Isaac Loh",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-13T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-21",
+      "email": "meiling021@e.ntu.edu.sg",
+      "name": "Mei Ling Yeo",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-14T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-22",
+      "email": "zhihao022@e.ntu.edu.sg",
+      "name": "Zhi Hao Zhang",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-15T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-23",
+      "email": "ananya023@e.ntu.edu.sg",
+      "name": "Ananya Sharma",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-16T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-24",
+      "email": "joel024@e.ntu.edu.sg",
+      "name": "Joel Lau",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-17T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-25",
+      "email": "nadia025@e.ntu.edu.sg",
+      "name": "Nadia Hassan",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-10T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-26",
+      "email": "kaiwen026@e.ntu.edu.sg",
+      "name": "Kai Wen Sim",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-11T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-27",
+      "email": "shreya027@e.ntu.edu.sg",
+      "name": "Shreya Iyer",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-12T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-28",
+      "email": "timothy028@e.ntu.edu.sg",
+      "name": "Timothy Chan",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-13T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-29",
+      "email": "yixuan029@e.ntu.edu.sg",
+      "name": "Yi Xuan Toh",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-14T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-30",
+      "email": "amir030@e.ntu.edu.sg",
+      "name": "Amir Abdullah",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-15T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-31",
+      "email": "cheryl031@e.ntu.edu.sg",
+      "name": "Cheryl Low",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-16T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-32",
+      "email": "junjie032@e.ntu.edu.sg",
+      "name": "Jun Jie Heng",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-17T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-33",
+      "email": "divya033@e.ntu.edu.sg",
+      "name": "Divya Nair",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-10T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-34",
+      "email": "lucas034@e.ntu.edu.sg",
+      "name": "Lucas Ho",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-11T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-35",
+      "email": "hannah035@e.ntu.edu.sg",
+      "name": "Hannah Seah",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-12T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-36",
+      "email": "wenjun036@e.ntu.edu.sg",
+      "name": "Wen Jun Foo",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-13T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-37",
+      "email": "kavya037@e.ntu.edu.sg",
+      "name": "Kavya Reddy",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-14T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-38",
+      "email": "gabriel038@e.ntu.edu.sg",
+      "name": "Gabriel Yap",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-15T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-39",
+      "email": "liting039@e.ntu.edu.sg",
+      "name": "Li Ting Poh",
+      "role": "student",
+      "status": "active",
+      "created_at": "2026-08-16T09:00:00Z",
+      "last_login_at": null
+    },
+    {
+      "id": "stu-40",
+      "email": "adam040@e.ntu.edu.sg",
+      "name": "Adam Halim",
+      "role": "student",
+      "status": "inactive",
+      "created_at": "2026-08-17T09:00:00Z",
+      "last_login_at": null
+    }
+  ],
+  "students": [
+    {
+      "user_id": "stu-1",
+      "school": "CCDS",
+      "cgpa": 3.99,
+      "year_of_study": 2,
+      "completed_modules": [
+        "CE4041",
+        "SC1015",
+        "SC3020",
+        "SC4002"
+      ],
+      "research_interests": [
+        "Healthcare AI",
+        "Marine Biology"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-1-t",
+          "owner_id": "stu-1",
+          "file_name": "Transcript_WeiLingTan.pdf",
+          "file_format": "pdf",
+          "file_size": 644726,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-1-cv",
+          "owner_id": "stu-1",
+          "file_name": "CV_WeiLingTan.pdf",
+          "file_format": "pdf",
+          "file_size": 232751,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-2",
+      "school": "CCDS",
+      "cgpa": 3.69,
+      "year_of_study": 4,
+      "completed_modules": [
+        "SC1015",
+        "SC2001"
+      ],
+      "research_interests": [
+        "Healthcare AI",
+        "NLP"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-2-t",
+          "owner_id": "stu-2",
+          "file_name": "Transcript_BryanKoh.pdf",
+          "file_format": "pdf",
+          "file_size": 513023,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-2-cv",
+          "owner_id": "stu-2",
+          "file_name": "CV_BryanKoh.pdf",
+          "file_format": "pdf",
+          "file_size": 360285,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-3",
+      "school": "CCDS",
+      "cgpa": 4.82,
+      "year_of_study": 2,
+      "completed_modules": [
+        "CE4041",
+        "SC3020",
+        "SC4001"
+      ],
+      "research_interests": [
+        "HCI",
+        "Materials"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-3-t",
+          "owner_id": "stu-3",
+          "file_name": "Transcript_AishaRahman.pdf",
+          "file_format": "pdf",
+          "file_size": 361764,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-3-cv",
+          "owner_id": "stu-3",
+          "file_name": "CV_AishaRahman.pdf",
+          "file_format": "pdf",
+          "file_size": 295152,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-4",
+      "school": "EEE",
+      "cgpa": 4.68,
+      "year_of_study": 4,
+      "completed_modules": [
+        "EE2004",
+        "EE3080",
+        "EE4483",
+        "SC1015"
+      ],
+      "research_interests": [
+        "HCI",
+        "Explainable AI"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-4-t",
+          "owner_id": "stu-4",
+          "file_name": "Transcript_DanielNg.pdf",
+          "file_format": "pdf",
+          "file_size": 593107,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-4-cv",
+          "owner_id": "stu-4",
+          "file_name": "CV_DanielNg.pdf",
+          "file_format": "pdf",
+          "file_size": 397460,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-5",
+      "school": "SBS",
+      "cgpa": 4.41,
+      "year_of_study": 4,
+      "completed_modules": [
+        "SB3101",
+        "SB3211"
+      ],
+      "research_interests": [
+        "Materials",
+        "Machine Learning"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-5-t",
+          "owner_id": "stu-5",
+          "file_name": "Transcript_PriyaMenon.pdf",
+          "file_format": "pdf",
+          "file_size": 392655,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-5-cv",
+          "owner_id": "stu-5",
+          "file_name": "CV_PriyaMenon.pdf",
+          "file_format": "pdf",
+          "file_size": 357442,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-6",
+      "school": "MAE",
+      "cgpa": 4.09,
+      "year_of_study": 4,
+      "completed_modules": [
+        "MA2007",
+        "MA4826"
+      ],
+      "research_interests": [
+        "Statistics",
+        "Energy Systems"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-6-t",
+          "owner_id": "stu-6",
+          "file_name": "Transcript_JasonLim.pdf",
+          "file_format": "pdf",
+          "file_size": 719285,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-6-cv",
+          "owner_id": "stu-6",
+          "file_name": "CV_JasonLim.pdf",
+          "file_format": "pdf",
+          "file_size": 172736,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-7",
+      "school": "SPMS",
+      "cgpa": 4.65,
+      "year_of_study": 3,
+      "completed_modules": [
+        "MH1810",
+        "PH2104"
+      ],
+      "research_interests": [
+        "Robotics",
+        "Marine Biology"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-7-t",
+          "owner_id": "stu-7",
+          "file_name": "Transcript_HuiMinChua.pdf",
+          "file_format": "pdf",
+          "file_size": 764039,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-7-cv",
+          "owner_id": "stu-7",
+          "file_name": "CV_HuiMinChua.pdf",
+          "file_format": "pdf",
+          "file_size": 318534,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-8",
+      "school": "NBS",
+      "cgpa": 4.17,
+      "year_of_study": 3,
+      "completed_modules": [
+        "AB1201",
+        "AB2101",
+        "BC2402"
+      ],
+      "research_interests": [
+        "Machine Learning",
+        "Computer Vision"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-8-t",
+          "owner_id": "stu-8",
+          "file_name": "Transcript_ArjunPatel.pdf",
+          "file_format": "pdf",
+          "file_size": 289289,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-8-cv",
+          "owner_id": "stu-8",
+          "file_name": "CV_ArjunPatel.pdf",
+          "file_format": "pdf",
+          "file_size": 347232,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-9",
+      "school": "CCDS",
+      "cgpa": 4.32,
+      "year_of_study": 4,
+      "completed_modules": [
+        "CE4041",
+        "SC1015",
+        "SC4001",
+        "SC4002"
+      ],
+      "research_interests": [
+        "Materials",
+        "Computer Vision"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-9-t",
+          "owner_id": "stu-9",
+          "file_name": "Transcript_ChloeLim.pdf",
+          "file_format": "pdf",
+          "file_size": 666168,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-9-cv",
+          "owner_id": "stu-9",
+          "file_name": "CV_ChloeLim.pdf",
+          "file_format": "pdf",
+          "file_size": 363643,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-10",
+      "school": "CCDS",
+      "cgpa": 4.18,
+      "year_of_study": 3,
+      "completed_modules": [
+        "CE4041",
+        "SC3020",
+        "SC4002"
+      ],
+      "research_interests": [
+        "Energy Systems",
+        "Genomics"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-10-t",
+          "owner_id": "stu-10",
+          "file_name": "Transcript_KelvinOng.pdf",
+          "file_format": "pdf",
+          "file_size": 897300,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-10-cv",
+          "owner_id": "stu-10",
+          "file_name": "CV_KelvinOng.pdf",
+          "file_format": "pdf",
+          "file_size": 344205,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-11",
+      "school": "CCDS",
+      "cgpa": 3.46,
+      "year_of_study": 3,
+      "completed_modules": [
+        "SC1015",
+        "SC2001",
+        "SC3020"
+      ],
+      "research_interests": [
+        "Marine Biology",
+        "Materials"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-11-t",
+          "owner_id": "stu-11",
+          "file_name": "Transcript_NurulAisyah.pdf",
+          "file_format": "pdf",
+          "file_size": 227901,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-11-cv",
+          "owner_id": "stu-11",
+          "file_name": "CV_NurulAisyah.pdf",
+          "file_format": "pdf",
+          "file_size": 235632,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-12",
+      "school": "EEE",
+      "cgpa": 3.74,
+      "year_of_study": 4,
+      "completed_modules": [
+        "EE4483",
+        "SC1015"
+      ],
+      "research_interests": [
+        "Energy Systems",
+        "NLP"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-12-t",
+          "owner_id": "stu-12",
+          "file_name": "Transcript_MarcusLee.pdf",
+          "file_format": "pdf",
+          "file_size": 329322,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-12-cv",
+          "owner_id": "stu-12",
+          "file_name": "CV_MarcusLee.pdf",
+          "file_format": "pdf",
+          "file_size": 181556,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-13",
+      "school": "SBS",
+      "cgpa": 4.08,
+      "year_of_study": 4,
+      "completed_modules": [
+        "SB2210",
+        "SB3101",
+        "SB3211"
+      ],
+      "research_interests": [
+        "Genomics",
+        "Robotics"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-13-t",
+          "owner_id": "stu-13",
+          "file_name": "Transcript_RachelOng.pdf",
+          "file_format": "pdf",
+          "file_size": 236525,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-13-cv",
+          "owner_id": "stu-13",
+          "file_name": "CV_RachelOng.pdf",
+          "file_format": "pdf",
+          "file_size": 262312,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-14",
+      "school": "MAE",
+      "cgpa": 3.57,
+      "year_of_study": 4,
+      "completed_modules": [
+        "MA2007",
+        "MA4826"
+      ],
+      "research_interests": [
+        "HCI",
+        "Genomics"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-14-t",
+          "owner_id": "stu-14",
+          "file_name": "Transcript_EthanWong.pdf",
+          "file_format": "pdf",
+          "file_size": 406770,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-14-cv",
+          "owner_id": "stu-14",
+          "file_name": "CV_EthanWong.pdf",
+          "file_format": "pdf",
+          "file_size": 209647,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-15",
+      "school": "SPMS",
+      "cgpa": 3.57,
+      "year_of_study": 2,
+      "completed_modules": [
+        "MH3511",
+        "PH2104"
+      ],
+      "research_interests": [
+        "HCI",
+        "Computer Vision"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-15-t",
+          "owner_id": "stu-15",
+          "file_name": "Transcript_SitiNurhaliza.pdf",
+          "file_format": "pdf",
+          "file_size": 440611,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-15-cv",
+          "owner_id": "stu-15",
+          "file_name": "CV_SitiNurhaliza.pdf",
+          "file_format": "pdf",
+          "file_size": 163410,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-16",
+      "school": "NBS",
+      "cgpa": 4.73,
+      "year_of_study": 3,
+      "completed_modules": [
+        "AB1201",
+        "BC2402"
+      ],
+      "research_interests": [
+        "NLP",
+        "Genomics"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-16-t",
+          "owner_id": "stu-16",
+          "file_name": "Transcript_RyanTeo.pdf",
+          "file_format": "pdf",
+          "file_size": 202264,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-16-cv",
+          "owner_id": "stu-16",
+          "file_name": "CV_RyanTeo.pdf",
+          "file_format": "pdf",
+          "file_size": 158239,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-17",
+      "school": "CCDS",
+      "cgpa": 4.61,
+      "year_of_study": 3,
+      "completed_modules": [
+        "SC1015",
+        "SC2001",
+        "SC3020",
+        "SC4001"
+      ],
+      "research_interests": [
+        "Materials",
+        "Statistics"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-17-t",
+          "owner_id": "stu-17",
+          "file_name": "Transcript_XinYiChen.pdf",
+          "file_format": "pdf",
+          "file_size": 667211,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-17-cv",
+          "owner_id": "stu-17",
+          "file_name": "CV_XinYiChen.pdf",
+          "file_format": "pdf",
+          "file_size": 391576,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-18",
+      "school": "CCDS",
+      "cgpa": 4.59,
+      "year_of_study": 3,
+      "completed_modules": [
+        "SC2001",
+        "SC3020"
+      ],
+      "research_interests": [
+        "Materials",
+        "Explainable AI"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-18-t",
+          "owner_id": "stu-18",
+          "file_name": "Transcript_DarrenGoh.pdf",
+          "file_format": "pdf",
+          "file_size": 410090,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-18-cv",
+          "owner_id": "stu-18",
+          "file_name": "CV_DarrenGoh.pdf",
+          "file_format": "pdf",
+          "file_size": 263547,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-19",
+      "school": "CCDS",
+      "cgpa": 4.64,
+      "year_of_study": 4,
+      "completed_modules": [
+        "CE4041",
+        "SC1015",
+        "SC3020",
+        "SC4001"
+      ],
+      "research_interests": [
+        "NLP",
+        "HCI"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-19-t",
+          "owner_id": "stu-19",
+          "file_name": "Transcript_FarahIsmail.pdf",
+          "file_format": "pdf",
+          "file_size": 232056,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-19-cv",
+          "owner_id": "stu-19",
+          "file_name": "CV_FarahIsmail.pdf",
+          "file_format": "pdf",
+          "file_size": 374874,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-20",
+      "school": "EEE",
+      "cgpa": 3.98,
+      "year_of_study": 3,
+      "completed_modules": [
+        "EE2004",
+        "EE3080",
+        "SC1015"
+      ],
+      "research_interests": [
+        "HCI",
+        "Genomics"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-20-t",
+          "owner_id": "stu-20",
+          "file_name": "Transcript_IsaacLoh.pdf",
+          "file_format": "pdf",
+          "file_size": 308334,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-20-cv",
+          "owner_id": "stu-20",
+          "file_name": "CV_IsaacLoh.pdf",
+          "file_format": "pdf",
+          "file_size": 389701,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-21",
+      "school": "SBS",
+      "cgpa": 3.79,
+      "year_of_study": 2,
+      "completed_modules": [
+        "SB2210",
+        "SB3101",
+        "SB3211"
+      ],
+      "research_interests": [
+        "Explainable AI",
+        "Marine Biology"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-21-t",
+          "owner_id": "stu-21",
+          "file_name": "Transcript_MeiLingYeo.pdf",
+          "file_format": "pdf",
+          "file_size": 755948,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-21-cv",
+          "owner_id": "stu-21",
+          "file_name": "CV_MeiLingYeo.pdf",
+          "file_format": "pdf",
+          "file_size": 248203,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-22",
+      "school": "MAE",
+      "cgpa": 3.54,
+      "year_of_study": 3,
+      "completed_modules": [
+        "MA2007",
+        "MA3005",
+        "MA4826"
+      ],
+      "research_interests": [
+        "NLP",
+        "Marine Biology"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-22-t",
+          "owner_id": "stu-22",
+          "file_name": "Transcript_ZhiHaoZhang.pdf",
+          "file_format": "pdf",
+          "file_size": 358473,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-22-cv",
+          "owner_id": "stu-22",
+          "file_name": "CV_ZhiHaoZhang.pdf",
+          "file_format": "pdf",
+          "file_size": 212027,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-23",
+      "school": "SPMS",
+      "cgpa": 4.12,
+      "year_of_study": 3,
+      "completed_modules": [
+        "MH1810",
+        "MH3511",
+        "PH2104"
+      ],
+      "research_interests": [
+        "NLP",
+        "Statistics"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-23-t",
+          "owner_id": "stu-23",
+          "file_name": "Transcript_AnanyaSharma.pdf",
+          "file_format": "pdf",
+          "file_size": 365006,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-23-cv",
+          "owner_id": "stu-23",
+          "file_name": "CV_AnanyaSharma.pdf",
+          "file_format": "pdf",
+          "file_size": 366126,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-24",
+      "school": "NBS",
+      "cgpa": 4.82,
+      "year_of_study": 3,
+      "completed_modules": [
+        "AB1201",
+        "AB2101",
+        "BC2402"
+      ],
+      "research_interests": [
+        "Marine Biology",
+        "Computer Vision"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-24-t",
+          "owner_id": "stu-24",
+          "file_name": "Transcript_JoelLau.pdf",
+          "file_format": "pdf",
+          "file_size": 610706,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-24-cv",
+          "owner_id": "stu-24",
+          "file_name": "CV_JoelLau.pdf",
+          "file_format": "pdf",
+          "file_size": 80569,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-25",
+      "school": "CCDS",
+      "cgpa": 4.42,
+      "year_of_study": 4,
+      "completed_modules": [
+        "SC1015",
+        "SC2001",
+        "SC4001"
+      ],
+      "research_interests": [
+        "Materials",
+        "Explainable AI"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-25-t",
+          "owner_id": "stu-25",
+          "file_name": "Transcript_NadiaHassan.pdf",
+          "file_format": "pdf",
+          "file_size": 282039,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-25-cv",
+          "owner_id": "stu-25",
+          "file_name": "CV_NadiaHassan.pdf",
+          "file_format": "pdf",
+          "file_size": 169074,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-26",
+      "school": "CCDS",
+      "cgpa": 4.79,
+      "year_of_study": 3,
+      "completed_modules": [
+        "CE4041",
+        "SC1015",
+        "SC2001",
+        "SC4002"
+      ],
+      "research_interests": [
+        "HCI",
+        "Statistics"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-26-t",
+          "owner_id": "stu-26",
+          "file_name": "Transcript_KaiWenSim.pdf",
+          "file_format": "pdf",
+          "file_size": 697615,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-26-cv",
+          "owner_id": "stu-26",
+          "file_name": "CV_KaiWenSim.pdf",
+          "file_format": "pdf",
+          "file_size": 227347,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-27",
+      "school": "CCDS",
+      "cgpa": 4.11,
+      "year_of_study": 2,
+      "completed_modules": [
+        "SC1015",
+        "SC2001",
+        "SC4001",
+        "SC4002"
+      ],
+      "research_interests": [
+        "Robotics",
+        "Explainable AI"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-27-t",
+          "owner_id": "stu-27",
+          "file_name": "Transcript_ShreyaIyer.pdf",
+          "file_format": "pdf",
+          "file_size": 238526,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-27-cv",
+          "owner_id": "stu-27",
+          "file_name": "CV_ShreyaIyer.pdf",
+          "file_format": "pdf",
+          "file_size": 274442,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-28",
+      "school": "EEE",
+      "cgpa": 4.63,
+      "year_of_study": 2,
+      "completed_modules": [
+        "EE2004",
+        "EE3080",
+        "EE4483",
+        "SC1015"
+      ],
+      "research_interests": [
+        "Genomics",
+        "Computer Vision"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-28-t",
+          "owner_id": "stu-28",
+          "file_name": "Transcript_TimothyChan.pdf",
+          "file_format": "pdf",
+          "file_size": 582829,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-28-cv",
+          "owner_id": "stu-28",
+          "file_name": "CV_TimothyChan.pdf",
+          "file_format": "pdf",
+          "file_size": 375091,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-29",
+      "school": "SBS",
+      "cgpa": 3.55,
+      "year_of_study": 3,
+      "completed_modules": [
+        "SB2210",
+        "SB3101"
+      ],
+      "research_interests": [
+        "Machine Learning",
+        "Energy Systems"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-29-t",
+          "owner_id": "stu-29",
+          "file_name": "Transcript_YiXuanToh.pdf",
+          "file_format": "pdf",
+          "file_size": 276382,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-29-cv",
+          "owner_id": "stu-29",
+          "file_name": "CV_YiXuanToh.pdf",
+          "file_format": "pdf",
+          "file_size": 382919,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-30",
+      "school": "MAE",
+      "cgpa": 4.22,
+      "year_of_study": 4,
+      "completed_modules": [
+        "MA2007",
+        "MA4826"
+      ],
+      "research_interests": [
+        "Healthcare AI",
+        "Materials"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-30-t",
+          "owner_id": "stu-30",
+          "file_name": "Transcript_AmirAbdullah.pdf",
+          "file_format": "pdf",
+          "file_size": 187327,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-30-cv",
+          "owner_id": "stu-30",
+          "file_name": "CV_AmirAbdullah.pdf",
+          "file_format": "pdf",
+          "file_size": 293328,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-31",
+      "school": "SPMS",
+      "cgpa": 4.13,
+      "year_of_study": 4,
+      "completed_modules": [
+        "MH1810",
+        "MH3511"
+      ],
+      "research_interests": [
+        "HCI",
+        "Marine Biology"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-31-t",
+          "owner_id": "stu-31",
+          "file_name": "Transcript_CherylLow.pdf",
+          "file_format": "pdf",
+          "file_size": 480693,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-31-cv",
+          "owner_id": "stu-31",
+          "file_name": "CV_CherylLow.pdf",
+          "file_format": "pdf",
+          "file_size": 216070,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-32",
+      "school": "NBS",
+      "cgpa": 4.68,
+      "year_of_study": 3,
+      "completed_modules": [
+        "AB2101",
+        "BC2402"
+      ],
+      "research_interests": [
+        "Machine Learning",
+        "Robotics"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-32-t",
+          "owner_id": "stu-32",
+          "file_name": "Transcript_JunJieHeng.pdf",
+          "file_format": "pdf",
+          "file_size": 345713,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-32-cv",
+          "owner_id": "stu-32",
+          "file_name": "CV_JunJieHeng.pdf",
+          "file_format": "pdf",
+          "file_size": 172672,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-33",
+      "school": "CCDS",
+      "cgpa": 4.16,
+      "year_of_study": 2,
+      "completed_modules": [
+        "CE4041",
+        "SC1015"
+      ],
+      "research_interests": [
+        "Machine Learning",
+        "Computer Vision"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-33-t",
+          "owner_id": "stu-33",
+          "file_name": "Transcript_DivyaNair.pdf",
+          "file_format": "pdf",
+          "file_size": 622911,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-33-cv",
+          "owner_id": "stu-33",
+          "file_name": "CV_DivyaNair.pdf",
+          "file_format": "pdf",
+          "file_size": 249014,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-34",
+      "school": "CCDS",
+      "cgpa": 4.08,
+      "year_of_study": 4,
+      "completed_modules": [
+        "CE4041",
+        "SC1015",
+        "SC3020",
+        "SC4001"
+      ],
+      "research_interests": [
+        "Computer Vision",
+        "HCI"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-34-t",
+          "owner_id": "stu-34",
+          "file_name": "Transcript_LucasHo.pdf",
+          "file_format": "pdf",
+          "file_size": 555900,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-34-cv",
+          "owner_id": "stu-34",
+          "file_name": "CV_LucasHo.pdf",
+          "file_format": "pdf",
+          "file_size": 200761,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-35",
+      "school": "CCDS",
+      "cgpa": 3.75,
+      "year_of_study": 3,
+      "completed_modules": [
+        "SC1015",
+        "SC3020",
+        "SC4001"
+      ],
+      "research_interests": [
+        "HCI",
+        "Machine Learning"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-35-t",
+          "owner_id": "stu-35",
+          "file_name": "Transcript_HannahSeah.pdf",
+          "file_format": "pdf",
+          "file_size": 246244,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-35-cv",
+          "owner_id": "stu-35",
+          "file_name": "CV_HannahSeah.pdf",
+          "file_format": "pdf",
+          "file_size": 153160,
+          "uploaded_at": "2026-08-16T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-36",
+      "school": "EEE",
+      "cgpa": 4.33,
+      "year_of_study": 2,
+      "completed_modules": [
+        "EE3080",
+        "EE4483"
+      ],
+      "research_interests": [
+        "Marine Biology",
+        "Machine Learning"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-36-t",
+          "owner_id": "stu-36",
+          "file_name": "Transcript_WenJunFoo.pdf",
+          "file_format": "pdf",
+          "file_size": 189342,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-36-cv",
+          "owner_id": "stu-36",
+          "file_name": "CV_WenJunFoo.pdf",
+          "file_format": "pdf",
+          "file_size": 142505,
+          "uploaded_at": "2026-08-17T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-37",
+      "school": "SBS",
+      "cgpa": 4.67,
+      "year_of_study": 4,
+      "completed_modules": [
+        "SB2210",
+        "SB3101",
+        "SB3211"
+      ],
+      "research_interests": [
+        "Marine Biology",
+        "Computer Vision"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-37-t",
+          "owner_id": "stu-37",
+          "file_name": "Transcript_KavyaReddy.pdf",
+          "file_format": "pdf",
+          "file_size": 428437,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-37-cv",
+          "owner_id": "stu-37",
+          "file_name": "CV_KavyaReddy.pdf",
+          "file_format": "pdf",
+          "file_size": 397408,
+          "uploaded_at": "2026-08-12T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-38",
+      "school": "MAE",
+      "cgpa": 4.55,
+      "year_of_study": 3,
+      "completed_modules": [
+        "MA2007",
+        "MA3005",
+        "MA4826"
+      ],
+      "research_interests": [
+        "Statistics",
+        "Materials"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-38-t",
+          "owner_id": "stu-38",
+          "file_name": "Transcript_GabrielYap.pdf",
+          "file_format": "pdf",
+          "file_size": 675582,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-38-cv",
+          "owner_id": "stu-38",
+          "file_name": "CV_GabrielYap.pdf",
+          "file_format": "pdf",
+          "file_size": 119729,
+          "uploaded_at": "2026-08-13T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-39",
+      "school": "SPMS",
+      "cgpa": 4.32,
+      "year_of_study": 3,
+      "completed_modules": [
+        "MH1810",
+        "MH3511",
+        "PH2104"
+      ],
+      "research_interests": [
+        "Materials",
+        "Genomics"
+      ],
+      "profile_complete": false,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-39-t",
+          "owner_id": "stu-39",
+          "file_name": "Transcript_LiTingPoh.pdf",
+          "file_format": "pdf",
+          "file_size": 667601,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-39-cv",
+          "owner_id": "stu-39",
+          "file_name": "CV_LiTingPoh.pdf",
+          "file_format": "pdf",
+          "file_size": 190186,
+          "uploaded_at": "2026-08-14T09:00:00Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "user_id": "stu-40",
+      "school": "NBS",
+      "cgpa": 3.93,
+      "year_of_study": 4,
+      "completed_modules": [
+        "AB1201",
+        "BC2402"
+      ],
+      "research_interests": [
+        "Machine Learning",
+        "NLP"
+      ],
+      "profile_complete": true,
+      "eligible_for_matching": true,
+      "documents": [
+        {
+          "id": "doc-stu-40-t",
+          "owner_id": "stu-40",
+          "file_name": "Transcript_AdamHalim.pdf",
+          "file_format": "pdf",
+          "file_size": 320444,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        },
+        {
+          "id": "doc-stu-40-cv",
+          "owner_id": "stu-40",
+          "file_name": "CV_AdamHalim.pdf",
+          "file_format": "pdf",
+          "file_size": 124093,
+          "uploaded_at": "2026-08-15T09:00:00Z",
+          "url": null
+        }
+      ]
+    }
+  ],
+  "supervisors": [
+    {
+      "user_id": "sup-1",
+      "faculty": "CCDS",
+      "organisation": "NTU"
+    },
+    {
+      "user_id": "sup-2",
+      "faculty": "SBS",
+      "organisation": "NTU"
+    },
+    {
+      "user_id": "sup-3",
+      "faculty": "EEE",
+      "organisation": "NTU"
+    },
+    {
+      "user_id": "sup-4",
+      "faculty": "MAE",
+      "organisation": "NTU"
+    },
+    {
+      "user_id": "sup-5",
+      "faculty": "SPMS",
+      "organisation": "NTU"
+    },
+    {
+      "user_id": "sup-6",
+      "faculty": "CCDS",
+      "organisation": "NTU"
+    }
+  ],
+  "cycle": {
+    "id": "cyc-2627s1",
+    "academic_year": "AY26/27 Semester 1",
+    "opening_date": "2026-08-18T09:00:00Z",
+    "closing_date": "2026-09-30T09:00:00Z",
+    "pre_application_days": 7,
+    "status": "in_progress",
+    "rounds": [
+      {
+        "id": "rnd-1",
+        "cycle_id": "cyc-2627s1",
+        "number": 1,
+        "application_start": "2026-08-25T09:00:00Z",
+        "application_end": "2026-08-30T08:59:59Z",
+        "review_start": "2026-08-30T09:00:00Z",
+        "review_end": "2026-09-01T08:59:59Z",
+        "status": "published",
+        "executed_at": "2026-09-01T10:59:59Z",
+        "published_at": "2026-09-01T16:59:59Z",
+        "eligible_students": 0,
+        "open_slots": 0,
+        "reopened_slots": 0
+      },
+      {
+        "id": "rnd-2",
+        "cycle_id": "cyc-2627s1",
+        "number": 2,
+        "application_start": "2026-09-05T09:00:00Z",
+        "application_end": "2026-09-10T08:59:59Z",
+        "review_start": "2026-09-10T09:00:00Z",
+        "review_end": "2026-09-12T08:59:59Z",
+        "status": "application_window",
+        "executed_at": null,
+        "published_at": null,
+        "eligible_students": 32,
+        "open_slots": 14,
+        "reopened_slots": 2
+      },
+      {
+        "id": "rnd-3",
+        "cycle_id": "cyc-2627s1",
+        "number": 3,
+        "application_start": "2026-09-16T09:00:00Z",
+        "application_end": "2026-09-21T08:59:59Z",
+        "review_start": "2026-09-21T09:00:00Z",
+        "review_end": "2026-09-23T08:59:59Z",
+        "status": "scheduled",
+        "executed_at": null,
+        "published_at": null,
+        "eligible_students": 0,
+        "open_slots": 0,
+        "reopened_slots": 0
+      }
+    ]
+  },
+  "listings": [
+    {
+      "id": "lst-1",
+      "supervisor_id": "sup-1",
+      "supervisor_name": "Prof. Marcus Chua",
+      "title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "description": "Build and validate a CNN pipeline for grading retinal images, with attention to clinician-facing explainability and calibration on a public fundus dataset.",
+      "prerequisites": [
+        "SC4001"
+      ],
+      "topic_tags": [
+        "Machine Learning",
+        "Healthcare AI",
+        "Computer Vision"
+      ],
+      "available_slots": 3,
+      "filled_slots": 1,
+      "offering_faculty": "CCDS",
+      "research_location": "N4-02c Lab",
+      "cover_url": "/covers/cover-eye.jpg",
+      "status": "published",
+      "created_at": "2026-08-05T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-2",
+      "supervisor_id": "sup-1",
+      "supervisor_name": "Prof. Marcus Chua",
+      "title": "Explainable AI for Clinical Decision Support",
+      "description": "Evaluate SHAP and counterfactual explanations for tabular clinical models against clinician feedback in a small user study.",
+      "prerequisites": [
+        "SC4001"
+      ],
+      "topic_tags": [
+        "Explainable AI",
+        "Healthcare AI"
+      ],
+      "available_slots": 2,
+      "filled_slots": 0,
+      "offering_faculty": "CCDS",
+      "research_location": "N4-02c Lab",
+      "cover_url": "/covers/cover-chat.jpg",
+      "status": "published",
+      "created_at": "2026-08-06T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-3",
+      "supervisor_id": "sup-1",
+      "supervisor_name": "Prof. Marcus Chua",
+      "title": "Federated Learning for Multi-Hospital Imaging Data",
+      "description": "Prototype a federated training loop across simulated hospital silos and measure the privacy and accuracy trade-off.",
+      "prerequisites": [
+        "SC4001",
+        "SC3020"
+      ],
+      "topic_tags": [
+        "Machine Learning",
+        "Healthcare AI"
+      ],
+      "available_slots": 2,
+      "filled_slots": 0,
+      "offering_faculty": "CCDS",
+      "research_location": "N4-02c Lab",
+      "cover_url": "/covers/cover-atom.jpg",
+      "status": "published",
+      "created_at": "2026-08-07T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-4",
+      "supervisor_id": "sup-2",
+      "supervisor_name": "Prof. Daniel Ho",
+      "title": "Microbiome Diversity in Tropical Coral Reefs",
+      "description": "Sequence and analyse microbial communities from reef samples collected off Pulau Hantu to link diversity with bleaching resilience.",
+      "prerequisites": [
+        "SB2210"
+      ],
+      "topic_tags": [
+        "Genomics",
+        "Marine Biology"
+      ],
+      "available_slots": 2,
+      "filled_slots": 1,
+      "offering_faculty": "SBS",
+      "research_location": "SBS-02n-15",
+      "cover_url": "/covers/cover-coral.jpg",
+      "status": "published",
+      "created_at": "2026-08-08T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-5",
+      "supervisor_id": "sup-2",
+      "supervisor_name": "Prof. Daniel Ho",
+      "title": "CRISPR Screening for Antibiotic Resistance Genes",
+      "description": "Design a pooled CRISPR knockout screen to identify genes that change antibiotic sensitivity in E. coli.",
+      "prerequisites": [
+        "SB3101"
+      ],
+      "topic_tags": [
+        "Genomics"
+      ],
+      "available_slots": 2,
+      "filled_slots": 0,
+      "offering_faculty": "SBS",
+      "research_location": "SBS-02n-15",
+      "cover_url": "/covers/cover-leaf.jpg",
+      "status": "published",
+      "created_at": "2026-08-09T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-6",
+      "supervisor_id": "sup-3",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "title": "Solid-State Battery Degradation Modelling",
+      "description": "Fit physics-informed degradation models to cycling data and predict remaining useful life for a lab cell.",
+      "prerequisites": [
+        "EE3080"
+      ],
+      "topic_tags": [
+        "Energy Systems",
+        "Statistics"
+      ],
+      "available_slots": 3,
+      "filled_slots": 2,
+      "offering_faculty": "EEE",
+      "research_location": "S2-B4a-03",
+      "cover_url": "/covers/cover-battery.jpg",
+      "status": "published",
+      "created_at": "2026-08-10T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-7",
+      "supervisor_id": "sup-3",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "title": "Low-Power Edge Inference for Wearable ECG",
+      "description": "Quantise and deploy an arrhythmia classifier on a microcontroller, then measure latency and battery impact.",
+      "prerequisites": [
+        "EE4483",
+        "SC1015"
+      ],
+      "topic_tags": [
+        "Machine Learning",
+        "Healthcare AI"
+      ],
+      "available_slots": 2,
+      "filled_slots": 0,
+      "offering_faculty": "EEE",
+      "research_location": "S2-B4a-03",
+      "cover_url": "/covers/cover-eye.jpg",
+      "status": "published",
+      "created_at": "2026-08-11T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-8",
+      "supervisor_id": "sup-4",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "title": "Human-Robot Collaboration in Assistive Environments",
+      "description": "Study handover strategies between a collaborative arm and a human in a mock kitchen, measuring safety and comfort.",
+      "prerequisites": [
+        "MA3005"
+      ],
+      "topic_tags": [
+        "Robotics",
+        "HCI"
+      ],
+      "available_slots": 2,
+      "filled_slots": 0,
+      "offering_faculty": "MAE",
+      "research_location": "N3-01a-05",
+      "cover_url": "/covers/cover-robot.jpg",
+      "status": "published",
+      "created_at": "2026-08-12T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-9",
+      "supervisor_id": "sup-4",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "title": "Soft Gripper Design for Delicate Produce",
+      "description": "Iterate silicone finger geometries and evaluate grasp success on fruit of varied firmness.",
+      "prerequisites": [],
+      "topic_tags": [
+        "Robotics",
+        "Materials"
+      ],
+      "available_slots": 1,
+      "filled_slots": 1,
+      "offering_faculty": "MAE",
+      "research_location": "N3-01a-05",
+      "cover_url": "/covers/cover-robot.jpg",
+      "status": "closed",
+      "created_at": "2026-08-13T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-10",
+      "supervisor_id": "sup-5",
+      "supervisor_name": "Prof. Sarah Goh",
+      "title": "Bayesian Methods for Sparse Sensor Networks",
+      "description": "Develop a hierarchical Bayesian model for missing readings in an air-quality network and validate on NEA data.",
+      "prerequisites": [
+        "MH3511"
+      ],
+      "topic_tags": [
+        "Statistics"
+      ],
+      "available_slots": 2,
+      "filled_slots": 0,
+      "offering_faculty": "SPMS",
+      "research_location": "SPMS-MAS-04-01",
+      "cover_url": "/covers/cover-atom.jpg",
+      "status": "published",
+      "created_at": "2026-08-14T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-11",
+      "supervisor_id": "sup-6",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "title": "NLP for Low-Resource Southeast Asian Languages",
+      "description": "Adapt a multilingual transformer to Malay and Tamil news text with a small annotated corpus and evaluate transfer.",
+      "prerequisites": [
+        "SC4002"
+      ],
+      "topic_tags": [
+        "NLP",
+        "Machine Learning"
+      ],
+      "available_slots": 2,
+      "filled_slots": 0,
+      "offering_faculty": "CCDS",
+      "research_location": "N4-02b Lab",
+      "cover_url": "/covers/cover-chat.jpg",
+      "status": "published",
+      "created_at": "2026-08-05T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    },
+    {
+      "id": "lst-12",
+      "supervisor_id": "sup-6",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "title": "Fair Ranking in Recommender Systems",
+      "description": "Measure exposure disparity in a movie recommender and implement two re-ranking methods to reduce it.",
+      "prerequisites": [
+        "SC3020"
+      ],
+      "topic_tags": [
+        "Machine Learning",
+        "Explainable AI"
+      ],
+      "available_slots": 2,
+      "filled_slots": 0,
+      "offering_faculty": "CCDS",
+      "research_location": "N4-02b Lab",
+      "cover_url": "/covers/cover-leaf.jpg",
+      "status": "published",
+      "created_at": "2026-08-06T09:00:00Z",
+      "applicant_count": 0,
+      "applied": false,
+      "applied_rank": null
+    }
+  ],
+  "applications": [
+    {
+      "id": "app-1",
+      "student_id": "stu-1",
+      "listing_id": "lst-10",
+      "listing_title": "Bayesian Methods for Sparse Sensor Networks",
+      "supervisor_name": "Prof. Sarah Goh",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-05T12:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-1-t",
+        "doc-stu-1-cv"
+      ]
+    },
+    {
+      "id": "app-2",
+      "student_id": "stu-1",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-05T15:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-1-t",
+        "doc-stu-1-cv"
+      ]
+    },
+    {
+      "id": "app-3",
+      "student_id": "stu-2",
+      "listing_id": "lst-5",
+      "listing_title": "CRISPR Screening for Antibiotic Resistance Genes",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-05T18:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-2-t",
+        "doc-stu-2-cv"
+      ]
+    },
+    {
+      "id": "app-4",
+      "student_id": "stu-2",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-05T21:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-2-t",
+        "doc-stu-2-cv"
+      ]
+    },
+    {
+      "id": "app-5",
+      "student_id": "stu-3",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-06T00:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-3-t",
+        "doc-stu-3-cv"
+      ]
+    },
+    {
+      "id": "app-6",
+      "student_id": "stu-3",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-06T03:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-3-t",
+        "doc-stu-3-cv"
+      ]
+    },
+    {
+      "id": "app-7",
+      "student_id": "stu-4",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-06T06:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-4-t",
+        "doc-stu-4-cv"
+      ]
+    },
+    {
+      "id": "app-8",
+      "student_id": "stu-4",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-06T09:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-4-t",
+        "doc-stu-4-cv"
+      ]
+    },
+    {
+      "id": "app-9",
+      "student_id": "stu-5",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-06T12:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-5-t",
+        "doc-stu-5-cv"
+      ]
+    },
+    {
+      "id": "app-10",
+      "student_id": "stu-5",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-06T15:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-5-t",
+        "doc-stu-5-cv"
+      ]
+    },
+    {
+      "id": "app-11",
+      "student_id": "stu-5",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-06T18:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-5-t",
+        "doc-stu-5-cv"
+      ]
+    },
+    {
+      "id": "app-12",
+      "student_id": "stu-5",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-06T21:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-5-t",
+        "doc-stu-5-cv"
+      ]
+    },
+    {
+      "id": "app-13",
+      "student_id": "stu-6",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-07T00:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-6-t",
+        "doc-stu-6-cv"
+      ]
+    },
+    {
+      "id": "app-14",
+      "student_id": "stu-6",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-07T03:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-6-t",
+        "doc-stu-6-cv"
+      ]
+    },
+    {
+      "id": "app-15",
+      "student_id": "stu-7",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-07T06:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-7-t",
+        "doc-stu-7-cv"
+      ]
+    },
+    {
+      "id": "app-16",
+      "student_id": "stu-7",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-07T09:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-7-t",
+        "doc-stu-7-cv"
+      ]
+    },
+    {
+      "id": "app-17",
+      "student_id": "stu-8",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-07T12:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-8-t",
+        "doc-stu-8-cv"
+      ]
+    },
+    {
+      "id": "app-18",
+      "student_id": "stu-8",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-07T15:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-8-t",
+        "doc-stu-8-cv"
+      ]
+    },
+    {
+      "id": "app-19",
+      "student_id": "stu-8",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-07T18:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-8-t",
+        "doc-stu-8-cv"
+      ]
+    },
+    {
+      "id": "app-20",
+      "student_id": "stu-8",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-07T21:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-8-t",
+        "doc-stu-8-cv"
+      ]
+    },
+    {
+      "id": "app-21",
+      "student_id": "stu-9",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-08T00:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-9-t",
+        "doc-stu-9-cv"
+      ]
+    },
+    {
+      "id": "app-22",
+      "student_id": "stu-9",
+      "listing_id": "lst-10",
+      "listing_title": "Bayesian Methods for Sparse Sensor Networks",
+      "supervisor_name": "Prof. Sarah Goh",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-08T03:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-9-t",
+        "doc-stu-9-cv"
+      ]
+    },
+    {
+      "id": "app-23",
+      "student_id": "stu-9",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-08T06:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-9-t",
+        "doc-stu-9-cv"
+      ]
+    },
+    {
+      "id": "app-24",
+      "student_id": "stu-9",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-08T09:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-9-t",
+        "doc-stu-9-cv"
+      ]
+    },
+    {
+      "id": "app-25",
+      "student_id": "stu-10",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-08T12:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-10-t",
+        "doc-stu-10-cv"
+      ]
+    },
+    {
+      "id": "app-26",
+      "student_id": "stu-10",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-08T15:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-10-t",
+        "doc-stu-10-cv"
+      ]
+    },
+    {
+      "id": "app-27",
+      "student_id": "stu-10",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-08T18:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-10-t",
+        "doc-stu-10-cv"
+      ]
+    },
+    {
+      "id": "app-28",
+      "student_id": "stu-11",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-08T21:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-11-t",
+        "doc-stu-11-cv"
+      ]
+    },
+    {
+      "id": "app-29",
+      "student_id": "stu-11",
+      "listing_id": "lst-10",
+      "listing_title": "Bayesian Methods for Sparse Sensor Networks",
+      "supervisor_name": "Prof. Sarah Goh",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-09T00:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-11-t",
+        "doc-stu-11-cv"
+      ]
+    },
+    {
+      "id": "app-30",
+      "student_id": "stu-12",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-09T03:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-12-t",
+        "doc-stu-12-cv"
+      ]
+    },
+    {
+      "id": "app-31",
+      "student_id": "stu-12",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-09T06:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-12-t",
+        "doc-stu-12-cv"
+      ]
+    },
+    {
+      "id": "app-32",
+      "student_id": "stu-12",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-09T09:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-12-t",
+        "doc-stu-12-cv"
+      ]
+    },
+    {
+      "id": "app-33",
+      "student_id": "stu-12",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-09T12:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-12-t",
+        "doc-stu-12-cv"
+      ]
+    },
+    {
+      "id": "app-34",
+      "student_id": "stu-13",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-09T15:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-13-t",
+        "doc-stu-13-cv"
+      ]
+    },
+    {
+      "id": "app-35",
+      "student_id": "stu-13",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-09T18:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-13-t",
+        "doc-stu-13-cv"
+      ]
+    },
+    {
+      "id": "app-36",
+      "student_id": "stu-14",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-09T21:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-14-t",
+        "doc-stu-14-cv"
+      ]
+    },
+    {
+      "id": "app-37",
+      "student_id": "stu-14",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-10T00:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-14-t",
+        "doc-stu-14-cv"
+      ]
+    },
+    {
+      "id": "app-38",
+      "student_id": "stu-14",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-10T03:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-14-t",
+        "doc-stu-14-cv"
+      ]
+    },
+    {
+      "id": "app-39",
+      "student_id": "stu-15",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-10T06:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-15-t",
+        "doc-stu-15-cv"
+      ]
+    },
+    {
+      "id": "app-40",
+      "student_id": "stu-15",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-10T09:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-15-t",
+        "doc-stu-15-cv"
+      ]
+    },
+    {
+      "id": "app-41",
+      "student_id": "stu-15",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-10T12:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-15-t",
+        "doc-stu-15-cv"
+      ]
+    },
+    {
+      "id": "app-42",
+      "student_id": "stu-15",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-10T15:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-15-t",
+        "doc-stu-15-cv"
+      ]
+    },
+    {
+      "id": "app-43",
+      "student_id": "stu-16",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-10T18:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-16-t",
+        "doc-stu-16-cv"
+      ]
+    },
+    {
+      "id": "app-44",
+      "student_id": "stu-16",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-10T21:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-16-t",
+        "doc-stu-16-cv"
+      ]
+    },
+    {
+      "id": "app-45",
+      "student_id": "stu-16",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-11T00:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-16-t",
+        "doc-stu-16-cv"
+      ]
+    },
+    {
+      "id": "app-46",
+      "student_id": "stu-17",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-11T03:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-17-t",
+        "doc-stu-17-cv"
+      ]
+    },
+    {
+      "id": "app-47",
+      "student_id": "stu-17",
+      "listing_id": "lst-10",
+      "listing_title": "Bayesian Methods for Sparse Sensor Networks",
+      "supervisor_name": "Prof. Sarah Goh",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-11T06:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-17-t",
+        "doc-stu-17-cv"
+      ]
+    },
+    {
+      "id": "app-48",
+      "student_id": "stu-17",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-11T09:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-17-t",
+        "doc-stu-17-cv"
+      ]
+    },
+    {
+      "id": "app-49",
+      "student_id": "stu-17",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-11T12:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-17-t",
+        "doc-stu-17-cv"
+      ]
+    },
+    {
+      "id": "app-50",
+      "student_id": "stu-18",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-11T15:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-18-t",
+        "doc-stu-18-cv"
+      ]
+    },
+    {
+      "id": "app-51",
+      "student_id": "stu-18",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-11T18:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-18-t",
+        "doc-stu-18-cv"
+      ]
+    },
+    {
+      "id": "app-52",
+      "student_id": "stu-19",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-11T21:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-19-t",
+        "doc-stu-19-cv"
+      ]
+    },
+    {
+      "id": "app-53",
+      "student_id": "stu-19",
+      "listing_id": "lst-10",
+      "listing_title": "Bayesian Methods for Sparse Sensor Networks",
+      "supervisor_name": "Prof. Sarah Goh",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-12T00:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-19-t",
+        "doc-stu-19-cv"
+      ]
+    },
+    {
+      "id": "app-54",
+      "student_id": "stu-19",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-12T03:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-19-t",
+        "doc-stu-19-cv"
+      ]
+    },
+    {
+      "id": "app-55",
+      "student_id": "stu-19",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-12T06:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-19-t",
+        "doc-stu-19-cv"
+      ]
+    },
+    {
+      "id": "app-56",
+      "student_id": "stu-20",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-12T09:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-20-t",
+        "doc-stu-20-cv"
+      ]
+    },
+    {
+      "id": "app-57",
+      "student_id": "stu-20",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-12T12:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-20-t",
+        "doc-stu-20-cv"
+      ]
+    },
+    {
+      "id": "app-58",
+      "student_id": "stu-20",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-12T15:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-20-t",
+        "doc-stu-20-cv"
+      ]
+    },
+    {
+      "id": "app-59",
+      "student_id": "stu-20",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-12T18:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-20-t",
+        "doc-stu-20-cv"
+      ]
+    },
+    {
+      "id": "app-60",
+      "student_id": "stu-21",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-12T21:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-21-t",
+        "doc-stu-21-cv"
+      ]
+    },
+    {
+      "id": "app-61",
+      "student_id": "stu-21",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-13T00:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-21-t",
+        "doc-stu-21-cv"
+      ]
+    },
+    {
+      "id": "app-62",
+      "student_id": "stu-21",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-13T03:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-21-t",
+        "doc-stu-21-cv"
+      ]
+    },
+    {
+      "id": "app-63",
+      "student_id": "stu-22",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-13T06:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-22-t",
+        "doc-stu-22-cv"
+      ]
+    },
+    {
+      "id": "app-64",
+      "student_id": "stu-22",
+      "listing_id": "lst-10",
+      "listing_title": "Bayesian Methods for Sparse Sensor Networks",
+      "supervisor_name": "Prof. Sarah Goh",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-13T09:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-22-t",
+        "doc-stu-22-cv"
+      ]
+    },
+    {
+      "id": "app-65",
+      "student_id": "stu-22",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-13T12:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-22-t",
+        "doc-stu-22-cv"
+      ]
+    },
+    {
+      "id": "app-66",
+      "student_id": "stu-22",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-13T15:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-22-t",
+        "doc-stu-22-cv"
+      ]
+    },
+    {
+      "id": "app-67",
+      "student_id": "stu-23",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-13T18:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-23-t",
+        "doc-stu-23-cv"
+      ]
+    },
+    {
+      "id": "app-68",
+      "student_id": "stu-23",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-13T21:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-23-t",
+        "doc-stu-23-cv"
+      ]
+    },
+    {
+      "id": "app-69",
+      "student_id": "stu-23",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-14T00:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-23-t",
+        "doc-stu-23-cv"
+      ]
+    },
+    {
+      "id": "app-70",
+      "student_id": "stu-23",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-14T03:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-23-t",
+        "doc-stu-23-cv"
+      ]
+    },
+    {
+      "id": "app-71",
+      "student_id": "stu-24",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-14T06:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-24-t",
+        "doc-stu-24-cv"
+      ]
+    },
+    {
+      "id": "app-72",
+      "student_id": "stu-24",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-14T09:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-24-t",
+        "doc-stu-24-cv"
+      ]
+    },
+    {
+      "id": "app-73",
+      "student_id": "stu-24",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-14T12:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-24-t",
+        "doc-stu-24-cv"
+      ]
+    },
+    {
+      "id": "app-74",
+      "student_id": "stu-24",
+      "listing_id": "lst-5",
+      "listing_title": "CRISPR Screening for Antibiotic Resistance Genes",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-14T15:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-24-t",
+        "doc-stu-24-cv"
+      ]
+    },
+    {
+      "id": "app-75",
+      "student_id": "stu-25",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-14T18:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-25-t",
+        "doc-stu-25-cv"
+      ]
+    },
+    {
+      "id": "app-76",
+      "student_id": "stu-25",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-14T21:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-25-t",
+        "doc-stu-25-cv"
+      ]
+    },
+    {
+      "id": "app-77",
+      "student_id": "stu-26",
+      "listing_id": "lst-10",
+      "listing_title": "Bayesian Methods for Sparse Sensor Networks",
+      "supervisor_name": "Prof. Sarah Goh",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-15T00:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-26-t",
+        "doc-stu-26-cv"
+      ]
+    },
+    {
+      "id": "app-78",
+      "student_id": "stu-26",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-15T03:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-26-t",
+        "doc-stu-26-cv"
+      ]
+    },
+    {
+      "id": "app-79",
+      "student_id": "stu-26",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-15T06:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-26-t",
+        "doc-stu-26-cv"
+      ]
+    },
+    {
+      "id": "app-80",
+      "student_id": "stu-26",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-15T09:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-26-t",
+        "doc-stu-26-cv"
+      ]
+    },
+    {
+      "id": "app-81",
+      "student_id": "stu-27",
+      "listing_id": "lst-10",
+      "listing_title": "Bayesian Methods for Sparse Sensor Networks",
+      "supervisor_name": "Prof. Sarah Goh",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-15T12:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-27-t",
+        "doc-stu-27-cv"
+      ]
+    },
+    {
+      "id": "app-82",
+      "student_id": "stu-27",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-15T15:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-27-t",
+        "doc-stu-27-cv"
+      ]
+    },
+    {
+      "id": "app-83",
+      "student_id": "stu-27",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-15T18:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-27-t",
+        "doc-stu-27-cv"
+      ]
+    },
+    {
+      "id": "app-84",
+      "student_id": "stu-27",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-15T21:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-27-t",
+        "doc-stu-27-cv"
+      ]
+    },
+    {
+      "id": "app-85",
+      "student_id": "stu-28",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-16T00:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-28-t",
+        "doc-stu-28-cv"
+      ]
+    },
+    {
+      "id": "app-86",
+      "student_id": "stu-28",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-16T03:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-28-t",
+        "doc-stu-28-cv"
+      ]
+    },
+    {
+      "id": "app-87",
+      "student_id": "stu-28",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-16T06:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-28-t",
+        "doc-stu-28-cv"
+      ]
+    },
+    {
+      "id": "app-88",
+      "student_id": "stu-28",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-16T09:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-28-t",
+        "doc-stu-28-cv"
+      ]
+    },
+    {
+      "id": "app-89",
+      "student_id": "stu-29",
+      "listing_id": "lst-12",
+      "listing_title": "Fair Ranking in Recommender Systems",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-16T12:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-29-t",
+        "doc-stu-29-cv"
+      ]
+    },
+    {
+      "id": "app-90",
+      "student_id": "stu-29",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-16T15:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-29-t",
+        "doc-stu-29-cv"
+      ]
+    },
+    {
+      "id": "app-91",
+      "student_id": "stu-29",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-16T18:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-29-t",
+        "doc-stu-29-cv"
+      ]
+    },
+    {
+      "id": "app-92",
+      "student_id": "stu-29",
+      "listing_id": "lst-11",
+      "listing_title": "NLP for Low-Resource Southeast Asian Languages",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-16T21:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-29-t",
+        "doc-stu-29-cv"
+      ]
+    },
+    {
+      "id": "app-93",
+      "student_id": "stu-30",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-17T00:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-30-t",
+        "doc-stu-30-cv"
+      ]
+    },
+    {
+      "id": "app-94",
+      "student_id": "stu-30",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-17T03:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-30-t",
+        "doc-stu-30-cv"
+      ]
+    },
+    {
+      "id": "app-95",
+      "student_id": "stu-30",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-17T06:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-30-t",
+        "doc-stu-30-cv"
+      ]
+    },
+    {
+      "id": "app-96",
+      "student_id": "stu-30",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-17T09:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-30-t",
+        "doc-stu-30-cv"
+      ]
+    },
+    {
+      "id": "app-97",
+      "student_id": "stu-31",
+      "listing_id": "lst-7",
+      "listing_title": "Low-Power Edge Inference for Wearable ECG",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-17T12:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-31-t",
+        "doc-stu-31-cv"
+      ]
+    },
+    {
+      "id": "app-98",
+      "student_id": "stu-31",
+      "listing_id": "lst-3",
+      "listing_title": "Federated Learning for Multi-Hospital Imaging Data",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-17T15:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-31-t",
+        "doc-stu-31-cv"
+      ]
+    },
+    {
+      "id": "app-99",
+      "student_id": "stu-31",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-17T18:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-31-t",
+        "doc-stu-31-cv"
+      ]
+    },
+    {
+      "id": "app-100",
+      "student_id": "stu-31",
+      "listing_id": "lst-5",
+      "listing_title": "CRISPR Screening for Antibiotic Resistance Genes",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-09-17T21:00:00Z",
+      "preference_rank": 4,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-31-t",
+        "doc-stu-31-cv"
+      ]
+    },
+    {
+      "id": "app-101",
+      "student_id": "stu-32",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-09-18T00:00:00Z",
+      "preference_rank": 1,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-32-t",
+        "doc-stu-32-cv"
+      ]
+    },
+    {
+      "id": "app-102",
+      "student_id": "stu-32",
+      "listing_id": "lst-8",
+      "listing_title": "Human-Robot Collaboration in Assistive Environments",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-2",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-09-18T03:00:00Z",
+      "preference_rank": 2,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-32-t",
+        "doc-stu-32-cv"
+      ]
+    },
+    {
+      "id": "app-103",
+      "student_id": "stu-32",
+      "listing_id": "lst-5",
+      "listing_title": "CRISPR Screening for Antibiotic Resistance Genes",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-2",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-09-18T06:00:00Z",
+      "preference_rank": 3,
+      "status": "submitted",
+      "document_ids": [
+        "doc-stu-32-t",
+        "doc-stu-32-cv"
+      ]
+    },
+    {
+      "id": "app-104",
+      "student_id": "stu-33",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-1",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-08-27T18:00:00Z",
+      "preference_rank": 1,
+      "status": "matched",
+      "document_ids": []
+    },
+    {
+      "id": "app-105",
+      "student_id": "stu-34",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_name": "Prof. Daniel Ho",
+      "round_id": "rnd-1",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-08-27T19:00:00Z",
+      "preference_rank": 1,
+      "status": "matched",
+      "document_ids": []
+    },
+    {
+      "id": "app-106",
+      "student_id": "stu-35",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-1",
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "submitted_at": "2026-08-27T20:00:00Z",
+      "preference_rank": 1,
+      "status": "matched",
+      "document_ids": []
+    },
+    {
+      "id": "app-107",
+      "student_id": "stu-36",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "round_id": "rnd-1",
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "submitted_at": "2026-08-27T21:00:00Z",
+      "preference_rank": 1,
+      "status": "matched",
+      "document_ids": []
+    },
+    {
+      "id": "app-108",
+      "student_id": "stu-37",
+      "listing_id": "lst-9",
+      "listing_title": "Soft Gripper Design for Delicate Produce",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "round_id": "rnd-1",
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "submitted_at": "2026-08-27T22:00:00Z",
+      "preference_rank": 1,
+      "status": "matched",
+      "document_ids": []
+    },
+    {
+      "id": "app-109",
+      "student_id": "stu-38",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_name": "Prof. Marcus Chua",
+      "round_id": "rnd-1",
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "submitted_at": "2026-08-27T23:00:00Z",
+      "preference_rank": 1,
+      "status": "matched",
+      "document_ids": []
+    }
+  ],
+  "matches": [
+    {
+      "id": "mt-1",
+      "round_id": "rnd-1",
+      "student_id": "stu-33",
+      "student_name": "Divya Nair",
+      "listing_id": "lst-1",
+      "listing_title": "Deep Learning for Early Detection of Diabetic Retinopathy",
+      "supervisor_id": "sup-1",
+      "supervisor_name": "Prof. Marcus Chua",
+      "status": "accepted",
+      "preference_rank": 1,
+      "supervisor_decided_at": "2026-08-31T14:00:00Z",
+      "published_at": "2026-08-31T17:00:00Z",
+      "offer_expires_at": "2026-09-10T09:00:00Z",
+      "student_responded_at": "2026-09-01T10:00:00Z",
+      "original_listing_id": null,
+      "justification": null
+    },
+    {
+      "id": "mt-2",
+      "round_id": "rnd-1",
+      "student_id": "stu-34",
+      "student_name": "Lucas Ho",
+      "listing_id": "lst-4",
+      "listing_title": "Microbiome Diversity in Tropical Coral Reefs",
+      "supervisor_id": "sup-2",
+      "supervisor_name": "Prof. Daniel Ho",
+      "status": "accepted",
+      "preference_rank": 1,
+      "supervisor_decided_at": "2026-08-31T14:00:00Z",
+      "published_at": "2026-08-31T17:00:00Z",
+      "offer_expires_at": "2026-09-10T09:00:00Z",
+      "student_responded_at": "2026-09-01T10:00:00Z",
+      "original_listing_id": null,
+      "justification": null
+    },
+    {
+      "id": "mt-3",
+      "round_id": "rnd-1",
+      "student_id": "stu-35",
+      "student_name": "Hannah Seah",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_id": "sup-3",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "status": "accepted",
+      "preference_rank": 1,
+      "supervisor_decided_at": "2026-08-31T14:00:00Z",
+      "published_at": "2026-08-31T17:00:00Z",
+      "offer_expires_at": "2026-09-10T09:00:00Z",
+      "student_responded_at": "2026-09-01T10:00:00Z",
+      "original_listing_id": null,
+      "justification": null
+    },
+    {
+      "id": "mt-4",
+      "round_id": "rnd-1",
+      "student_id": "stu-36",
+      "student_name": "Wen Jun Foo",
+      "listing_id": "lst-6",
+      "listing_title": "Solid-State Battery Degradation Modelling",
+      "supervisor_id": "sup-3",
+      "supervisor_name": "Assoc. Prof. Mei Lin Tan",
+      "status": "accepted",
+      "preference_rank": 1,
+      "supervisor_decided_at": "2026-08-31T14:00:00Z",
+      "published_at": "2026-08-31T17:00:00Z",
+      "offer_expires_at": "2026-09-10T09:00:00Z",
+      "student_responded_at": "2026-09-01T10:00:00Z",
+      "original_listing_id": null,
+      "justification": null
+    },
+    {
+      "id": "mt-5",
+      "round_id": "rnd-1",
+      "student_id": "stu-37",
+      "student_name": "Kavya Reddy",
+      "listing_id": "lst-9",
+      "listing_title": "Soft Gripper Design for Delicate Produce",
+      "supervisor_id": "sup-4",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "status": "accepted",
+      "preference_rank": 1,
+      "supervisor_decided_at": "2026-08-31T14:00:00Z",
+      "published_at": "2026-08-31T17:00:00Z",
+      "offer_expires_at": "2026-09-10T09:00:00Z",
+      "student_responded_at": "2026-09-01T10:00:00Z",
+      "original_listing_id": null,
+      "justification": null
+    },
+    {
+      "id": "mt-6",
+      "round_id": "rnd-1",
+      "student_id": "stu-38",
+      "student_name": "Gabriel Yap",
+      "listing_id": "lst-2",
+      "listing_title": "Explainable AI for Clinical Decision Support",
+      "supervisor_id": "sup-1",
+      "supervisor_name": "Prof. Marcus Chua",
+      "status": "declined",
+      "preference_rank": 1,
+      "supervisor_decided_at": "2026-08-31T14:00:00Z",
+      "published_at": "2026-08-31T17:00:00Z",
+      "offer_expires_at": "2026-09-10T09:00:00Z",
+      "student_responded_at": "2026-09-01T10:00:00Z",
+      "original_listing_id": null,
+      "justification": null
+    }
+  ],
+  "proposals": [
+    {
+      "id": "prp-1",
+      "student_id": "stu-3",
+      "student_name": "Aisha Rahman",
+      "supervisor_id": "sup-2",
+      "supervisor_name": "Prof. Daniel Ho",
+      "title": "Metagenomic Survey of Mangrove Sediments",
+      "description": "I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.",
+      "research_interests": [
+        "HCI",
+        "NLP"
+      ],
+      "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
+      "status": "submitted",
+      "submitted_at": "2026-09-06T09:00:00Z",
+      "decided_at": null,
+      "document_ids": [
+        "doc-stu-3-t"
+      ]
+    },
+    {
+      "id": "prp-2",
+      "student_id": "stu-9",
+      "student_name": "Chloe Lim",
+      "supervisor_id": "sup-1",
+      "supervisor_name": "Prof. Marcus Chua",
+      "title": "Self-Supervised Pretraining for Retinal OCT",
+      "description": "I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.",
+      "research_interests": [
+        "Energy Systems",
+        "Machine Learning"
+      ],
+      "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
+      "status": "submitted",
+      "submitted_at": "2026-09-06T16:00:00Z",
+      "decided_at": null,
+      "document_ids": [
+        "doc-stu-9-t"
+      ]
+    },
+    {
+      "id": "prp-3",
+      "student_id": "stu-14",
+      "student_name": "Ethan Wong",
+      "supervisor_id": "sup-6",
+      "supervisor_name": "Dr. Hafiz Rahman",
+      "title": "Code-Switching Detection in Singlish Social Media",
+      "description": "I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.",
+      "research_interests": [
+        "NLP",
+        "Statistics"
+      ],
+      "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",
+      "status": "accepted",
+      "submitted_at": "2026-09-06T23:00:00Z",
+      "decided_at": "2026-09-08T09:00:00Z",
+      "document_ids": [
+        "doc-stu-14-t"
+      ]
+    },
+    {
+      "id": "prp-4",
+      "student_id": "stu-21",
+      "student_name": "Mei Ling Yeo",
+      "supervisor_id": "sup-4",
+      "supervisor_name": "Dr. Rajesh Kumar",
+      "title": "Tendon-Driven Finger for Prosthetic Hands",
+      "description": "I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.",
+      "research_interests": [
+        "Explainable AI",
+        "Statistics"
+      ],
+      "statement": "I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.",
+      "status": "declined",
+      "submitted_at": "2026-09-07T06:00:00Z",
+      "decided_at": "2026-09-08T09:00:00Z",
+      "document_ids": [
+        "doc-stu-21-t"
+      ]
+    }
+  ],
+  "notifications": [
+    {
+      "id": "ntf-1",
+      "user_id": "stu-1",
+      "event": "round_opened",
+      "title": "Round 2 is open",
+      "message": "Apply and rank your projects before 9 Sep.",
+      "created_at": "2026-09-05T08:00:00Z",
+      "read": true,
+      "link": "/browse"
+    },
+    {
+      "id": "ntf-2",
+      "user_id": "stu-1",
+      "event": "cycle_changed",
+      "title": "Round 2 closes in 3 days",
+      "message": "Applications and rankings close on 9 Sep at 23:59.",
+      "created_at": "2026-09-06T09:00:00Z",
+      "read": false,
+      "link": "/my-applications"
+    },
+    {
+      "id": "ntf-3",
+      "user_id": "stu-33",
+      "event": "offer_received",
+      "title": "You have a match offer",
+      "message": "Deep Learning for Early Detection of Diabetic Retinopathy. Respond by 10 Sep.",
+      "created_at": "2026-08-31T17:00:00Z",
+      "read": false,
+      "link": "/my-applications"
+    },
+    {
+      "id": "ntf-4",
+      "user_id": "sup-1",
+      "event": "proposal_decided",
+      "title": "New proposal from Aisha Rahman",
+      "message": "Self-Supervised Pretraining for Retinal OCT is waiting for your decision.",
+      "created_at": "2026-09-06T15:00:00Z",
+      "read": false,
+      "link": "/proposals"
+    },
+    {
+      "id": "ntf-5",
+      "user_id": "sup-1",
+      "event": "round_opened",
+      "title": "Round 2 review window opens 10 Sep",
+      "message": "Rank your applicants between 10 and 11 Sep.",
+      "created_at": "2026-09-05T08:00:00Z",
+      "read": false,
+      "link": "/projects"
+    },
+    {
+      "id": "ntf-6",
+      "user_id": "adm-1",
+      "event": "results_published",
+      "title": "Round 1 results published",
+      "message": "3,912 students notified. 372 declined so far.",
+      "created_at": "2026-08-31T17:00:00Z",
+      "read": true,
+      "link": "/rounds"
+    }
+  ],
+  "audit": [
+    {
+      "id": "aud-1",
+      "operation": "matching_executed",
+      "actor_id": "adm-1",
+      "actor_name": "Jonathan Teo",
+      "timestamp": "2026-08-31T11:00:00Z",
+      "affected_records": [
+        "rnd-1"
+      ],
+      "note": "Round 1 matching, 3.1 s"
+    },
+    {
+      "id": "aud-2",
+      "operation": "manual_reassignment",
+      "actor_id": "adm-1",
+      "actor_name": "Jonathan Teo",
+      "timestamp": "2026-08-31T15:00:00Z",
+      "affected_records": [
+        "mt-4"
+      ],
+      "note": "Supervisor rejected; reassigned to second preference"
+    },
+    {
+      "id": "aud-3",
+      "operation": "results_published",
+      "actor_id": "adm-1",
+      "actor_name": "Jonathan Teo",
+      "timestamp": "2026-08-31T17:00:00Z",
+      "affected_records": [
+        "rnd-1"
+      ],
+      "note": null
+    },
+    {
+      "id": "aud-4",
+      "operation": "user_deactivated",
+      "actor_id": "adm-2",
+      "actor_name": "Priscilla Lim",
+      "timestamp": "2026-09-02T10:00:00Z",
+      "affected_records": [
+        "stu-40"
+      ],
+      "note": "Withdrew from programme"
+    }
+  ],
+  "applicant_rankings": {
+    "lst-1:rnd-2": [
+      "app-26",
+      "app-37",
+      "app-40",
+      "app-44"
+    ]
+  }
+}

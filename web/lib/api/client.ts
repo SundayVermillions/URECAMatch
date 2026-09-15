@@ -1,0 +1,77 @@
+/** The one interface every screen uses. Two implementations: mock (default) and live.
+ *  Method names mirror the API routers so a slice owner can find their endpoint in seconds. */
+import type * as M from "./models";
+
+export interface ApiClient {
+  // slice A
+  register(body: M.RegisterRequest): Promise<void>;
+  verify(body: M.VerifyRequest): Promise<void>;
+  signIn(body: M.SignInRequest): Promise<M.Session>;
+  me(): Promise<M.Me>;
+  getProfile(): Promise<M.StudentProfile>;
+  updateProfile(body: M.ProfileUpdate): Promise<M.StudentProfile>;
+  uploadDocument(file: File): Promise<M.Document>;
+  listUsers(f?: M.UserFilters): Promise<M.UserListItem[]>;
+  createUser(body: M.UserCreate): Promise<M.User>;
+  updateUser(id: string, body: M.UserUpdate): Promise<M.User>;
+  deactivateUser(id: string): Promise<void>;
+  // slice B
+  browse(f?: M.ListingFilters): Promise<M.Listing[]>;
+  listing(id: string): Promise<M.Listing>;
+  supervisors(): Promise<M.SupervisorSummary[]>;
+  myListings(): Promise<M.Listing[]>;
+  createListing(body: M.ListingCreate): Promise<M.Listing>;
+  updateListing(id: string, body: M.ListingUpdate): Promise<M.Listing>;
+  closeListing(id: string): Promise<M.Listing>;
+  propose(body: M.ProposalCreate): Promise<M.Proposal>;
+  myProposals(): Promise<M.Proposal[]>;
+  incomingProposals(): Promise<M.Proposal[]>;
+  decideProposal(id: string, accept: boolean, note?: string): Promise<M.Proposal>;
+  // slice C
+  myApplications(): Promise<M.Application[]>;
+  apply(body: M.ApplicationCreate): Promise<M.Application>;
+  withdraw(id: string): Promise<void>;
+  setRanking(applicationIds: string[]): Promise<M.Application[]>;
+  applicants(listingId: string, f?: M.ApplicantFilters): Promise<M.Applicant[]>;
+  applicant(applicationId: string): Promise<M.Applicant>;
+  getRanking(listingId: string): Promise<M.ApplicantRanking>;
+  putRanking(listingId: string, applicationIds: string[]): Promise<M.ApplicantRanking>;
+  documentUrl(documentId: string): Promise<M.Document>;
+  // slice D
+  cycle(): Promise<M.Cycle | null>;
+  createCycle(body: M.CycleCreate): Promise<M.Cycle>;
+  updateCycle(id: string, body: M.CycleUpdate): Promise<M.Cycle>;
+  setRounds(cycleId: string, body: M.RoundsUpdate): Promise<M.Cycle>;
+  execute(roundId: string): Promise<M.RoundSummary>;
+  summary(roundId: string): Promise<M.RoundSummary>;
+  matches(roundId: string, status?: M.MatchStatus): Promise<M.Match[]>;
+  reassign(matchId: string, body: M.ReassignRequest): Promise<M.Match>;
+  manualAssign(roundId: string, body: M.ManualAssignRequest): Promise<M.Match>;
+  publish(roundId: string): Promise<M.RoundSummary>;
+  auditLog(): Promise<M.AuditEntry[]>;
+  supervisorMatches(): Promise<M.Match[]>;
+  decideMatch(id: string, approve: boolean, note?: string): Promise<M.Match>;
+  myMatch(): Promise<M.Match | null>;
+  respondToOffer(accept: boolean): Promise<M.Match>;
+  tick(): Promise<void>;
+  // slice E
+  notifications(): Promise<M.Notification[]>;
+  markRead(id: string): Promise<void>;
+  adminDashboard(): Promise<M.AdminDashboard>;
+  supervisorDashboard(): Promise<M.SupervisorDashboard>;
+}
+
+export const API_MODE = (process.env.NEXT_PUBLIC_API_MODE ?? "mock") as "mock" | "live";
+
+let _client: ApiClient | null = null;
+export async function getClient(): Promise<ApiClient> {
+  if (_client) return _client;
+  if (API_MODE === "live") {
+    const { LiveClient } = await import("./live");
+    _client = new LiveClient(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
+  } else {
+    const { MockClient } = await import("../mock/client");
+    _client = new MockClient();
+  }
+  return _client;
+}
