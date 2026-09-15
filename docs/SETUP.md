@@ -65,7 +65,7 @@ Set `NEXT_PUBLIC_API_MODE=live` in `web/.env.local` and run the API. Mock mode s
 
 ## Work split
 
-See [docs/DEV-PLAN.md](docs/DEV-PLAN.md) for slices A to E, endpoints, tests and the timeline. Traceability from REQ-ID to code and tests lives in [docs/traceability.md](docs/traceability.md).
+See [DEV-PLAN.md](DEV-PLAN.md) for slices A to E, endpoints, tests and the timeline. Traceability from REQ-ID to code and tests lives in [traceability.md](traceability.md).
 
 ## Deploy
 
