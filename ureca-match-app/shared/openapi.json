@@ -4842,6 +4842,17 @@
               }
             ],
             "title": "Url"
+          },
+          "storage_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Path"
           }
         },
         "type": "object",

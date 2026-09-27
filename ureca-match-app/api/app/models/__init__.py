@@ -124,6 +124,7 @@ class Document(BaseModel):
     file_size: int
     uploaded_at: datetime
     url: str | None = None  # signed URL for in-app viewing (REQ-VRANK-3)
+    storage_path: str | None = None  # path in Storage bucket (REQ-PROF-3)
 
 
 # ---------------------------------------------------------------- users
