@@ -38,3 +38,22 @@ def test_REQ_PROF_3_over_5mb_rejected(client_for):
     body = resp.json()
     message = body.get("message") or body.get("detail", {}).get("message", "")
     assert "5 MB" in str(message)
+
+def test_REQ_PROF_1_profile_marked_complete_after_save(client_for):
+    client = client_for("stu-1")
+    # Fetch current profile
+    resp = client.get("/me/profile")
+    assert resp.status_code == 200
+
+    # Save profile updates
+    payload = {
+        "school": "SCSE",
+        "cgpa": 4.5,
+        "year_of_study": 3,
+        "completed_modules": ["SC2006", "SC2001"],
+        "research_interests": ["Machine Learning", "Software Systems"],
+    }
+    put_resp = client.put("/me/profile", json=payload)
+    assert put_resp.status_code == 200
+    data = put_resp.json()
+    assert data["profile_complete"] is True
