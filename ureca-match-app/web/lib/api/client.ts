@@ -6,6 +6,7 @@ export interface ApiClient {
   // slice A
   register(body: M.RegisterRequest): Promise<void>;
   verify(body: M.VerifyRequest): Promise<void>;
+  resendCode(email: string): Promise<void>;
   signIn(body: M.SignInRequest): Promise<M.Session>;
   me(): Promise<M.Me>;
   getProfile(): Promise<M.StudentProfile>;

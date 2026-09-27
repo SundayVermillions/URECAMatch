@@ -9,6 +9,7 @@ Rule: routers never query directly. They call a service, the service calls the s
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 from app.db import seed_data
@@ -38,6 +39,7 @@ class Store(Protocol):
     notifications: list[Notification]
     audit: list[AuditEntry]
     applicant_rankings: dict[str, list[str]]  # f"{listing_id}:{round_id}" -> ordered application ids
+    verification_codes: dict[str, tuple[str, datetime]]  # email -> (code, expiry)
 
     def user(self, user_id: str) -> User | None: ...
     def user_by_email(self, email: str) -> User | None: ...
@@ -66,6 +68,7 @@ class MockStore:
             # Prof. Chua has started ranking lst-1 for Round 2
             "lst-1:rnd-2": [a.id for a in self.applications if a.listing_id == "lst-1" and a.round_id == "rnd-2"][:4],
         }
+        self.verification_codes: dict[str, tuple[str, datetime]] = {}
         self._counter = 1000
 
     def user(self, user_id: str) -> User | None:
@@ -89,17 +92,11 @@ class MockStore:
 
 
 class SupabaseStore(MockStore):
-    """TODO(all slices): replace the in-memory lists with Supabase queries table by table.
-
-    Keep the same method names so services do not change. Suggested order:
-    slice A users/students/supervisors, slice B listings/proposals,
-    slice C applications/applicant_rankings, slice D cycle/matches/audit, slice E notifications.
-    Until then this subclass behaves like MockStore so the app keeps running.
-    """
+    """TODO(all slices): replace the in-memory lists with Supabase queries table by table."""
 
     def __init__(self) -> None:
         super().__init__()
-        from supabase import create_client  # noqa: F401  (imported here so mock mode needs no network)
+        from supabase import create_client  # noqa: F401
 
         from app.settings import get_settings
 
