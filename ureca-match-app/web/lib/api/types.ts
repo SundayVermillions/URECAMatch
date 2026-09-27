@@ -1173,6 +1173,8 @@ export interface components {
             uploaded_at: string;
             /** Url */
             url?: string | null;
+            /** Storage Path */
+            storage_path?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
