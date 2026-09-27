@@ -49,7 +49,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_number=None,
             window=Window.pre_application,
             window_ends_at=ends,
-            label=f"Applications open {ends:%-d %b}",
+            label=f"Applications open {ends:%d %b}",
         )
     if r.application_start <= now <= r.application_end:
         return Phase(
@@ -58,7 +58,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_number=r.number,
             window=Window.application,
             window_ends_at=r.application_end,
-            label=f"Round {r.number} closes {r.application_end:%-d %b}",
+            label=f"Round {r.number} closes {r.application_end:%d %b}",
         )
     if r.review_start <= now <= r.review_end:
         return Phase(

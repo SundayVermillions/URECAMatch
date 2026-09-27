@@ -27,6 +27,7 @@ export class LiveClient implements ApiClient {
 
   register = (b: M.RegisterRequest) => this.req<void>("POST", "/auth/register", b);
   verify = (b: M.VerifyRequest) => this.req<void>("POST", "/auth/verify", b);
+  resendCode = (email: string) => this.req<void>("POST", "/auth/resend", { email });
   signIn = (b: M.SignInRequest) => this.req<M.Session>("POST", "/auth/sign-in", b);
   me = () => this.req<M.Me>("GET", "/me");
   getProfile = () => this.req<M.StudentProfile>("GET", "/me/profile");
@@ -82,4 +83,5 @@ export class LiveClient implements ApiClient {
   markRead = (id: string) => this.req<void>("POST", `/me/notifications/${id}/read`);
   adminDashboard = () => this.req<M.AdminDashboard>("GET", "/admin/dashboard");
   supervisorDashboard = () => this.req<M.SupervisorDashboard>("GET", "/supervisor/dashboard");
+  
 }

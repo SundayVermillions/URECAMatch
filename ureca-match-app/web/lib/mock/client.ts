@@ -91,6 +91,12 @@ export class MockClient implements ApiClient {
     if (b.code !== "000000") throw new M.ApiError(422, "bad_code", "That code is not correct. Check your e-mail and try again.", "code");
     u.status = "active";
   }
+  async resendCode(email: string) {
+    await sleep();
+    const u = this.db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (!u) throw new M.ApiError(422, "unknown_email", "No account found for this e-mail.", "email");
+    if (u.status !== "pending_verification") throw new M.ApiError(409, "already_active", "This account is already active. Sign in instead.");
+  }
   async signIn(b: M.SignInRequest): Promise<M.Session> {
     await sleep();
     const u = this.db.users.find((u) => u.email.toLowerCase() === b.email.toLowerCase());
