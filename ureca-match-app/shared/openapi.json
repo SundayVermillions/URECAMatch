@@ -88,6 +88,47 @@
         }
       }
     },
+    "/auth/resend": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Resend",
+        "operationId": "resend_auth_resend_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/sign-in": {
       "post": {
         "tags": [
@@ -5719,6 +5760,20 @@
           "role"
         ],
         "title": "RegisterRequest"
+      },
+      "ResendCodeRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ResendCodeRequest"
       },
       "Role": {
         "type": "string",
