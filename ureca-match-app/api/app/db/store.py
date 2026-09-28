@@ -152,12 +152,7 @@ class SupabaseStore(MockStore):
             return None
         row = res.data[0]
         # Query supporting_documents by owner_id
-        doc_res = (
-            self.client.table("supporting_documents")
-            .select("*")
-            .eq("owner_id", user_id)
-            .execute()
-        )
+        doc_res = self.client.table("supporting_documents").select("*").eq("owner_id", user_id).execute()
         row["documents"] = doc_res.data or []
         return StudentProfile.model_validate(row)
 
@@ -201,7 +196,8 @@ class SupabaseStore(MockStore):
             return doc_data
         res = self.client.table("supporting_documents").insert(doc_data).execute()
         return res.data[0] if res.data else doc_data
-    
+
+
 _store: Store | None = None
 
 

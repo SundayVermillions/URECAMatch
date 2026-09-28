@@ -1,10 +1,11 @@
 """Slice A: register, verify, sign in, me.  REQ-REG-1..3, REQ-AUTH-1..3, REQ-PROF-1."""
 
 from __future__ import annotations
-import jwt
+
 import secrets
 from datetime import timedelta
 
+import jwt
 from fastapi import APIRouter
 from pydantic import BaseModel, EmailStr
 
@@ -139,6 +140,7 @@ def sign_in(body: SignInRequest, store: StoreDep, settings: SettingsDep) -> Sess
         token = user.id
 
     return Session(access_token=token, expires_at=expires_at, user=user)
+
 
 @router.get("/me", response_model=Me)
 def me(user: CurrentUser, store: StoreDep, settings: SettingsDep) -> Me:
