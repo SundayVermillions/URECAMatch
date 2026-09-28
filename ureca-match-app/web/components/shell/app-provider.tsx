@@ -44,15 +44,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [load]);
 
-  // REQ-PROF-1: Profile gate redirect
+// REQ-AUTH-3: Session expiration guard & REQ-PROF-1: Profile gate redirect
   useEffect(() => {
-    if (loading || !me) return;
+    if (loading) return;
+
+    const isAuthPath =
+      pathname.startsWith("/sign-in") ||
+      pathname.startsWith("/create-account") ||
+      pathname.startsWith("/verify");
+
+    if (!me) {
+      if (!isAuthPath) {
+        router.replace("/sign-in?reason=session_expired");
+      }
+      return;
+    }
 
     const isStudent = me.user.role === "student";
     const profileIncomplete = isStudent && me.student && !me.student.profile_complete;
-
-    // Public / auth paths that should not be redirected
-    const isAuthPath = pathname.startsWith("/sign-in") || pathname.startsWith("/create-account") || pathname.startsWith("/verify");
     const isProfilePath = pathname.startsWith("/profile");
 
     if (profileIncomplete && !isAuthPath && !isProfilePath) {
