@@ -90,20 +90,118 @@ class MockStore:
         self._counter += 1
         return f"{prefix}-{self._counter}"
 
+    def save_student(self, student: StudentProfile) -> StudentProfile:
+        """Save or update student profile in mock store."""
+        for i, s in enumerate(self.students):
+            if s.user_id == student.user_id:
+                self.students[i] = student
+                return student
+        self.students.append(student)
+        return student
+
+    def save_supervisor(self, supervisor: SupervisorProfile) -> SupervisorProfile:
+        """Save or update supervisor profile in mock store."""
+        for i, s in enumerate(self.supervisors):
+            if s.user_id == supervisor.user_id:
+                self.supervisors[i] = supervisor
+                return supervisor
+        self.supervisors.append(supervisor)
+        return supervisor
+
+    def save_document(self, doc_data: dict) -> dict:
+        """Save document in mock store."""
+        # In mock mode, the document is already appended to student.documents in memory
+        return doc_data
+
 
 class SupabaseStore(MockStore):
-    """TODO(all slices): replace the in-memory lists with Supabase queries table by table."""
+    """Real Supabase store. Slice A tables are persisted to Postgres."""
 
     def __init__(self) -> None:
         super().__init__()
-        from supabase import create_client  # noqa: F401
+        from supabase import create_client
 
         from app.settings import get_settings
 
         s = get_settings()
         self.client = create_client(s.supabase_url, s.supabase_service_role_key) if s.supabase_url else None
 
+    # --- Slice A: Users & Profiles Read ---
 
+    def user(self, user_id: str) -> User | None:
+        if not self.client:
+            return super().user(user_id)
+        res = self.client.table("users").select("*").eq("id", user_id).limit(1).execute()
+        if not res.data:
+            return None
+        return User.model_validate(res.data[0])
+
+    def user_by_email(self, email: str) -> User | None:
+        if not self.client:
+            return super().user_by_email(email)
+        res = self.client.table("users").select("*").ilike("email", email.strip()).limit(1).execute()
+        if not res.data:
+            return None
+        return User.model_validate(res.data[0])
+
+    def student(self, user_id: str) -> StudentProfile | None:
+        if not self.client:
+            return super().student(user_id)
+        res = self.client.table("student_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        if not res.data:
+            return None
+        row = res.data[0]
+        # Query supporting_documents by owner_id
+        doc_res = (
+            self.client.table("supporting_documents")
+            .select("*")
+            .eq("owner_id", user_id)
+            .execute()
+        )
+        row["documents"] = doc_res.data or []
+        return StudentProfile.model_validate(row)
+
+    def supervisor(self, user_id: str) -> SupervisorProfile | None:
+        if not self.client:
+            return super().supervisor(user_id)
+        res = self.client.table("supervisor_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        if not res.data:
+            return None
+        return SupervisorProfile.model_validate(res.data[0])
+
+    # --- Slice A: Users & Profiles Write / Mutation ---
+
+    def save_user(self, user: User) -> User:
+        """Upsert a user record."""
+        if not self.client:
+            return user
+        payload = user.model_dump(mode="json")
+        self.client.table("users").upsert(payload).execute()
+        return user
+
+    def save_student(self, student: StudentProfile) -> StudentProfile:
+        """Upsert a student profile record."""
+        if not self.client:
+            return student
+        payload = student.model_dump(mode="json", exclude={"documents"})
+        self.client.table("student_profiles").upsert(payload).execute()
+        return student
+
+    def save_supervisor(self, supervisor: SupervisorProfile) -> SupervisorProfile:
+        """Upsert a supervisor profile record."""
+        if not self.client:
+            return supervisor
+        payload = supervisor.model_dump(mode="json")
+        self.client.table("supervisor_profiles").upsert(payload).execute()
+        return supervisor
+
+    def save_document(self, doc_data: dict) -> dict:
+        """Insert a document record into Postgres."""
+        if not self.client:
+            return doc_data
+        res = self.client.table("supporting_documents").insert(doc_data).execute()
+        return res.data[0] if res.data else doc_data
+    
 _store: Store | None = None
 
 
