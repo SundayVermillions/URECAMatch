@@ -1,7 +1,6 @@
 """Slice A: REQ-USER-1..3 tests."""
 
 
-
 def test_REQ_USER_1_admin_creates_supervisor(as_admin):
     """Admin can create a new supervisor account (REQ-USER-1)."""
     resp = as_admin.post(

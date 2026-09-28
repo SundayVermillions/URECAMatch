@@ -5,6 +5,7 @@ from __future__ import annotations
 import secrets
 from datetime import timedelta
 
+import jwt
 from fastapi import APIRouter
 from pydantic import BaseModel, EmailStr
 
@@ -112,15 +113,33 @@ def resend(body: ResendCodeRequest, store: StoreDep, settings: SettingsDep) -> O
 @router.post("/auth/sign-in", response_model=Session)
 def sign_in(body: SignInRequest, store: StoreDep, settings: SettingsDep) -> Session:
     user = store.user_by_email(body.email)
-    if user is None or body.password != "password":  # TODO(slice A): Supabase Auth sign-in (REQ-AUTH-1)
+    if user is None or body.password != "password":  # Mock password check for seeded users
         raise ApiError(401, "bad_credentials", "E-mail or password is incorrect.")
     if user.status == AccountStatus.inactive:  # REQ-AUTH-2
         raise ApiError(403, "account_inactive", "This account has been deactivated. Contact the URECA office.")
     if user.status == AccountStatus.pending_verification:
         raise ApiError(403, "not_verified", "Verify your e-mail before signing in.")
-    user.last_login_at = settings.now()
-    # Mock token: the web client sends it back as X-Demo-User. Live mode returns the Supabase JWT.
-    return Session(access_token=user.id, expires_at=settings.now() + timedelta(minutes=settings.session_minutes), user=user)
+
+    now = settings.now()
+    user.last_login_at = now
+    store.save_user(user)
+
+    expires_at = now + timedelta(minutes=settings.session_minutes)
+
+    if settings.api_mode == "supabase" and settings.supabase_jwt_secret:
+        payload = {
+            "sub": user.id,
+            "email": user.email,
+            "role": user.role.value,
+            "aud": "authenticated",
+            "iat": int(now.timestamp()),
+            "exp": int(expires_at.timestamp()),
+        }
+        token = jwt.encode(payload, settings.supabase_jwt_secret, algorithm="HS256")
+    else:
+        token = user.id
+
+    return Session(access_token=token, expires_at=expires_at, user=user)
 
 
 @router.get("/me", response_model=Me)

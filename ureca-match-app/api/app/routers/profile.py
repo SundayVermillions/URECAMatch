@@ -32,6 +32,7 @@ def update_profile(body: ProfileUpdate, user: StudentUser, store: StoreDep) -> S
     p.school, p.cgpa, p.year_of_study = body.school, body.cgpa, body.year_of_study
     p.completed_modules, p.research_interests = body.completed_modules, body.research_interests
     p.profile_complete = True  # REQ-PROF-1
+    store.save_student(p)
     return p
 
 
@@ -57,6 +58,7 @@ async def upload_document(
         uploaded_at=settings.now(),
         storage_path=path,
     )
+    store.save_document(doc.model_dump(mode="json", exclude={"url"}))
     p = store.student(user.id)
     if p:
         p.documents.append(doc)

@@ -1,10 +1,13 @@
 """Storage service adapter.
 
 Provides an abstraction for uploading files and generating signed URLs.
-In mock mode (or when Supabase storage is unconfigured), returns local preview URLs.
+In mock mode, returns local preview URLs.
+In supabase mode, uploads bytes and signs URLs via Supabase Storage.
 """
 
 from typing import Protocol
+
+from app.settings import get_settings
 
 
 class StorageService(Protocol):
@@ -42,8 +45,45 @@ class MockStorageService:
         return "/sample-transcript.pdf"
 
 
-storage: StorageService = MockStorageService()
+class SupabaseStorageService:
+    def __init__(self) -> None:
+        from supabase import create_client
+
+        s = get_settings()
+        self.client = create_client(s.supabase_url, s.supabase_service_role_key)
+
+    def put(
+        self,
+        bucket: str,
+        path: str,
+        data: bytes,
+        content_type: str = "application/pdf",
+    ) -> str:
+        clean_path = path.lstrip("/")
+        self.client.storage.from_(bucket).upload(
+            clean_path,
+            data,
+            file_options={"content-type": content_type, "upsert": "true"},
+        )
+        return f"{bucket}/{clean_path}"
+
+    def signed_url(self, bucket: str, path: str, minutes: int = 10) -> str:
+        clean_path = path
+        if clean_path.startswith(f"{bucket}/"):
+            clean_path = clean_path[len(bucket) + 1 :]
+        res = self.client.storage.from_(bucket).create_signed_url(clean_path, minutes * 60)
+        return res.get("signedURL") or res.get("signedUrl") or ""
+
+
+_storage: StorageService | None = None
 
 
 def get_storage() -> StorageService:
-    return storage
+    global _storage
+    if _storage is None:
+        settings = get_settings()
+        if settings.api_mode == "supabase":
+            _storage = SupabaseStorageService()
+        else:
+            _storage = MockStorageService()
+    return _storage
