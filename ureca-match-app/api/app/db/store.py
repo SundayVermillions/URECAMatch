@@ -126,6 +126,12 @@ class SupabaseStore(MockStore):
         s = get_settings()
         self.client = create_client(s.supabase_url, s.supabase_service_role_key) if s.supabase_url else None
 
+    def next_id(self, prefix: str) -> str:
+        import uuid
+
+        short_id = uuid.uuid4().hex[:8]
+        return f"{prefix}-{short_id}"
+    
     # --- Slice A: Users & Profiles Read ---
 
     def user(self, user_id: str) -> User | None:
