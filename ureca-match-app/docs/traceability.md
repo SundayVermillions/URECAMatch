@@ -5,17 +5,17 @@ Update the row for every REQ-ID your PR touches. "Screen" is the dialog-map page
 | REQ-ID | Slice | Endpoint | Screen | Test | Status |
 |---|---|---|---|---|---|
 | REG-1 | A | POST /auth/register | CreateAccountPage | test_REQ_REG_1_non_ntu_email_rejected | mock |
-| REG-2 | A | POST /auth/verify | EmailVerificationPage | | todo |
+| REG-2 | A | POST /auth/verify | EmailVerificationPage | test_REQ_REG_2_correct_code_activates | mock |
 | REG-3 | A | POST /auth/register | CreateAccountPage | test_REQ_REG_3_duplicate_email_rejected | mock |
-| AUTH-1 | A | POST /auth/sign-in | SignInPage | | todo |
+| AUTH-1 | A | POST /auth/sign-in | SignInPage | SignInPage password reveal toggle | mock |
 | AUTH-2 | A | deps.current_user | SignInPage | test_REQ_AUTH_2_inactive_account_cannot_act | mock |
-| AUTH-3 | A | deps.current_user, web/lib/session.ts | all | | todo |
-| PROF-1 | A | GET /me, PUT /me/profile | CompleteProfilePage | | todo |
-| PROF-2 | A | PUT /me/profile | MyProfilePage | | todo |
-| PROF-3 | A | POST /me/documents | MyProfilePage | | todo |
-| USER-1 | A | POST /admin/users | CreateUserForm | | todo |
-| USER-2 | A | POST /admin/users | CreateUserForm | | todo |
-| USER-3 | A | POST /admin/users/{id}/deactivate | ManageUsersPage | | todo |
+| AUTH-3 | A | deps.current_user, web/lib/session.ts | all | web session expiry redirect | mock |
+| PROF-1 | A | GET /me, PUT /me/profile | CompleteProfilePage | test_REQ_PROF_1_profile_marked_complete_after_save | mock |
+| PROF-2 | A | PUT /me/profile | MyProfilePage | test_REQ_PROF_2_fields_saved | mock |
+| PROF-3 | A | POST /me/documents | MyProfilePage | test_REQ_PROF_3_upload_pdf_stores_path | mock |
+| USER-1 | A | POST /admin/users | CreateUserForm | test_REQ_USER_1_admin_creates_supervisor | mock |
+| USER-2 | A | POST /admin/users | CreateUserForm | test_REQ_USER_2_register_cannot_choose_admin | mock |
+| USER-3 | A | POST /admin/users/{id}/deactivate | ManageUsersPage | test_REQ_USER_3_deactivated_user_gets_403 | mock |
 | BROWSE-1 | B | GET /listings | BrowseProjectPage | | todo |
 | BROWSE-2 | B | GET /listings | BrowseProjectPage | | todo |
 | BROWSE-3 | B | GET /listings | BrowseProjectPage | test_REQ_BROWSE_3_closed_listing_hidden_from_students | mock |
@@ -44,3 +44,4 @@ Update the row for every REQ-ID your PR touches. "Screen" is the dialog-map page
 | NOTIF-1..2 | E | /me/notifications | NotificationPage | | todo |
 
 Status: `todo` (mock only), `live` (real Supabase behind it), `done` (live and tested).
+

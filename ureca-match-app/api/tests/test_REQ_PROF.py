@@ -39,13 +39,12 @@ def test_REQ_PROF_3_over_5mb_rejected(client_for):
     message = body.get("message") or body.get("detail", {}).get("message", "")
     assert "5 MB" in str(message)
 
+
 def test_REQ_PROF_1_profile_marked_complete_after_save(client_for):
     client = client_for("stu-1")
-    # Fetch current profile
     resp = client.get("/me/profile")
     assert resp.status_code == 200
 
-    # Save profile updates
     payload = {
         "school": "SCSE",
         "cgpa": 4.5,
@@ -57,3 +56,26 @@ def test_REQ_PROF_1_profile_marked_complete_after_save(client_for):
     assert put_resp.status_code == 200
     data = put_resp.json()
     assert data["profile_complete"] is True
+
+
+def test_REQ_PROF_2_fields_saved(client_for):
+    """Saving profile updates all fields correctly (REQ-PROF-2)."""
+    client = client_for("stu-1")
+    payload = {
+        "school": "SCSE",
+        "cgpa": 4.85,
+        "year_of_study": 2,
+        "completed_modules": ["SC1003", "SC1007"],
+        "research_interests": ["Algorithms", "Distributed Systems"],
+    }
+    put_resp = client.put("/me/profile", json=payload)
+    assert put_resp.status_code == 200
+
+    get_resp = client.get("/me/profile")
+    assert get_resp.status_code == 200
+    data = get_resp.json()
+    assert data["school"] == "SCSE"
+    assert data["cgpa"] == 4.85
+    assert data["year_of_study"] == 2
+    assert data["completed_modules"] == ["SC1003", "SC1007"]
+    assert data["research_interests"] == ["Algorithms", "Distributed Systems"]
