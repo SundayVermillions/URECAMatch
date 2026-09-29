@@ -12,6 +12,10 @@ Full plan: `docs/URECAMatch-Development-Plan.docx` (also https://claude.ai/artif
 | D Cycle, rounds, matching | cycle, rounds, execute, review, publish, approvals, offers, audit, cron | cycles, matching | rounds, rounds/[id]/matches, approvals, my-applications (offer), audit |
 | E Platform | notifications, dashboards, shared UI, CI, deploy, e2e, docs | notifications | notifications, dashboard |
 
+## Progress
+
+- [x] E stage 0: local setup (pytest, ruff, lint, typecheck, dev)
+
 ## Definition of done for a PR
 
 - Endpoint implemented in the service; mock removed for that router (`SupabaseStore`)

@@ -24,6 +24,7 @@ router = APIRouter(tags=["notifications", "dashboards"])
 
 @router.get("/me/notifications", response_model=list[Notification])
 def mine(user: CurrentUser, store: StoreDep) -> list[Notification]:  # REQ-NOTIF-1: own only, newest first
+    """List the signed-in user's own notifications, newest first (REQ-NOTIF-1)."""
     return sorted((n for n in store.notifications if n.user_id == user.id), key=lambda n: n.created_at, reverse=True)
 
 

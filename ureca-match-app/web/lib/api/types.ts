@@ -842,7 +842,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Mine */
+        /**
+         * Mine
+         * @description List the signed-in user's own notifications, newest first (REQ-NOTIF-1).
+         */
         get: operations["mine_me_notifications_get"];
         put?: never;
         post?: never;

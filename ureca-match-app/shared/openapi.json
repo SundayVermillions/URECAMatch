@@ -3942,6 +3942,7 @@
           "dashboards"
         ],
         "summary": "Mine",
+        "description": "List the signed-in user's own notifications, newest first (REQ-NOTIF-1).",
         "operationId": "mine_me_notifications_get",
         "parameters": [
           {
