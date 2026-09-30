@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.deps import SettingsDep, StoreDep, StudentUser, SupervisorUser
 from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
+    ApplicantStudent,
     ApplicationStatus,
     Listing,
     ListingStatus,
@@ -64,9 +65,31 @@ def my_proposals(user: StudentUser, store: StoreDep) -> list[Proposal]:
     return [p for p in store.proposals if p.student_id == user.id]
 
 
+def _with_student(store, p: Proposal) -> Proposal:
+    """REQ-REVPROP-1: attach the proposing student's profile and the documents they attached.
+
+    Read live from the store on every request, so the supervisor always sees the current profile.
+    Returns a copy; the stored proposal is not changed.
+    """
+    u, sp = store.user(p.student_id), store.student(p.student_id)
+    if u is None or sp is None:
+        return p
+    student = ApplicantStudent(
+        id=u.id,
+        name=u.name,
+        school=sp.school,
+        year_of_study=sp.year_of_study,
+        cgpa=sp.cgpa,
+        completed_modules=sp.completed_modules,
+        research_interests=sp.research_interests,
+    )
+    documents = [d for d in sp.documents if d.id in p.document_ids]
+    return p.model_copy(update={"student": student, "documents": documents})
+
+
 @router.get("/supervisor/proposals", response_model=list[Proposal])
 def incoming(user: SupervisorUser, store: StoreDep) -> list[Proposal]:  # REQ-REVPROP-1
-    return [p for p in store.proposals if p.supervisor_id == user.id]
+    return [_with_student(store, p) for p in store.proposals if p.supervisor_id == user.id]
 
 
 def _get(store, proposal_id: str, user) -> Proposal:

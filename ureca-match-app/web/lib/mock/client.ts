@@ -187,11 +187,20 @@ export class MockClient implements ApiClient {
     const sup = this.db.users.find((x) => x.id === b.supervisor_id);
     if (!sup) throw new M.ApiError(422, "unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id");
     const p: M.Proposal = { id: this.id("prp"), student_id: u.id, student_name: u.name, supervisor_id: sup.id, supervisor_name: sup.name, title: b.title,
-      description: b.description, research_interests: b.research_interests ?? [], statement: b.statement, status: "submitted", submitted_at: this.iso(), decided_at: null, document_ids: b.document_ids ?? [] };
+      description: b.description, research_interests: b.research_interests ?? [], statement: b.statement, status: "submitted", submitted_at: this.iso(), decided_at: null, document_ids: b.document_ids ?? [], student: null, documents: [] };
     this.db.proposals.push(p); this.notify([sup.id], "proposal_decided", `New proposal from ${u.name}`, p.title, "/proposals"); return p;
   }
   async myProposals() { const u = this.need("student"); return this.db.proposals.filter((p) => p.student_id === u.id); }
-  async incomingProposals() { const u = this.need("supervisor"); return this.db.proposals.filter((p) => p.supervisor_id === u.id); }
+  async incomingProposals() { // REQ-REVPROP-1: attach the student's profile and attached documents
+    const u = this.need("supervisor");
+    return this.db.proposals.filter((p) => p.supervisor_id === u.id).map((p): M.Proposal => {
+      const su = this.db.users.find((x) => x.id === p.student_id), sp = this.student(p.student_id);
+      if (!su || !sp) return p;
+      const student: M.ApplicantStudent = { id: su.id, name: su.name, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null,
+        completed_modules: sp.completed_modules ?? [], research_interests: sp.research_interests ?? [] };
+      return { ...p, student, documents: (sp.documents ?? []).filter((d) => (p.document_ids ?? []).includes(d.id)) };
+    });
+  }
   async decideProposal(id: string, accept: boolean, note?: string) {
     const u = this.need("supervisor"); const p = this.db.proposals.find((p) => p.id === id);
     if (!p || p.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Proposal was not found.");

@@ -1458,6 +1458,12 @@ export interface components {
              * @default []
              */
             document_ids: string[];
+            student?: components["schemas"]["ApplicantStudent"] | null;
+            /**
+             * Documents
+             * @default []
+             */
+            documents: components["schemas"]["Document"][];
         };
         /** ProposalCreate */
         ProposalCreate: {

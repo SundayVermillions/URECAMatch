@@ -4230,7 +4230,9 @@
       "decided_at": null,
       "document_ids": [
         "doc-stu-3-t"
-      ]
+      ],
+      "student": null,
+      "documents": []
     },
     {
       "id": "prp-2",
@@ -4250,7 +4252,9 @@
       "decided_at": null,
       "document_ids": [
         "doc-stu-9-t"
-      ]
+      ],
+      "student": null,
+      "documents": []
     },
     {
       "id": "prp-3",
@@ -4270,7 +4274,9 @@
       "decided_at": "2026-09-08T09:00:00Z",
       "document_ids": [
         "doc-stu-14-t"
-      ]
+      ],
+      "student": null,
+      "documents": []
     },
     {
       "id": "prp-4",
@@ -4290,7 +4296,9 @@
       "decided_at": "2026-09-08T09:00:00Z",
       "document_ids": [
         "doc-stu-21-t"
-      ]
+      ],
+      "student": null,
+      "documents": []
     }
   ],
   "notifications": [

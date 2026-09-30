@@ -5650,6 +5650,24 @@
             "type": "array",
             "title": "Document Ids",
             "default": []
+          },
+          "student": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApplicantStudent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "type": "array",
+            "title": "Documents",
+            "default": []
           }
         },
         "type": "object",

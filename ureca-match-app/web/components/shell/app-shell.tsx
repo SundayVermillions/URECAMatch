@@ -21,7 +21,7 @@ const NAV: Record<Role, (unread: number, extra: Record<string, number>) => Item[
   ],
   supervisor: (unread, x) => [
     { href: "/projects", label: "My projects", icon: <I.Folder /> },
-    { href: "/proposals", label: "Student proposals", icon: <I.Bulb />, badge: x.proposals },
+    { href: "/proposals", label: "Proposals", icon: <I.Bulb />, badge: x.proposals },
     { href: "/approvals", label: "Match approvals", icon: <I.Check />, badge: x.approvals },
     { href: "/notifications", label: "Notifications", icon: <I.Bell />, badge: unread },
   ],
@@ -51,7 +51,7 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
   if (loading || !me || me.user.role !== role) return <div className="p-10 text-muted">Loading…</div>;
   const items = NAV[role](me.unread_notifications, badges);
   const activeIndex = items.findIndex((it) => path === it.href || path.startsWith(it.href + "/"));
-  const sub = role === "student" ? `${me.student?.school || "Student"} · Year ${me.student?.year_of_study ?? "?"}` : role === "supervisor" ? `Project Supervisor · ${me.supervisor?.faculty ?? ""}` : "URECA Programme Admin";
+  const sub = role === "student" ? `${me.student?.school || "Student"} · Year ${me.student?.year_of_study ?? "?"}` : role === "supervisor" ? `Supervisor${me.supervisor?.faculty ? ` · ${me.supervisor.faculty}` : ""}` : "URECA Programme Admin";
 
   return (
     <div className="flex min-h-screen">
@@ -81,7 +81,7 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
         </div>
         <div className="flex items-center gap-2.5 px-2 pt-3 border-t border-black/[0.06]">
           <Avatar name={me.user.name} size={32} tone="navy" />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1" title={`${me.user.name} · ${sub}`}>
             <div className="text-[13.5px] font-medium truncate">{me.user.name}</div>
             <div className="text-[12px] text-faint truncate">{sub}</div>
           </div>

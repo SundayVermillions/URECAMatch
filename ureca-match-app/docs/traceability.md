@@ -23,7 +23,7 @@ Update the row for every REQ-ID your PR touches. "Screen" is the dialog-map page
 | PROJ-2 | B | PUT /supervisor/listings/{id} | EditProjectPage | | todo |
 | PROJ-3 | B | PUT /supervisor/listings/{id} | EditProjectPage | test_REQ_PROJ_3_cannot_reduce_slots_below_matched | mock |
 | PROPOSE-1..3 | B | POST /proposals | ProposeProjectPage | | todo |
-| REVPROP-1 | B | GET /supervisor/proposals | StudentProposalPage | | todo |
+| REVPROP-1 | B | GET /supervisor/proposals | StudentProposalPage | test_REQ_REVPROP_1_supervisor_sees_student_profile | mock |
 | REVPROP-2 | B | POST /supervisor/proposals/{id}/accept | StudentProposalPage | test_REQ_REVPROP_2_accepting_registers_student | mock |
 | REVPROP-3 | B | POST /supervisor/proposals/{id}/accept | StudentProposalPage | test_REQ_REVPROP_3_cannot_accept_after_cycle_closes | mock |
 | APPLY-1 | C | POST /applications | ApplyProjectPage | | todo |

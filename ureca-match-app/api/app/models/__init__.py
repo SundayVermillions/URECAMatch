@@ -406,6 +406,9 @@ class Proposal(BaseModel):
     submitted_at: datetime
     decided_at: datetime | None = None
     document_ids: list[str] = []
+    # Filled in only when a supervisor reads their proposals (REQ-REVPROP-1). Not stored.
+    student: ApplicantStudent | None = None
+    documents: list[Document] = []
 
 
 class ProposalCreate(BaseModel):
