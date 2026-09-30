@@ -51,7 +51,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
           <div><Button type="submit" size="lg" disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button></div>
         </Card>
         <Card>
-          <div className="overline mb-2">Documents</div>
+          <div className="eyebrow mb-2">Documents</div>
           <div className="text-[12.5px] text-muted mb-3">PDF only, up to 5 MB each. Transcript is required; a CV is optional.</div>
           <div className="flex flex-col gap-2 mb-3">
             {(p?.documents ?? []).map((d) => (

@@ -30,9 +30,9 @@ export default function Proposals() {
                 <div className="flex-1 min-w-0">
                   <div className="font-display text-[15px] font-bold">{p.title}</div>
                   <div className="text-[12.5px] text-muted">{p.student_name} · sent {fmtDate(p.submitted_at)}</div>
-                  <div className="flex gap-1.5 mt-2">{p.research_interests.map((t) => <Pill key={t} tone="accent">{t}</Pill>)}</div>
+                  <div className="flex gap-1.5 mt-2">{p.research_interests.map((t) => <Pill key={t}>{t}</Pill>)}</div>
                   <p className="text-[13px] leading-[1.6] mt-3">{p.description}</p>
-                  <div className="overline mt-3 mb-1">Why this supervisor</div>
+                  <div className="eyebrow mt-3 mb-1">Why this supervisor</div>
                   <p className="text-[13px] leading-[1.6] text-muted">{p.statement}</p>
                 </div>
                 <div className="flex flex-col gap-2 shrink-0">

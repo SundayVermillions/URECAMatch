@@ -26,15 +26,15 @@ export default function ProjectDetail() {
       {open === 0 && !l.applied && <div className="mb-4"><Banner tone="warn" title="Fully allocated.">All {l.available_slots} slots are filled. Slots reopen if a student declines.</Banner></div>}
       {missing.length > 0 && <div className="mb-4"><Banner tone="warn" title={`Missing prerequisite: ${missing.join(", ")}.`}>You can still apply, but the supervisor will see this.</Banner></div>}
       <div className="grid grid-cols-[1fr_300px] gap-5">
-        <Card><div className="overline mb-2">Description</div><p className="text-[13.5px] leading-[1.65]">{l.description}</p></Card>
+        <Card><div className="eyebrow mb-2">Description</div><p className="text-[13.5px] leading-[1.65]">{l.description}</p></Card>
         <div className="flex flex-col gap-4">
           <Card>
-            <div className="overline mb-2">At a glance</div>
+            <div className="eyebrow mb-2">At a glance</div>
             <dl className="text-[13px] grid grid-cols-[100px_1fr] gap-y-2">
               <dt className="text-muted">Slots</dt><dd className="font-semibold">{open} of {l.available_slots} open</dd>
               <dt className="text-muted">Applicants</dt><dd className="font-semibold">{l.applicant_count}</dd>
               <dt className="text-muted">Prerequisites</dt><dd className="font-semibold">{l.prerequisites.join(", ") || "None"}</dd>
-              <dt className="text-muted">Topics</dt><dd className="flex gap-1 flex-wrap">{l.topic_tags.map((t) => <Pill key={t} tone="accent">{t}</Pill>)}</dd>
+              <dt className="text-muted">Topics</dt><dd className="flex gap-1 flex-wrap">{l.topic_tags.map((t) => <Pill key={t}>{t}</Pill>)}</dd>
             </dl>
           </Card>
         </div>

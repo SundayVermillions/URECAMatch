@@ -45,7 +45,7 @@ export default function Apply() {
             </Field>
           </Card>
           <Card>
-            <div className="overline mb-2">Supporting documents</div>
+            <div className="eyebrow mb-2">Supporting documents</div>
             <div className="text-[12.5px] text-muted mb-3">From your profile. Untick any you do not want to attach.</div>
             <div className="flex flex-col gap-2">
               {(me?.student?.documents ?? []).map((d) => (
@@ -63,7 +63,7 @@ export default function Apply() {
           </div>
         </div>
         <Card>
-          <div className="overline mb-2">Before you submit</div>
+          <div className="eyebrow mb-2">Before you submit</div>
           <ul className="text-[12.5px] text-muted flex flex-col gap-2 list-disc pl-4">
             <li>Applications can be edited or withdrawn until the window closes.</li>
             <li>Rank all your applications; the matching uses that order.</li>

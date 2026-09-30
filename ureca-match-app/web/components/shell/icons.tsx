@@ -25,5 +25,6 @@ export const I = {
   Info: (p: { size?: number }) => <svg {...base} width={p.size ?? 16} height={p.size ?? 16}><circle cx="12" cy="12" r="9.5" /><path d="M12 11v5.5M12 7.5v.2" strokeWidth={2} /></svg>,
   Upload: (p: { size?: number }) => <svg {...base} width={p.size ?? 14} height={p.size ?? 14}><path d="M12 16V5M12 5l-4 4M12 5l4 4M5 19h14" /></svg>,
   Eye: (p: { size?: number }) => <svg {...base} width={p.size ?? 16} height={p.size ?? 16}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" /><circle cx="12" cy="12" r="3" /></svg>,
+  LogOut: (p: { size?: number }) => <svg {...base} width={p.size ?? 18} height={p.size ?? 18}><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14" /><path d="M10 16.5L5.5 12 10 7.5M5.5 12H15" /></svg>,
   Gear: (p: { size?: number }) => <svg {...base} width={p.size ?? 15} height={p.size ?? 15}><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4L18 18M6 18l1.6-1.6M16.4 7.6L18 6" /></svg>,
 };

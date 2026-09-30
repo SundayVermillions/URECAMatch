@@ -54,13 +54,13 @@ export function ListingForm({ existing }: { existing?: Listing }) {
         </div>
       </Card>
       <Card>
-        <div className="overline mb-2">Cover image</div>
+        <div className="eyebrow mb-2">Cover image</div>
         {existing?.cover_url ? <img src={existing.cover_url} alt="" className="w-full h-[120px] object-cover rounded-button mb-3" /> : <div className="w-full h-[120px] bg-sunken rounded-button mb-3" />}
         <label className="flex items-center justify-center h-10 border-[1.5px] border-dashed border-border-strong rounded-[9px] text-[12.5px] text-muted cursor-pointer hover:bg-sunken">
           JPEG or PNG · up to 5 MB<input type="file" accept="image/jpeg,image/png" className="hidden" />
         </label>
         <div className="text-[11.5px] text-faint mt-2">TODO(slice B): upload to the covers bucket.</div>
-        <div className="overline mt-5 mb-2">Rules</div>
+        <div className="eyebrow mt-5 mb-2">Rules</div>
         <ul className="text-[12.5px] text-muted list-disc pl-4 flex flex-col gap-1.5">
           <li>Editable until the cycle closing date.</li>
           <li>Slots cannot go below the number of students already matched.</li>

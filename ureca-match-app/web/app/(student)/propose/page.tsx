@@ -65,7 +65,7 @@ export default function Propose() {
           <div><Button type="submit" size="lg" disabled={busy || closed}>{busy ? "Sending…" : "Send proposal"}</Button></div>
         </Card>
         <Card>
-          <div className="overline mb-2">Attached from your profile</div>
+          <div className="eyebrow mb-2">Attached from your profile</div>
           <ul className="text-[12.5px] text-muted flex flex-col gap-1.5">{(me?.student?.documents ?? []).map((d) => <li key={d.id}>{d.file_name}</li>)}</ul>
           <div className="text-[12px] text-faint mt-3">Manage documents in <Link href="/profile">My profile</Link>.</div>
         </Card>

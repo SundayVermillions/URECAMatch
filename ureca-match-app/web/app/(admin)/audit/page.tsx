@@ -21,7 +21,7 @@ export default function Audit() {
       </div>
       {loading && !data ? <Loading /> : rows.length === 0 ? <Empty title="No entries" /> : (
         <div className="bg-surface border border-border rounded-card overflow-hidden">
-          <div className="grid grid-cols-[170px_180px_1fr_160px] gap-3 px-4 py-2.5 border-b border-border overline"><span>When</span><span>Operation</span><span>Detail</span><span>By</span></div>
+          <div className="grid grid-cols-[170px_180px_1fr_160px] gap-3 px-4 py-2.5 border-b border-border eyebrow"><span>When</span><span>Operation</span><span>Detail</span><span>By</span></div>
           {rows.map((e) => (
             <div key={e.id} className="grid grid-cols-[170px_180px_1fr_160px] gap-3 items-center px-4 py-2.5 border-b border-border last:border-b-0 text-[12.5px]">
               <span className="font-mono text-[12px] text-muted">{fmtDateTime(e.timestamp)}</span>

@@ -28,7 +28,7 @@ export default function SupervisorProjects() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2"><div className="font-display text-[15px] font-bold truncate">{l.title}</div><Status value={l.status} /></div>
                 <div className="text-[12.5px] text-muted mt-0.5">{l.filled_slots} of {l.available_slots} slots filled · {l.applicant_count} applicants this round</div>
-                <div className="flex gap-1.5 mt-1.5">{l.topic_tags.map((t) => <Pill key={t} tone="accent">{t}</Pill>)}</div>
+                <div className="flex gap-1.5 mt-1.5">{l.topic_tags.map((t) => <Pill key={t}>{t}</Pill>)}</div>
               </div>
               <div className="flex gap-2 shrink-0">
                 {l.status === "published" && <Link href={`/projects/${l.id}/applicants`}><Button size="sm" variant={rankWindow ? "primary" : "soft"}>Applicants{l.applicant_count ? ` (${l.applicant_count})` : ""}</Button></Link>}

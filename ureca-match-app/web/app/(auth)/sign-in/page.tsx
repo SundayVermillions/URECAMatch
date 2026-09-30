@@ -116,7 +116,7 @@ function SignInForm() {
 
       {API_MODE === "mock" && (
         <div className="border-t border-border pt-4 mt-1">
-          <div className="overline mb-2">Demo accounts (password: password)</div>
+          <div className="eyebrow mb-2">Demo accounts (password: password)</div>
           <div className="flex flex-col gap-1.5">
             {DEMO.map((d) => (
               <button
