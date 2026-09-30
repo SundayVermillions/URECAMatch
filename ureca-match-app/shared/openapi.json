@@ -1009,6 +1009,7 @@
           "listings"
         ],
         "summary": "Supervisors",
+        "description": "Picker for proposals (REQ-PROPOSE-2): active supervisors only, sorted by name.",
         "operationId": "supervisors_supervisors_get",
         "parameters": [
           {

@@ -217,7 +217,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Supervisors */
+        /**
+         * Supervisors
+         * @description Picker for proposals (REQ-PROPOSE-2): active supervisors only, sorted by name.
+         */
         get: operations["supervisors_supervisors_get"];
         put?: never;
         post?: never;
