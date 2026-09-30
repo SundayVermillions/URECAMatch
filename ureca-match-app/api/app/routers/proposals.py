@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.deps import SettingsDep, StoreDep, StudentUser, SupervisorUser
 from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
+    AccountStatus,
     ApplicantStudent,
     ApplicationStatus,
     Listing,
@@ -26,13 +27,34 @@ from app.services.notify import notify
 router = APIRouter(tags=["proposals"])
 
 
+DESCRIPTION_MAX_WORDS = 500  # use case 2-4 special requirements
+STATEMENT_MAX_WORDS = 300
+
+
+def _words(text: str) -> int:
+    return len(text.split())
+
+
 @router.post("/proposals", response_model=Proposal, status_code=201)
 def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: SettingsDep) -> Proposal:
     if not windows.in_application_window(store.cycle, settings.now()):  # REQ-PROPOSE-3
         raise invalid("window_closed", "Proposals can only be submitted during an application window.")
+    # REQ-PROPOSE-2: the recipient must be an active project supervisor.
     sup = store.user(body.supervisor_id)
-    if sup is None or store.supervisor(body.supervisor_id) is None:
+    if sup is None or store.supervisor(body.supervisor_id) is None or sup.status != AccountStatus.active:
         raise invalid("unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id")
+    # REQ-PROPOSE-1: title, description and at least one research interest.
+    interests = [t.strip() for t in body.research_interests if t.strip()]
+    if not interests:
+        raise invalid("interests_required", "Add at least one research interest.", "research_interests")
+    if _words(body.description) > DESCRIPTION_MAX_WORDS:
+        raise invalid("too_long", f"Keep the description to {DESCRIPTION_MAX_WORDS} words or fewer.", "description")
+    if _words(body.statement) > STATEMENT_MAX_WORDS:
+        raise invalid("too_long", f"Keep this to {STATEMENT_MAX_WORDS} words or fewer.", "statement")
+    # Attach only your own documents, so nobody can share another student's file.
+    own = {d.id for d in (store.student(user.id).documents if store.student(user.id) else [])}
+    if any(d not in own for d in body.document_ids):
+        raise invalid("unknown_document", "Attach documents from your own profile only.", "document_ids")
     p = Proposal(
         id=store.next_id("prp"),
         student_id=user.id,
@@ -41,7 +63,7 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
         supervisor_name=sup.name,
         title=body.title,
         description=body.description,
-        research_interests=body.research_interests,
+        research_interests=interests,
         statement=body.statement,
         status=ProposalStatus.submitted,
         submitted_at=settings.now(),

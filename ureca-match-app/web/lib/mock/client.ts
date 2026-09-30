@@ -164,7 +164,14 @@ export class MockClient implements ApiClient {
     if (l.status !== "published" && u.id !== l.supervisor_id && u.role !== "admin") throw new M.ApiError(404, "not_found", "Project was not found.");
     return this.decorate(l, u);
   }
-  async supervisors() { this.user(); return this.db.supervisors.map((s) => ({ id: s.user_id, name: this.db.users.find((u) => u.id === s.user_id)!.name, faculty: s.faculty })); }
+  async supervisors() { // REQ-PROPOSE-2 picker: active supervisors only, sorted by surname-ish name
+    this.user();
+    const bare = (n: string) => n.replace(/^(Assoc\. )?(Prof\. |Dr\. )/, "");
+    return this.db.supervisors.map((s) => ({ s, u: this.db.users.find((u) => u.id === s.user_id) }))
+      .filter((x) => x.u && x.u.status === "active")
+      .map(({ s, u }) => ({ id: s.user_id, name: u!.name, faculty: s.faculty }))
+      .sort((a, b) => bare(a.name).localeCompare(bare(b.name)));
+  }
   async myListings() { const u = this.need("supervisor"); return this.db.listings.filter((l) => l.supervisor_id === u.id).map((l) => this.decorate(l, u)); }
   async createListing(b: M.ListingCreate) {
     const u = this.need("supervisor");
@@ -183,11 +190,20 @@ export class MockClient implements ApiClient {
   }
   async closeListing(id: string) { const u = this.need("supervisor"); const l = this.listingOr404(id); if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "No access."); l.status = "closed"; return l; }
   async propose(b: M.ProposalCreate) {
-    const u = this.need("student"); this.requireApplicationWindow();
+    const u = this.need("student"); this.requireApplicationWindow(); // REQ-PROPOSE-3
+    // REQ-PROPOSE-2: an active project supervisor
     const sup = this.db.users.find((x) => x.id === b.supervisor_id);
-    if (!sup) throw new M.ApiError(422, "unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id");
+    if (!sup || sup.role !== "supervisor" || sup.status !== "active") throw new M.ApiError(422, "unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id");
+    // REQ-PROPOSE-1: at least one interest, word limits, own documents only (same rules as routers/proposals.py)
+    const interests = (b.research_interests ?? []).map((t) => t.trim()).filter(Boolean);
+    if (!interests.length) throw new M.ApiError(422, "interests_required", "Add at least one research interest.", "research_interests");
+    const words = (t: string) => t.split(/\s+/).filter(Boolean).length;
+    if (words(b.description) > 500) throw new M.ApiError(422, "too_long", "Keep the description to 500 words or fewer.", "description");
+    if (words(b.statement) > 300) throw new M.ApiError(422, "too_long", "Keep this to 300 words or fewer.", "statement");
+    const own = new Set((this.student(u.id)?.documents ?? []).map((d) => d.id));
+    if ((b.document_ids ?? []).some((d) => !own.has(d))) throw new M.ApiError(422, "unknown_document", "Attach documents from your own profile only.", "document_ids");
     const p: M.Proposal = { id: this.id("prp"), student_id: u.id, student_name: u.name, supervisor_id: sup.id, supervisor_name: sup.name, title: b.title,
-      description: b.description, research_interests: b.research_interests ?? [], statement: b.statement, status: "submitted", submitted_at: this.iso(), decided_at: null, document_ids: b.document_ids ?? [], student: null, documents: [] };
+      description: b.description, research_interests: interests, statement: b.statement, status: "submitted", submitted_at: this.iso(), decided_at: null, document_ids: b.document_ids ?? [], student: null, documents: [] };
     this.db.proposals.push(p); this.notify([sup.id], "proposal_decided", `New proposal from ${u.name}`, p.title, "/proposals"); return p;
   }
   async myProposals() { const u = this.need("student"); return this.db.proposals.filter((p) => p.student_id === u.id); }

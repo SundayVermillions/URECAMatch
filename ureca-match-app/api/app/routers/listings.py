@@ -8,7 +8,7 @@ from fastapi import APIRouter, File, UploadFile
 
 from app.deps import CurrentUser, SettingsDep, StoreDep, SupervisorUser
 from app.errors import forbidden, invalid, not_found
-from app.models import Listing, ListingCreate, ListingStatus, ListingUpdate, Ok, Role, SupervisorSummary
+from app.models import AccountStatus, Listing, ListingCreate, ListingStatus, ListingUpdate, Ok, Role, SupervisorSummary
 from app.services import windows
 
 router = APIRouter(tags=["listings"])
@@ -62,7 +62,13 @@ def detail(listing_id: str, user: CurrentUser, store: StoreDep) -> Listing:
 
 @router.get("/supervisors", response_model=list[SupervisorSummary])
 def supervisors(user: CurrentUser, store: StoreDep) -> list[SupervisorSummary]:
-    return [SupervisorSummary(id=s.user_id, name=store.user(s.user_id).name, faculty=s.faculty) for s in store.supervisors]
+    """Picker for proposals (REQ-PROPOSE-2): active supervisors only, sorted by name."""
+    out = []
+    for s in store.supervisors:
+        u = store.user(s.user_id)
+        if u and u.status == AccountStatus.active:
+            out.append(SupervisorSummary(id=u.id, name=u.name, faculty=s.faculty))
+    return sorted(out, key=lambda x: x.name.removeprefix("Assoc. ").removeprefix("Prof. ").removeprefix("Dr. "))
 
 
 @router.get("/supervisor/listings", response_model=list[Listing])
