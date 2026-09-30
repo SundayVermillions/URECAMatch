@@ -17,6 +17,7 @@ from app.models import (
     Proposal,
     ProposalCreate,
     ProposalStatus,
+    Window,
 )
 from app.services import windows
 from app.services.notify import notify
@@ -79,9 +80,19 @@ def _get(store, proposal_id: str, user) -> Proposal:
     return p
 
 
+def _require_cycle_open(store, settings) -> None:
+    """REQ-REVPROP-3: a student may only be registered while the application cycle is running.
+
+    Declining stays open outside the cycle: SRS 4.18.3 restricts accepting only.
+    """
+    if windows.phase(store.cycle, settings.now()).window in (Window.before_cycle, Window.closed):
+        raise invalid("cycle_closed", "The application cycle is not open, so this proposal can no longer be accepted.")
+
+
 @router.post("/supervisor/proposals/{proposal_id}/accept", response_model=Proposal)
 def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Proposal:
     p = _get(store, proposal_id, user)
+    _require_cycle_open(store, settings)  # REQ-REVPROP-3
     now = settings.now()
     p.status, p.decided_at = ProposalStatus.accepted, now
     # REQ-REVPROP-2: register the student. A one-slot listing plus an accepted match makes the

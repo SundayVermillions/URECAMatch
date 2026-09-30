@@ -196,6 +196,11 @@ export class MockClient implements ApiClient {
     const u = this.need("supervisor"); const p = this.db.proposals.find((p) => p.id === id);
     if (!p || p.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Proposal was not found.");
     if (p.status !== "submitted") throw new M.ApiError(409, "already_decided", "This proposal has already been decided.");
+    if (accept) { // REQ-REVPROP-3: registering a student needs an open cycle. Declining stays open.
+      const t = this.now.getTime();
+      if (t < Date.parse(this.db.cycle.opening_date) || t > Date.parse(this.db.cycle.closing_date))
+        throw new M.ApiError(422, "cycle_closed", "The application cycle is not open, so this proposal can no longer be accepted.");
+    }
     p.status = accept ? "accepted" : "declined"; p.decided_at = this.iso();
     if (accept) {
       const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, title: p.title, description: p.description, prerequisites: [], topic_tags: p.research_interests,
