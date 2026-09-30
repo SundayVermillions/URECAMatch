@@ -81,7 +81,7 @@ Demo accounts: any seeded e-mail with password `password`. Verification code `00
 Read in this order:
 
 1. **SRS section 4** (`LAB2/LAB 2 (SRS).pdf`): find your features. Each has REQ-IDs like `REQ-REG-1`. Those IDs are how we track everything.
-2. **`docs/DEV-PLAN.md`** and the docx next to it: your slice's endpoints, the logic to build, the tests to ship, and the "done when" check.
+2. **`docs/URECAMatch-Development-Guide.docx`**, your slice section (6.A to 6.E) and section 7: what exists, what to build in order, the tests to ship, and who to talk to. **`docs/DEV-PLAN.md`** is the progress board; tick it in your PRs.
 3. **This map of the code:**
 
 ```
