@@ -65,7 +65,7 @@ Set `NEXT_PUBLIC_API_MODE=live` in `web/.env.local` and run the API. Mock mode s
 
 ## Work split
 
-See [DEV-PLAN.md](DEV-PLAN.md) for slices A to E, endpoints, tests and the timeline. Traceability from REQ-ID to code and tests lives in [traceability.md](traceability.md).
+Owners: Edwin (A), Robin (B), Ian (C), Nicholas (D), Benjamin (E). The full guide is `URECAMatch-Development-Guide.docx`: goal, per-slice build steps, tests, who to talk to. [DEV-PLAN.md](DEV-PLAN.md) is the live progress board. Traceability from REQ-ID to code and tests lives in [traceability.md](traceability.md).
 
 ## Deploy
 
