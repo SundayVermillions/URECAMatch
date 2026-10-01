@@ -69,7 +69,7 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
         submitted_at=settings.now(),
         document_ids=body.document_ids,
     )
-    store.proposals.append(p)
+    store.save_proposal(p)
     notify(
         store,
         [sup.id],
@@ -84,7 +84,7 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
 
 @router.get("/me/proposals", response_model=list[Proposal])
 def my_proposals(user: StudentUser, store: StoreDep) -> list[Proposal]:
-    return [p for p in store.proposals if p.student_id == user.id]
+    return store.proposals_for(student_id=user.id)
 
 
 def _with_student(store, p: Proposal) -> Proposal:
@@ -111,11 +111,11 @@ def _with_student(store, p: Proposal) -> Proposal:
 
 @router.get("/supervisor/proposals", response_model=list[Proposal])
 def incoming(user: SupervisorUser, store: StoreDep) -> list[Proposal]:  # REQ-REVPROP-1
-    return [_with_student(store, p) for p in store.proposals if p.supervisor_id == user.id]
+    return [_with_student(store, p) for p in store.proposals_for(supervisor_id=user.id)]
 
 
 def _get(store, proposal_id: str, user) -> Proposal:
-    p = next((p for p in store.proposals if p.id == proposal_id), None)
+    p = store.proposal(proposal_id)
     if p is None:
         raise not_found("Proposal")
     if p.supervisor_id != user.id:
@@ -156,8 +156,10 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
         status=ListingStatus.closed,
         created_at=now,
     )
-    store.listings.append(lst)
+    store.save_listing(lst)
     phase = windows.phase(store.cycle, now)
+    # Slice D (matches) and slice C (applications) are still in memory in Supabase mode.
+    # TODO(slice D/C): save through the store once those tables are migrated.
     store.matches.append(
         Match(
             id=store.next_id("mt"),
@@ -180,6 +182,8 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
     sp = store.student(p.student_id)
     if sp:
         sp.eligible_for_matching = False
+        store.save_student(sp)  # in Supabase mode store.student() returns a copy, so the flag must be saved
+    store.save_proposal(p)
     notify(
         store,
         [p.student_id],
@@ -196,6 +200,7 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
 def decline(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Proposal:
     p = _get(store, proposal_id, user)
     p.status, p.decided_at = ProposalStatus.declined, settings.now()
+    store.save_proposal(p)
     notify(
         store,
         [p.student_id],

@@ -48,6 +48,9 @@ class Store(Protocol):
     def listing(self, listing_id: str) -> Listing | None: ...
     def all_listings(self) -> list[Listing]: ...  # slice B: every listing, any status
     def save_listing(self, listing: Listing) -> Listing: ...  # slice B: insert or update
+    def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]: ...  # slice B
+    def proposal(self, proposal_id: str) -> Proposal | None: ...  # slice B
+    def save_proposal(self, proposal: Proposal) -> Proposal: ...  # slice B: insert or update
     def next_id(self, prefix: str) -> str: ...
 
 
@@ -96,6 +99,21 @@ class MockStore:
         if all(x.id != listing.id for x in self.listings):
             self.listings.append(listing)
         return listing
+
+    # --- Slice B: self-proposed projects
+    def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]:
+        return [
+            p for p in self.proposals
+            if (student_id is None or p.student_id == student_id) and (supervisor_id is None or p.supervisor_id == supervisor_id)
+        ]
+
+    def proposal(self, proposal_id: str) -> Proposal | None:
+        return next((p for p in self.proposals if p.id == proposal_id), None)
+
+    def save_proposal(self, proposal: Proposal) -> Proposal:
+        if all(x.id != proposal.id for x in self.proposals):
+            self.proposals.append(proposal)
+        return proposal
 
     def next_id(self, prefix: str) -> str:
         self._counter += 1
@@ -247,6 +265,49 @@ class SupabaseStore(MockStore):
         payload = listing.model_dump(mode="json", include=self._LISTING_COLUMNS)
         self.client.table("project_listings").upsert(payload).execute()
         return listing
+
+    # --- Slice B: self-proposed projects (table self_proposed_applications) ---
+
+    _PROPOSAL_COLUMNS = {
+        "id", "student_id", "supervisor_id", "title", "description", "research_interests", "statement",
+        "status", "submitted_at", "decided_at", "document_ids",
+    }
+    # Two foreign keys point at users, so each join names the constraint it follows.
+    _PROPOSAL_SELECT = (
+        "*, student:users!self_proposed_applications_student_id_fkey(name),"
+        " supervisor:users!self_proposed_applications_supervisor_id_fkey(name)"
+    )
+
+    @staticmethod
+    def _proposal_from_row(row: dict) -> Proposal:
+        student = row.pop("student", None) or {}
+        supervisor = row.pop("supervisor", None) or {}
+        names = {"student_name": student.get("name", ""), "supervisor_name": supervisor.get("name", "")}
+        return Proposal.model_validate({**row, **names})
+
+    def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]:
+        if not self.client:
+            return super().proposals_for(student_id, supervisor_id)
+        q = self.client.table("self_proposed_applications").select(self._PROPOSAL_SELECT)
+        if student_id is not None:
+            q = q.eq("student_id", student_id)
+        if supervisor_id is not None:
+            q = q.eq("supervisor_id", supervisor_id)
+        return [self._proposal_from_row(r) for r in q.order("submitted_at").execute().data or []]
+
+    def proposal(self, proposal_id: str) -> Proposal | None:
+        if not self.client:
+            return super().proposal(proposal_id)
+        table = self.client.table("self_proposed_applications")
+        res = table.select(self._PROPOSAL_SELECT).eq("id", proposal_id).limit(1).execute()
+        return self._proposal_from_row(res.data[0]) if res.data else None
+
+    def save_proposal(self, proposal: Proposal) -> Proposal:
+        if not self.client:
+            return super().save_proposal(proposal)
+        payload = proposal.model_dump(mode="json", include=self._PROPOSAL_COLUMNS)
+        self.client.table("self_proposed_applications").upsert(payload).execute()
+        return proposal
 
 _store: Store | None = None
 
