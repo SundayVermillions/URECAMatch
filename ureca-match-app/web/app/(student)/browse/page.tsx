@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Avatar, Banner, Button, DeadlineChip, Empty, FilterSelect, Input, Loading } from "@/components/ui";
+import { ApplicantStack, Avatar, Banner, Button, DeadlineChip, Empty, FilterSelect, Input, Loading, isHighDemand } from "@/components/ui";
 import type { Listing } from "@/lib/api/models";
 import { useApi } from "@/lib/use-api";
 
@@ -66,29 +66,6 @@ export default function Browse() {
   );
 }
 
-/** A listing is "in high demand" when more than 5 students compete for each open slot. Only this case is flagged. */
-const isHighDemand = (applicants: number, open: number) => open > 0 && applicants / open > 5;
-
-/** Anonymous "avatar stack" of applicants: coloured circles, never names or initials (SRS 5.3.3). */
-const CROWD = ["from-[#c9d4ff] to-[#9fb0f5]", "from-[#ffd6e0] to-[#f5a8bd]", "from-[#c8f0e4] to-[#8fd9c2]"];
-function Crowd({ count }: { count: number }) {
-  if (count === 0) return <span className="text-[13px] text-faint whitespace-nowrap">No applicants yet</span>;
-  const dots = Math.min(count, 3);
-  return (
-    <div className="flex items-center gap-2 shrink-0" title={`${count} ${count === 1 ? "student has" : "students have"} applied`}>
-      <div className="flex -space-x-1.5" aria-hidden>
-        {Array.from({ length: dots }, (_, i) => (
-          <span key={i} className={`w-[22px] h-[22px] rounded-full bg-gradient-to-br ${CROWD[i]} ring-2 ring-surface`} />
-        ))}
-        {count > dots && (
-          <span className="h-[22px] min-w-[22px] px-1.5 rounded-full bg-neutral-soft ring-2 ring-surface text-[11px] font-semibold text-muted inline-flex items-center justify-center tabular">+{count - dots}</span>
-        )}
-      </div>
-      <span className="text-[13px] text-muted">applied</span>
-    </div>
-  );
-}
-
 function ProjectCard({ l, canApply }: { l: Listing; canApply: boolean }) {
   const open = Math.max(l.available_slots - l.filled_slots, 0);
   const full = open === 0;
@@ -114,7 +91,7 @@ function ProjectCard({ l, canApply }: { l: Listing; canApply: boolean }) {
             {full ? <span className="text-faint">No slots left</span>
               : <><span className="font-semibold text-text tabular">{open}</span><span className="text-muted"> of {l.available_slots} slots open</span></>}
           </span>
-          <Crowd count={l.applicant_count ?? 0} />
+          <ApplicantStack count={l.applicant_count ?? 0} />
         </div>
 
         {/* Footer: who supervises, and what you can do (or already did). */}
@@ -125,7 +102,7 @@ function ProjectCard({ l, canApply }: { l: Listing; canApply: boolean }) {
           </div>
           {l.applied ? (
             <span className="shrink-0 inline-flex items-center gap-1.5 h-7 px-3 rounded-pill bg-good-soft text-good-ink text-[12.5px] font-medium">
-              <I.Check size={14} /> Applied · #{l.applied_rank}
+              <I.Tick size={14} /> Applied · #{l.applied_rank}
             </span>
           ) : full ? (
             <span className="shrink-0 inline-flex items-center h-7 px-3 rounded-pill bg-neutral-soft text-muted text-[12.5px] font-medium">Full</span>

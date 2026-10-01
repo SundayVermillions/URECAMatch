@@ -73,7 +73,7 @@ Stage 1
 - [ ] `round_id` rule for proposals accepted outside a round, agreed with D
 - [x] PROPOSE-1..3: interests required, word limits, own documents only, active supervisors only; propose page redesigned with searchable picker
 - [x] Close-listing confirmation; all B rows `mock`
-- [ ] UI pass on Project detail (student view)
+- [x] UI pass on Project detail (student view): hero band and balanced detail cards
 
 Stage 2
 - [ ] Covers stored in Supabase Storage via A's service

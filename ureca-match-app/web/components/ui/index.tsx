@@ -329,6 +329,29 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
   );
 }
 
+/** A listing is "in high demand" when more than 5 students compete for each open slot. Only this case is flagged. */
+export const isHighDemand = (applicants: number, open: number) => open > 0 && applicants / open > 5;
+
+/** Anonymous "avatar stack" of applicants: coloured circles, never names or initials (SRS 5.3.3). */
+const STACK_COLOURS = ["from-[#c9d4ff] to-[#9fb0f5]", "from-[#ffd6e0] to-[#f5a8bd]", "from-[#c8f0e4] to-[#8fd9c2]"];
+export function ApplicantStack({ count }: { count: number }) {
+  if (count === 0) return <span className="text-[13px] text-faint whitespace-nowrap">No applicants yet</span>;
+  const dots = Math.min(count, 3);
+  return (
+    <div className="flex items-center gap-2 shrink-0" title={`${count} ${count === 1 ? "student has" : "students have"} applied`}>
+      <div className="flex -space-x-1.5" aria-hidden>
+        {Array.from({ length: dots }, (_, i) => (
+          <span key={i} className={`w-[22px] h-[22px] rounded-full bg-gradient-to-br ${STACK_COLOURS[i]} ring-2 ring-surface`} />
+        ))}
+        {count > dots && (
+          <span className="h-[22px] min-w-[22px] px-1.5 rounded-full bg-neutral-soft ring-2 ring-surface text-[11px] font-semibold text-muted inline-flex items-center justify-center tabular">+{count - dots}</span>
+        )}
+      </div>
+      <span className="text-[13px] text-muted">applied</span>
+    </div>
+  );
+}
+
 export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <button type="button" onClick={() => onChange(!on)} className="inline-flex items-center gap-2 text-[12px] text-muted">
