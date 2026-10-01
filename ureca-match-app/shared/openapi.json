@@ -802,6 +802,7 @@
           "listings"
         ],
         "summary": "Browse",
+        "description": "REQ-BROWSE-1: open in every phase, including before the cycle opens.\nREQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive.",
         "operationId": "browse_listings_get",
         "parameters": [
           {

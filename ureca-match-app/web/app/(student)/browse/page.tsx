@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Avatar, Button, DeadlineChip, Empty, FilterSelect, Input, Loading } from "@/components/ui";
+import { Avatar, Banner, Button, DeadlineChip, Empty, FilterSelect, Input, Loading } from "@/components/ui";
 import type { Listing } from "@/lib/api/models";
 import { useApi } from "@/lib/use-api";
 
@@ -16,18 +16,31 @@ export default function Browse() {
   const [q, setQ] = useState("");
   const [school, setSchool] = useState<string | undefined>();
   const [tag, setTag] = useState<string | undefined>();
-  const { data, loading } = useApi((api) => api.browse({ q, school, tag }), [q, school, tag]);
-  // Topic options come from the unfiltered list, fetched once, so they do not shrink as you filter.
+  const [supervisor, setSupervisor] = useState<string | undefined>();
+  const { data, loading } = useApi((api) => api.browse({ q, school, tag, supervisor }), [q, school, tag, supervisor]);
+  // Filter options come from the unfiltered list, fetched once, so they do not shrink as you filter.
   const all = useApi((api) => api.browse({}), []);
   const topics = useMemo(() => Array.from(new Set((all.data ?? []).flatMap((l) => l.topic_tags))).sort(), [all.data]);
+  const supervisors = useMemo(() => {
+    const bare = (n: string) => n.replace(/^(Assoc\. )?(Prof\. |Dr\. )/, "");
+    return Array.from(new Set((all.data ?? []).map((l) => l.supervisor_name))).sort((a, b) => bare(a).localeCompare(bare(b)));
+  }, [all.data]);
   const applied = (data ?? []).filter((l) => l.applied).length;
   const canApply = me?.phase.window === "application";
-  const filtered = !!(q || school || tag);
+  const filtered = !!(q || school || tag || supervisor);
+  const early = me?.phase.window === "before_cycle" || me?.phase.window === "pre_application"; // REQ-BROWSE-1
 
   return (
     <>
       <PageHeader title="Browse projects" description="Find a research project that fits you. Open one to read the details and apply."
         right={me && <DeadlineChip>{me.phase.label}</DeadlineChip>} />
+      {me && !canApply && (
+        <div className="mb-5">
+          {early
+            ? <Banner tone="accent" title="You're early.">{me.phase.window === "pre_application" ? `${me.phase.label}.` : "No application cycle is open yet."} Browse and shortlist projects now, then come back to apply.</Banner>
+            : <Banner tone="warn" title="Applications are closed right now.">{me.phase.label}. You can still browse projects.</Banner>}
+        </div>
+      )}
 
       <div className="flex items-center gap-2.5 mb-3">
         <div className="relative flex-1">
@@ -36,7 +49,8 @@ export default function Browse() {
         </div>
         <FilterSelect label="School" value={school} options={SCHOOLS} onChange={setSchool} />
         <FilterSelect label="Topic" value={tag} options={topics} onChange={setTag} />
-        {filtered && <Button variant="text" onClick={() => { setQ(""); setSchool(undefined); setTag(undefined); }}>Clear</Button>}
+        <FilterSelect label="Supervisor" value={supervisor} options={supervisors} onChange={setSupervisor} />
+        {filtered && <Button variant="text" onClick={() => { setQ(""); setSchool(undefined); setTag(undefined); setSupervisor(undefined); }}>Clear</Button>}
       </div>
       <div className="flex items-center justify-between text-[13px] text-muted mb-5 px-1">
         <span>{data ? `${data.length} ${data.length === 1 ? "project" : "projects"}` : " "}</span>

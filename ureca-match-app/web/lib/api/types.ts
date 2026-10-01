@@ -183,7 +183,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Browse */
+        /**
+         * Browse
+         * @description REQ-BROWSE-1: open in every phase, including before the cycle opens.
+         *     REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive.
+         */
         get: operations["browse_listings_get"];
         put?: never;
         post?: never;

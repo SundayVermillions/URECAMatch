@@ -30,7 +30,7 @@ Order for going live: E provisions Supabase, then A (sign-in and JWT), then B an
 | Slice | Stage 0 | Stage 1 | Stage 2 | Stage 3 | REQ-IDs with a test |
 |---|---|---|---|---|---|
 | A Edwin | | 3 / 12 | | | REG-1, REG-3, AUTH-2 |
-| B Robin | done | 8 / 12 | | | BROWSE-3, PROJ-3, PROPOSE-1, PROPOSE-2, PROPOSE-3, REVPROP-1, REVPROP-2, REVPROP-3 |
+| B Robin | done | 10 / 12 | | | BROWSE-1, BROWSE-2, BROWSE-3, PROJ-3, PROPOSE-1, PROPOSE-2, PROPOSE-3, REVPROP-1, REVPROP-2, REVPROP-3 |
 | C Ian | | 3 / 7 | | | APPLY-2, SRANK-2, VRANK-1 |
 | D Nicholas | | 4 / 24 | | | EXEC-1, EXEC-2, EXEC-3, ASSIGN-2 |
 | E Benjamin | | 0 / 2 | | | role tests only |
@@ -66,7 +66,8 @@ Stage 0
 - [x] Tools installed, tests pass locally, first PR merged
 
 Stage 1
-- [ ] BROWSE-1, BROWSE-2, PROJ-1, PROJ-2 tests added
+- [x] BROWSE-1, BROWSE-2: tests, case-insensitive filters, no cross-field keyword match; supervisor filter and early/closed banner on Browse; custom accessible FilterSelect
+- [ ] PROJ-1, PROJ-2 tests; supervisor project screens redesigned
 - [x] REVPROP-1: `Proposal` carries the student's profile and attached documents; Proposals page and drawer redesigned
 - [x] REVPROP-3: accept only while the cycle is open
 - [ ] `round_id` rule for proposals accepted outside a round, agreed with D

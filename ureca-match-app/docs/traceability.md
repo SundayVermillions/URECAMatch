@@ -16,8 +16,8 @@ Update the row for every REQ-ID your PR touches. "Screen" is the dialog-map page
 | USER-1 | A | POST /admin/users | CreateUserForm | test_REQ_USER_1_admin_creates_supervisor | mock |
 | USER-2 | A | POST /admin/users | CreateUserForm | test_REQ_USER_2_register_cannot_choose_admin | mock |
 | USER-3 | A | POST /admin/users/{id}/deactivate | ManageUsersPage | test_REQ_USER_3_deactivated_user_gets_403 | mock |
-| BROWSE-1 | B | GET /listings | BrowseProjectPage | | todo |
-| BROWSE-2 | B | GET /listings | BrowseProjectPage | | todo |
+| BROWSE-1 | B | GET /listings | BrowseProjectPage | test_REQ_BROWSE_1_listings_visible_before_the_cycle_opens | mock |
+| BROWSE-2 | B | GET /listings | BrowseProjectPage | test_REQ_BROWSE_2_filters_combine_with_and | mock |
 | BROWSE-3 | B | GET /listings | BrowseProjectPage | test_REQ_BROWSE_3_closed_listing_hidden_from_students | mock |
 | PROJ-1 | B | POST /supervisor/listings | CreateProjectPage | | todo |
 | PROJ-2 | B | PUT /supervisor/listings/{id} | EditProjectPage | | todo |

@@ -12,7 +12,7 @@ type Seed = {
   notifications: M.Notification[]; audit: M.AuditEntry[]; applicant_rankings: Record<string, string[]>;
 };
 
-export const DEMO_NOW = new Date("2026-09-07T10:00:00Z");
+export const DEMO_NOW = new Date("2026-09-20T10:00:00Z");
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const sleep = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "short" });
@@ -153,10 +153,14 @@ export class MockClient implements ApiClient {
   // ---- slice B
   async browse(f: M.ListingFilters = {}) {
     const u = this.user(); await sleep(80);
+    // REQ-BROWSE-2: same rules as routers/listings.py. Fields are joined with a line break,
+    // so a keyword never matches across the end of one field and the start of the next.
+    const lc = (x?: string) => (x ?? "").toLowerCase();
     return this.db.listings.filter((l) => l.status === "published"
-      && (!f.q || (l.title + l.description + l.topic_tags.join(" ")).toLowerCase().includes(f.q.toLowerCase()))
-      && (!f.school || l.offering_faculty === f.school) && (!f.tag || l.topic_tags.includes(f.tag))
-      && (!f.supervisor || l.supervisor_name.toLowerCase().includes(f.supervisor.toLowerCase())))
+      && (!f.q || lc([l.title, l.description, ...l.topic_tags].join("\n")).includes(lc(f.q)))
+      && (!f.school || lc(l.offering_faculty) === lc(f.school))
+      && (!f.tag || l.topic_tags.some((t) => lc(t) === lc(f.tag)))
+      && (!f.supervisor || lc(l.supervisor_name).includes(lc(f.supervisor))))
       .map((l) => this.decorate(l, u));
   }
   async listing(id: string) {

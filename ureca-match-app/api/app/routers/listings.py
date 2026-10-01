@@ -36,15 +36,18 @@ def browse(
     tag: str | None = None,
     supervisor: str | None = None,
 ) -> list[Listing]:
+    """REQ-BROWSE-1: open in every phase, including before the cycle opens.
+    REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive."""
     out = []
     for lst in store.listings:
         if lst.status != ListingStatus.published:  # REQ-BROWSE-3
             continue
-        if q and q.lower() not in (lst.title + lst.description + " ".join(lst.topic_tags)).lower():
+        # Join fields with a separator so a keyword never matches across the end of one field and the start of the next.
+        if q and q.lower() not in "\n".join([lst.title, lst.description, *lst.topic_tags]).lower():
             continue
-        if school and lst.offering_faculty != school:
+        if school and lst.offering_faculty.lower() != school.lower():
             continue
-        if tag and tag not in lst.topic_tags:
+        if tag and tag.lower() not in (t.lower() for t in lst.topic_tags):
             continue
         if supervisor and supervisor.lower() not in lst.supervisor_name.lower():
             continue
