@@ -76,8 +76,8 @@ Stage 1
 - [x] UI pass on Project detail (student view): hero band and balanced detail cards
 
 Stage 2
-- [ ] Covers stored in Supabase Storage via A's service
-- [ ] `SupabaseStore` listing and proposal methods implemented
+- [x] Covers stored in Supabase Storage via A's service (public `covers` bucket, cache-busted URL, PROJ-2 guard)
+- [x] `SupabaseStore` listing and proposal methods implemented, verified live with test rows
 - [ ] Browse, create, edit, close, propose, accept and decline work live; B rows `live`
 
 Stage 3

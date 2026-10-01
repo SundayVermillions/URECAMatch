@@ -24,6 +24,7 @@ export interface ApiClient {
   createListing(body: M.ListingCreate): Promise<M.Listing>;
   updateListing(id: string, body: M.ListingUpdate): Promise<M.Listing>;
   closeListing(id: string): Promise<M.Listing>;
+  uploadCover(id: string, file: File): Promise<M.Listing>;
   propose(body: M.ProposalCreate): Promise<M.Proposal>;
   myProposals(): Promise<M.Proposal[]>;
   incomingProposals(): Promise<M.Proposal[]>;

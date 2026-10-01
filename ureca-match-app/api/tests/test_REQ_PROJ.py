@@ -100,3 +100,36 @@ def test_REQ_PROJ_3_slots_cannot_go_below_matched_students(client_for):
     r = sup3.put("/supervisor/listings/lst-6", json={"available_slots": 1})
     assert r.status_code == 422 and r.json()["code"] == "slots_below_matched"
     assert sup3.put("/supervisor/listings/lst-6", json={"available_slots": 2}).status_code == 200
+
+
+# ---------------------------------------------------------------- cover images (part of editing a listing)
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+
+
+def test_REQ_PROJ_2_cover_upload_sets_cover_url(as_supervisor):
+    r = as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": ("cover.png", PNG, "image/png")})
+    assert r.status_code == 200, r.text
+    assert "lst-2.png" in r.json()["cover_url"]
+
+
+def test_REQ_PROJ_2_cover_must_be_jpeg_or_png(as_supervisor):
+    r = as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": ("cover.gif", b"GIF89a", "image/gif")})
+    assert r.status_code == 422 and r.json()["field"] == "file"
+
+
+def test_REQ_PROJ_2_cover_over_5mb_rejected(as_supervisor):
+    big = PNG + b"0" * (5 * 1024 * 1024)
+    r = as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": ("cover.png", big, "image/png")})
+    assert r.status_code == 422 and r.json()["code"] == "too_large"
+
+
+def test_REQ_PROJ_2_cover_only_for_own_listing(as_supervisor):
+    r = as_supervisor.post("/supervisor/listings/lst-4/cover", files={"file": ("cover.png", PNG, "image/png")})
+    assert r.status_code == 404
+
+
+def test_REQ_PROJ_2_cover_change_after_closing_date_rejected(as_supervisor, monkeypatch):
+    _at(monkeypatch, AFTER_CLOSE)
+    r = as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": ("cover.png", PNG, "image/png")})
+    assert r.status_code == 422 and r.json()["code"] == "cycle_closed"

@@ -204,6 +204,15 @@ export class MockClient implements ApiClient {
     for (const [k, v] of Object.entries(changes)) if (v != null) (l as unknown as Record<string, unknown>)[k] = typeof v === "string" ? v.trim() : v;
     return l;
   }
+  async uploadCover(id: string, file: File) { // same rules as routers/listings.py cover()
+    const u = this.need("supervisor"); const l = this.listingOr404(id);
+    if (l.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Project was not found.");
+    if (this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Listings can no longer be edited.");
+    if (!["image/jpeg", "image/png"].includes(file.type)) throw new M.ApiError(422, "not_image", "Upload a JPEG or PNG image.", "file");
+    if (file.size > 5 * 1024 * 1024) throw new M.ApiError(422, "too_large", "The image is larger than 5 MB.", "file");
+    l.cover_url = URL.createObjectURL(file); // lives as long as the tab, like the rest of the mock data
+    return this.decorate(l, u);
+  }
   async closeListing(id: string) { const u = this.need("supervisor"); const l = this.listingOr404(id); if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "No access."); l.status = "closed"; return l; }
   async propose(b: M.ProposalCreate) {
     const u = this.need("student"); this.requireApplicationWindow(); // REQ-PROPOSE-3

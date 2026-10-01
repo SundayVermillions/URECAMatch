@@ -10,6 +10,7 @@ from app.deps import CurrentUser, SettingsDep, StoreDep, SupervisorUser
 from app.errors import forbidden, invalid, not_found
 from app.models import AccountStatus, Listing, ListingCreate, ListingStatus, ListingUpdate, Ok, Role, SupervisorSummary
 from app.services import windows
+from app.services.storage import get_storage
 
 router = APIRouter(tags=["listings"])
 
@@ -151,18 +152,37 @@ def close(listing_id: str, user: SupervisorUser, store: StoreDep) -> Listing:
 
 
 @router.post("/supervisor/listings/{listing_id}/cover", response_model=Listing)
-async def cover(listing_id: str, user: SupervisorUser, store: StoreDep, file: Annotated[UploadFile, File()]) -> Listing:
+async def cover(
+    listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep, file: Annotated[UploadFile, File()]
+) -> Listing:
+    """Upload or replace a listing's cover image. Changing the cover is an edit, so REQ-PROJ-2 applies."""
     lst = store.listing(listing_id)
     if lst is None or lst.supervisor_id != user.id:
         raise not_found("Project")
-    if (file.content_type or "") not in ("image/jpeg", "image/png"):
+    if _cycle_closed(store, settings):  # REQ-PROJ-2
+        raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
+    content_type = file.content_type or ""
+    if content_type not in COVER_TYPES:
         raise invalid("not_image", "Upload a JPEG or PNG image.", "file")
     data = await file.read()
-    if len(data) > 5 * 1024 * 1024:
+    if len(data) > MAX_COVER_BYTES:
         raise invalid("too_large", "The image is larger than 5 MB.", "file")
-    # TODO(slice B): store in bucket `covers`, save the public URL.
-    lst.cover_url = f"/covers/{listing_id}.jpg"
+    path = get_storage().put("covers", f"{listing_id}.{COVER_TYPES[content_type]}", data, content_type=content_type)
+    lst.cover_url = _public_cover_url(path, settings)
     return store.save_listing(lst)
+
+
+COVER_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
+MAX_COVER_BYTES = 5 * 1024 * 1024
+
+
+def _public_cover_url(path: str, settings) -> str:
+    """The `covers` bucket is public, so a plain URL works (no signing, unlike private transcripts).
+    `?v=` changes on every upload: the file name stays the same, so without it browsers would keep the old image."""
+    version = int(settings.now().timestamp())
+    if settings.api_mode == "supabase":
+        return f"{settings.supabase_url.rstrip('/')}/storage/v1/object/public/{path}?v={version}"
+    return f"/{path}?v={version}"
 
 
 @router.get("/phase-check", response_model=Ok, include_in_schema=False)

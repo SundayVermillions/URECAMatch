@@ -5,6 +5,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useMe } from "@/components/shell/app-provider";
+import { I } from "@/components/shell/icons";
 import { Banner, Button, Card, Field, Input, Select, Status, Stepper, TagInput, Textarea } from "@/components/ui";
 import { ApiError, type Listing } from "@/lib/api/models";
 import { useCall } from "@/lib/use-api";
@@ -27,6 +28,23 @@ export function ListingForm({ existing }: { existing?: Listing }) {
   const [busy, setBusy] = useState<"publish" | "save" | null>(null);
   const err = (k: string) => (error?.field === k ? error.message : null);
 
+  // Cover image: existing listings upload immediately; new ones keep the file until the listing exists.
+  const [coverUrl, setCoverUrl] = useState<string | null>(existing?.cover_url ?? null);
+  const [pendingCover, setPendingCover] = useState<File | null>(null);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
+  async function pickCover(file: File) {
+    setCoverError(null);
+    // Checked here for instant feedback; the API checks again (type, 5 MB, owner, closing date).
+    if (!["image/jpeg", "image/png"].includes(file.type)) return setCoverError("Choose a JPEG or PNG image.");
+    if (file.size > 5 * 1024 * 1024) return setCoverError("The image is larger than 5 MB.");
+    if (!existing) { setPendingCover(file); setCoverUrl(URL.createObjectURL(file)); return; }
+    setCoverBusy(true);
+    try { setCoverUrl((await call((api) => api.uploadCover(existing.id, file))).cover_url ?? null); }
+    catch (e) { setCoverError((e as ApiError).message); }
+    finally { setCoverBusy(false); }
+  }
+
   const cycleClosed = me?.phase.window === "closed";
   const isDraft = existing?.status === "draft";
   const isClosedListing = existing?.status === "closed";
@@ -38,7 +56,11 @@ export function ListingForm({ existing }: { existing?: Listing }) {
     const fields = { title: title.trim(), description, topic_tags: tags, prerequisites: prereqs, available_slots: slots, offering_faculty: faculty, research_location: location };
     try {
       if (existing) await call((api) => api.updateListing(existing.id, { ...fields, publish: publish || undefined }));
-      else await call((api) => api.createListing({ ...fields, publish }));
+      else {
+        const created = await call((api) => api.createListing({ ...fields, publish }));
+        // A new listing has no id until it is created, so a chosen cover uploads right after.
+        if (pendingCover) await call((api) => api.uploadCover(created.id, pendingCover));
+      }
       router.push("/projects");
     } catch (e) { setError(e as ApiError); setBusy(null); }
   }
@@ -118,13 +140,14 @@ export function ListingForm({ existing }: { existing?: Listing }) {
           )}
         </Card>
 
-        <Card>
-          <div className="text-[15px] font-semibold">Cover image</div>
-          {existing?.cover_url
-            ? <img src={existing.cover_url} alt="" className="mt-3 w-full h-[130px] object-cover rounded-row" />
-            : <div className="mt-3 w-full h-[130px] rounded-row bg-gradient-to-br from-[#eef2ff] via-[#f5f5f7] to-[#eafaf4]" />}
-          <div className="text-[12.5px] text-faint mt-2.5">Uploading a cover is coming soon. Listings without one show a soft placeholder.</div>
-        </Card>
+        <CoverPicker
+          url={coverUrl}
+          disabled={readOnly}
+          busy={coverBusy}
+          error={coverError}
+          note={existing ? "Uploads straight away." : "Uploads when you publish or save."}
+          onPick={pickCover}
+        />
 
         <div className="px-1 text-[12.5px] text-muted leading-[1.6]">
           <div className="font-medium text-text mb-1">Good to know</div>
@@ -143,6 +166,37 @@ function Section({ title, note, children }: { title: string; note?: string; chil
         {note && <div className="text-[13px] text-muted mt-0.5">{note}</div>}
       </div>
       {children}
+    </Card>
+  );
+}
+
+/** Cover image card: preview plus a click-or-drop upload area. */
+function CoverPicker({ url, disabled, busy, error, note, onPick }:
+  { url: string | null; disabled: boolean; busy: boolean; error: string | null; note: string; onPick: (f: File) => void }) {
+  const [over, setOver] = useState(false);
+  return (
+    <Card>
+      <div className="text-[15px] font-semibold">Cover image</div>
+      <label
+        onDragOver={(e) => { e.preventDefault(); if (!disabled) setOver(true); }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => { e.preventDefault(); setOver(false); const f = e.dataTransfer.files[0]; if (f && !disabled) onPick(f); }}
+        className={`group relative mt-3 block w-full h-[150px] rounded-row overflow-hidden ${disabled ? "cursor-default" : "cursor-pointer"} ${over ? "ring-2 ring-accent" : ""}`}>
+        {url
+          ? <img src={url} alt="" className="w-full h-full object-cover" />
+          : <div className="w-full h-full bg-gradient-to-br from-[#eef2ff] via-[#f5f5f7] to-[#eafaf4]" />}
+        {!disabled && (
+          <span className={`absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-[13px] font-medium transition-opacity ${url ? "bg-black/35 text-white opacity-0 group-hover:opacity-100" : "text-muted"} ${busy || over ? "opacity-100" : ""}`}>
+            <I.Upload size={18} />
+            {busy ? "Uploading…" : url ? "Replace image" : "Click or drop an image"}
+          </span>
+        )}
+        <input type="file" accept="image/jpeg,image/png" className="hidden" disabled={disabled || busy}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ""; }} />
+      </label>
+      {error
+        ? <div className="text-[12.5px] text-bad-ink font-medium mt-2.5">{error}</div>
+        : <div className="text-[12.5px] text-faint mt-2.5">JPEG or PNG, up to 5 MB. {disabled ? "" : note}</div>}
     </Card>
   );
 }

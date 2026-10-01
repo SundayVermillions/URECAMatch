@@ -295,7 +295,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cover */
+        /**
+         * Cover
+         * @description Upload or replace a listing's cover image. Changing the cover is an edit, so REQ-PROJ-2 applies.
+         */
         post: operations["cover_supervisor_listings__listing_id__cover_post"];
         delete?: never;
         options?: never;
