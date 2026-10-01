@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Avatar, Banner, Button, Card, DeadlineChip, Field, Input, Loading, Textarea } from "@/components/ui";
+import { Avatar, Banner, Button, Card, DeadlineChip, Field, Input, Loading, TagInput, Textarea } from "@/components/ui";
 import { ApiError, type Proposal, type SupervisorSummary } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
@@ -78,7 +78,7 @@ export default function Propose() {
               <WordCount text={description} max={DESCRIPTION_MAX_WORDS} />
             </Field>
             <Field label="Research interests" error={err("research_interests")} hint="Press Enter or comma to add. Prefilled from your profile.">
-              <TagInput value={interests} onChange={setInterests} invalid={!!err("research_interests")} />
+              <TagInput value={interests} onChange={setInterests} invalid={!!err("research_interests")} placeholder="e.g. Machine Learning" />
             </Field>
           </Section>
 
@@ -149,33 +149,6 @@ function WordCount({ text, max }: { text: string; max: number }) {
   const n = words(text);
   const tone = n > max ? "text-bad-ink font-medium" : n > max * 0.9 ? "text-warn-ink" : "text-faint";
   return <div className={`text-[12px] text-right tabular ${tone}`}>{n} / {max} words</div>;
-}
-
-/** Research interests as removable tags. Enter or comma adds; Backspace on empty removes the last. */
-function TagInput({ value, onChange, invalid }: { value: string[]; onChange: (v: string[]) => void; invalid?: boolean }) {
-  const [draft, setDraft] = useState("");
-  const add = (t: string) => {
-    const v = t.trim();
-    if (v && !value.some((x) => x.toLowerCase() === v.toLowerCase())) onChange([...value, v]);
-    setDraft("");
-  };
-  return (
-    <div className={`min-h-10 flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-button border bg-surface transition-shadow focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15 ${invalid ? "border-bad" : "border-border-strong"}`}>
-      {value.map((t) => (
-        <span key={t} className="inline-flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-pill bg-neutral-soft text-[13px] text-text">
-          {t}
-          <button type="button" aria-label={`Remove ${t}`} onClick={() => onChange(value.filter((x) => x !== t))} className="w-5 h-5 rounded-full inline-flex items-center justify-center text-faint hover:text-text hover:bg-black/[0.06]"><I.X size={12} /></button>
-        </span>
-      ))}
-      <input value={draft} onChange={(e) => (e.target.value.endsWith(",") ? add(e.target.value.slice(0, -1)) : setDraft(e.target.value))}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); add(draft); }
-          else if (e.key === "Backspace" && !draft && value.length) onChange(value.slice(0, -1));
-        }}
-        onBlur={() => draft && add(draft)}
-        placeholder={value.length ? "Add another" : "e.g. Machine Learning"} className="flex-1 min-w-[140px] h-7 px-1.5 outline-none bg-transparent text-[14px]" />
-    </div>
-  );
 }
 
 /** Search-as-you-type supervisor picker (dialog map: searchSupervisor, selectSupervisor). */

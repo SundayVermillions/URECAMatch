@@ -1291,6 +1291,8 @@ export interface components {
             offering_faculty?: string | null;
             /** Research Location */
             research_location?: string | null;
+            /** Publish */
+            publish?: boolean | null;
         };
         /** ManualAssignRequest */
         ManualAssignRequest: {

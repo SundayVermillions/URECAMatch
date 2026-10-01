@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { I } from "@/components/shell/icons";
-import { Avatar, Banner, Button, Card, Drawer, Empty, Loading, Modal, Pill, Status, fmtDate } from "@/components/ui";
+import { Avatar, Banner, Button, Card, Drawer, Empty, Loading, Modal, Pill, Segmented, Status, fmtDate } from "@/components/ui";
 import { ApiError, type Document, type Proposal } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
@@ -192,22 +192,4 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Muted({ children }: { children: React.ReactNode }) {
   return <div className="text-[13px] text-muted">{children}</div>;
-}
-
-/** Apple-style two-option switch with counts. */
-function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; count?: number }[] }) {
-  return (
-    <div className="inline-flex p-1 rounded-pill bg-black/[0.05]" role="tablist">
-      {options.map((o) => {
-        const on = o.value === value;
-        return (
-          <button key={o.value} type="button" role="tab" aria-selected={on} onClick={() => onChange(o.value)}
-            className={`h-8 px-4 rounded-pill text-[13px] font-medium inline-flex items-center gap-1.5 transition-all ${on ? "bg-surface text-text shadow-[0_1px_3px_rgba(0,0,0,0.1)]" : "text-muted hover:text-text"}`}>
-            {o.label}
-            {o.count !== undefined && <span className={`text-[12px] tabular ${on ? "text-muted" : "text-faint"}`}>{o.count}</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
 }

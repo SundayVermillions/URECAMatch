@@ -5144,6 +5144,17 @@
               }
             ],
             "title": "Research Location"
+          },
+          "publish": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publish"
           }
         },
         "type": "object",

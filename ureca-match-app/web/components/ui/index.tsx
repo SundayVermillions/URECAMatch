@@ -52,8 +52,9 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   awaiting_publication: { label: "Awaiting publication", tone: "warn" }, completed: { label: "Completed", tone: "good" },
   draft: { label: "Draft", tone: "neutral" }, closed: { label: "Closed", tone: "neutral" },
 };
-export function Status({ value, kind }: { value: MatchStatus | ProposalStatus | ApplicationStatus | AccountStatus | RoundStatus | string; kind?: "round" }) {
-  const s = kind === "round" && value === "published" ? { label: "Published", tone: "good" as Tone } : STATUS[value] ?? { label: value, tone: "neutral" as Tone };
+/** `kind` disambiguates words shared by several entities: "published" is "Offer sent" for a match but "Published" for a round or listing. */
+export function Status({ value, kind }: { value: MatchStatus | ProposalStatus | ApplicationStatus | AccountStatus | RoundStatus | string; kind?: "round" | "listing" }) {
+  const s = (kind === "round" || kind === "listing") && value === "published" ? { label: "Published", tone: "good" as Tone } : STATUS[value] ?? { label: value, tone: "neutral" as Tone };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
@@ -278,6 +279,53 @@ export function Modal({ open, onClose, title, children, footer }: { open: boolea
         {footer && <div className="flex justify-end gap-2.5 mt-4">{footer}</div>}
       </div>
     </>
+  );
+}
+
+/** Removable tags for lists like topics or course codes. Enter or comma adds; Backspace on an empty field removes the last.
+ *  `normalize` can reshape each new tag, e.g. upper-casing course codes. Duplicates (ignoring case) are skipped. */
+export function TagInput({ value, onChange, invalid, placeholder = "Add a tag", normalize = (t: string) => t }:
+  { value: string[]; onChange: (v: string[]) => void; invalid?: boolean; placeholder?: string; normalize?: (t: string) => string }) {
+  const [draft, setDraft] = useState("");
+  const add = (t: string) => {
+    const v = normalize(t.trim());
+    if (v && !value.some((x) => x.toLowerCase() === v.toLowerCase())) onChange([...value, v]);
+    setDraft("");
+  };
+  return (
+    <div className={`min-h-10 flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-button border bg-surface transition-shadow focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15 ${invalid ? "border-bad" : "border-border-strong"}`}>
+      {value.map((t) => (
+        <span key={t} className="inline-flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-pill bg-neutral-soft text-[13px] text-text">
+          {t}
+          <button type="button" aria-label={`Remove ${t}`} onClick={() => onChange(value.filter((x) => x !== t))} className="w-5 h-5 rounded-full inline-flex items-center justify-center text-faint hover:text-text hover:bg-black/[0.06]"><I.X size={12} /></button>
+        </span>
+      ))}
+      <input value={draft} onChange={(e) => (e.target.value.endsWith(",") ? add(e.target.value.slice(0, -1)) : setDraft(e.target.value))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); add(draft); }
+          else if (e.key === "Backspace" && !draft && value.length) onChange(value.slice(0, -1));
+        }}
+        onBlur={() => draft && add(draft)}
+        placeholder={value.length ? "Add another" : placeholder} className="flex-1 min-w-[120px] h-7 px-1.5 outline-none bg-transparent text-[14px]" />
+    </div>
+  );
+}
+
+/** Apple-style segmented switch with optional counts. */
+export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; count?: number }[] }) {
+  return (
+    <div className="inline-flex p-1 rounded-pill bg-black/[0.05]" role="tablist">
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button key={o.value} type="button" role="tab" aria-selected={on} onClick={() => onChange(o.value)}
+            className={`h-8 px-4 rounded-pill text-[13px] font-medium inline-flex items-center gap-1.5 transition-all ${on ? "bg-surface text-text shadow-[0_1px_3px_rgba(0,0,0,0.1)]" : "text-muted hover:text-text"}`}>
+            {o.label}
+            {o.count !== undefined && <span className={`text-[12px] tabular ${on ? "text-muted" : "text-faint"}`}>{o.count}</span>}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

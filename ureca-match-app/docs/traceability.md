@@ -19,9 +19,9 @@ Update the row for every REQ-ID your PR touches. "Screen" is the dialog-map page
 | BROWSE-1 | B | GET /listings | BrowseProjectPage | test_REQ_BROWSE_1_listings_visible_before_the_cycle_opens | mock |
 | BROWSE-2 | B | GET /listings | BrowseProjectPage | test_REQ_BROWSE_2_filters_combine_with_and | mock |
 | BROWSE-3 | B | GET /listings | BrowseProjectPage | test_REQ_BROWSE_3_closed_listing_hidden_from_students | mock |
-| PROJ-1 | B | POST /supervisor/listings | CreateProjectPage | | todo |
-| PROJ-2 | B | PUT /supervisor/listings/{id} | EditProjectPage | | todo |
-| PROJ-3 | B | PUT /supervisor/listings/{id} | EditProjectPage | test_REQ_PROJ_3_cannot_reduce_slots_below_matched | mock |
+| PROJ-1 | B | POST /supervisor/listings, PUT .../{id} (publish) | CreateProjectPage | test_REQ_PROJ_1_cannot_publish_after_cycle_closes | mock |
+| PROJ-2 | B | PUT /supervisor/listings/{id} | EditProjectPage | test_REQ_PROJ_2_update_after_closing_date_rejected | mock |
+| PROJ-3 | B | PUT /supervisor/listings/{id} | EditProjectPage | test_REQ_PROJ_3_slots_cannot_go_below_matched_students | mock |
 | PROPOSE-1 | B | POST /proposals | ProposeProjectPage | test_REQ_PROPOSE_1_research_interests_required | mock |
 | PROPOSE-2 | B | POST /proposals, GET /supervisors | ProposeProjectPage | test_REQ_PROPOSE_2_inactive_supervisor_rejected | mock |
 | PROPOSE-3 | B | POST /proposals | ProposeProjectPage | test_REQ_PROPOSE_3_outside_application_window_rejected | mock |

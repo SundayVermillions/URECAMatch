@@ -81,6 +81,10 @@ def my_listings(user: SupervisorUser, store: StoreDep) -> list[Listing]:
 
 @router.post("/supervisor/listings", response_model=Listing, status_code=201)
 def create(body: ListingCreate, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Listing:
+    # REQ-PROJ-1: publish before the cycle opens or during it, not after it closes. Drafts are always allowed.
+    if body.publish and _cycle_closed(store, settings):
+        raise invalid("cycle_closed", "The application cycle has closed. Save this as a draft for the next cycle.")
+    _check_text(body.title, body.description)
     lst = Listing(
         id=store.next_id("lst"),
         supervisor_id=user.id,
@@ -106,17 +110,34 @@ def update(listing_id: str, body: ListingUpdate, user: SupervisorUser, store: St
         raise not_found("Project")
     if lst.supervisor_id != user.id:
         raise forbidden()
-    if store.cycle and settings.now() > store.cycle.closing_date:  # REQ-PROJ-2
+    if _cycle_closed(store, settings):  # REQ-PROJ-2
         raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
+    _check_text(body.title, body.description)
     if body.available_slots is not None and body.available_slots < lst.filled_slots:  # REQ-PROJ-3
         raise invalid(
             "slots_below_matched",
             f"{lst.filled_slots} students are already matched. Slots cannot go below that.",
             "available_slots",
         )
-    for k, v in body.model_dump(exclude_none=True).items():
-        setattr(lst, k, v)
+    changes = body.model_dump(exclude_none=True)
+    if changes.pop("publish", False) and lst.status == ListingStatus.draft:  # REQ-PROJ-1: publish a draft
+        lst.status = ListingStatus.published
+    for k, v in changes.items():
+        setattr(lst, k, v.strip() if isinstance(v, str) else v)
     return lst
+
+
+def _cycle_closed(store, settings) -> bool:
+    """True once the cycle's closing date has passed (REQ-PROJ-1, REQ-PROJ-2). No cycle yet counts as open."""
+    return bool(store.cycle and settings.now() > store.cycle.closing_date)
+
+
+def _check_text(title: str | None, description: str | None) -> None:
+    """Same minimums as ListingCreate, checked after trimming spaces so a title of spaces is rejected too."""
+    if title is not None and len(title.strip()) < 5:
+        raise invalid("title_too_short", "Give the project a title of at least 5 characters.", "title")
+    if description is not None and len(description.strip()) < 20:
+        raise invalid("description_too_short", "Describe the project in at least 20 characters.", "description")
 
 
 @router.post("/supervisor/listings/{listing_id}/close", response_model=Listing)

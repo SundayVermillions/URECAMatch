@@ -320,6 +320,7 @@ class ListingUpdate(BaseModel):
     available_slots: int | None = Field(default=None, ge=1, le=20)
     offering_faculty: str | None = None
     research_location: str | None = None
+    publish: bool | None = None  # True publishes a draft (REQ-PROJ-1). Closing has its own endpoint.
 
 
 class SupervisorSummary(BaseModel):

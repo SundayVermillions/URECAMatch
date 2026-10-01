@@ -12,7 +12,7 @@ type Seed = {
   notifications: M.Notification[]; audit: M.AuditEntry[]; applicant_rankings: Record<string, string[]>;
 };
 
-export const DEMO_NOW = new Date("2026-09-20T10:00:00Z");
+export const DEMO_NOW = new Date("2026-09-07T10:00:00Z");
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const sleep = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "short" });
@@ -177,8 +177,16 @@ export class MockClient implements ApiClient {
       .sort((a, b) => bare(a.name).localeCompare(bare(b.name)));
   }
   async myListings() { const u = this.need("supervisor"); return this.db.listings.filter((l) => l.supervisor_id === u.id).map((l) => this.decorate(l, u)); }
+  /** True once the cycle closing date has passed (REQ-PROJ-1, REQ-PROJ-2), as in routers/listings.py. */
+  private cycleClosed() { return this.now.getTime() > Date.parse(this.db.cycle.closing_date); }
+  private checkListingText(title?: string | null, description?: string | null) {
+    if (title != null && title.trim().length < 5) throw new M.ApiError(422, "title_too_short", "Give the project a title of at least 5 characters.", "title");
+    if (description != null && description.trim().length < 20) throw new M.ApiError(422, "description_too_short", "Describe the project in at least 20 characters.", "description");
+  }
   async createListing(b: M.ListingCreate) {
     const u = this.need("supervisor");
+    if (b.publish !== false && this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Save this as a draft for the next cycle.");
+    this.checkListingText(b.title, b.description);
     const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, title: b.title, description: b.description,
       prerequisites: b.prerequisites ?? [], topic_tags: b.topic_tags ?? [], available_slots: b.available_slots, filled_slots: 0,
       offering_faculty: b.offering_faculty, research_location: b.research_location, cover_url: null, status: b.publish === false ? "draft" : "published",
@@ -188,8 +196,12 @@ export class MockClient implements ApiClient {
   async updateListing(id: string, b: M.ListingUpdate) {
     const u = this.need("supervisor"); const l = this.listingOr404(id);
     if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
+    if (this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Listings can no longer be edited."); // REQ-PROJ-2
+    this.checkListingText(b.title, b.description);
     if (b.available_slots != null && b.available_slots < l.filled_slots) throw new M.ApiError(422, "slots_below_matched", `${l.filled_slots} students are already matched. Slots cannot go below that.`, "available_slots");
-    for (const [k, v] of Object.entries(b)) if (v != null) (l as unknown as Record<string, unknown>)[k] = v;
+    const { publish, ...changes } = b;
+    if (publish && l.status === "draft") l.status = "published"; // REQ-PROJ-1: publish a draft
+    for (const [k, v] of Object.entries(changes)) if (v != null) (l as unknown as Record<string, unknown>)[k] = typeof v === "string" ? v.trim() : v;
     return l;
   }
   async closeListing(id: string) { const u = this.need("supervisor"); const l = this.listingOr404(id); if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "No access."); l.status = "closed"; return l; }
