@@ -39,7 +39,7 @@ def browse(
     """REQ-BROWSE-1: open in every phase, including before the cycle opens.
     REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive."""
     out = []
-    for lst in store.listings:
+    for lst in store.all_listings():
         if lst.status != ListingStatus.published:  # REQ-BROWSE-3
             continue
         # Join fields with a separator so a keyword never matches across the end of one field and the start of the next.
@@ -76,7 +76,7 @@ def supervisors(user: CurrentUser, store: StoreDep) -> list[SupervisorSummary]:
 
 @router.get("/supervisor/listings", response_model=list[Listing])
 def my_listings(user: SupervisorUser, store: StoreDep) -> list[Listing]:
-    return [_decorate(lst, store, user) for lst in store.listings if lst.supervisor_id == user.id]
+    return [_decorate(lst, store, user) for lst in store.all_listings() if lst.supervisor_id == user.id]
 
 
 @router.post("/supervisor/listings", response_model=Listing, status_code=201)
@@ -99,8 +99,7 @@ def create(body: ListingCreate, user: SupervisorUser, store: StoreDep, settings:
         created_at=settings.now(),
         status=ListingStatus.published if body.publish else ListingStatus.draft,
     )  # REQ-PROJ-1
-    store.listings.append(lst)
-    return lst
+    return store.save_listing(lst)
 
 
 @router.put("/supervisor/listings/{listing_id}", response_model=Listing)
@@ -124,7 +123,7 @@ def update(listing_id: str, body: ListingUpdate, user: SupervisorUser, store: St
         lst.status = ListingStatus.published
     for k, v in changes.items():
         setattr(lst, k, v.strip() if isinstance(v, str) else v)
-    return lst
+    return store.save_listing(lst)
 
 
 def _cycle_closed(store, settings) -> bool:
@@ -148,7 +147,7 @@ def close(listing_id: str, user: SupervisorUser, store: StoreDep) -> Listing:
     if lst.supervisor_id != user.id:
         raise forbidden()
     lst.status = ListingStatus.closed
-    return lst
+    return store.save_listing(lst)
 
 
 @router.post("/supervisor/listings/{listing_id}/cover", response_model=Listing)
@@ -163,7 +162,7 @@ async def cover(listing_id: str, user: SupervisorUser, store: StoreDep, file: An
         raise invalid("too_large", "The image is larger than 5 MB.", "file")
     # TODO(slice B): store in bucket `covers`, save the public URL.
     lst.cover_url = f"/covers/{listing_id}.jpg"
-    return lst
+    return store.save_listing(lst)
 
 
 @router.get("/phase-check", response_model=Ok, include_in_schema=False)

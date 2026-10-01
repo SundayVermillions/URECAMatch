@@ -46,6 +46,8 @@ class Store(Protocol):
     def student(self, user_id: str) -> StudentProfile | None: ...
     def supervisor(self, user_id: str) -> SupervisorProfile | None: ...
     def listing(self, listing_id: str) -> Listing | None: ...
+    def all_listings(self) -> list[Listing]: ...  # slice B: every listing, any status
+    def save_listing(self, listing: Listing) -> Listing: ...  # slice B: insert or update
     def next_id(self, prefix: str) -> str: ...
 
 
@@ -85,6 +87,15 @@ class MockStore:
 
     def listing(self, listing_id: str) -> Listing | None:
         return next((lst for lst in self.listings if lst.id == listing_id), None)
+
+    # --- Slice B: listings. In memory, an object is already "saved" once it is in the list.
+    def all_listings(self) -> list[Listing]:
+        return list(self.listings)
+
+    def save_listing(self, listing: Listing) -> Listing:
+        if all(x.id != listing.id for x in self.listings):
+            self.listings.append(listing)
+        return listing
 
     def next_id(self, prefix: str) -> str:
         self._counter += 1
@@ -203,6 +214,39 @@ class SupabaseStore(MockStore):
         res = self.client.table("supporting_documents").insert(doc_data).execute()
         return res.data[0] if res.data else doc_data
 
+
+    # --- Slice B: listings (table project_listings) ---
+
+    # Columns that exist in project_listings. Other Listing fields are computed per request
+    # (supervisor_name is joined from users; applicant_count, applied, applied_rank by the router).
+    _LISTING_COLUMNS = {
+        "id", "supervisor_id", "title", "description", "prerequisites", "topic_tags", "available_slots",
+        "filled_slots", "offering_faculty", "research_location", "cover_url", "status", "created_at",
+    }
+
+    @staticmethod
+    def _listing_from_row(row: dict) -> Listing:
+        joined = row.pop("users", None) or {}
+        return Listing.model_validate({**row, "supervisor_name": joined.get("name", "")})
+
+    def all_listings(self) -> list[Listing]:
+        if not self.client:
+            return super().all_listings()
+        res = self.client.table("project_listings").select("*, users(name)").order("created_at").execute()
+        return [self._listing_from_row(r) for r in res.data or []]
+
+    def listing(self, listing_id: str) -> Listing | None:
+        if not self.client:
+            return super().listing(listing_id)
+        res = self.client.table("project_listings").select("*, users(name)").eq("id", listing_id).limit(1).execute()
+        return self._listing_from_row(res.data[0]) if res.data else None
+
+    def save_listing(self, listing: Listing) -> Listing:
+        if not self.client:
+            return super().save_listing(listing)
+        payload = listing.model_dump(mode="json", include=self._LISTING_COLUMNS)
+        self.client.table("project_listings").upsert(payload).execute()
+        return listing
 
 _store: Store | None = None
 
