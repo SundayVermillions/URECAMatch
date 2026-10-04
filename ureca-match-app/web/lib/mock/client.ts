@@ -270,6 +270,7 @@ export class MockClient implements ApiClient {
   async apply(b: M.ApplicationCreate) {
     const u = this.need("student"); this.requireApplicationWindow(); const l = this.listingOr404(b.listing_id);
     const sp = this.student(u.id);
+    if (sp && !sp.profile_complete) throw new M.ApiError(409, "profile_incomplete", "Complete your profile before applying. Go to My Profile to finish it.");
     if (sp && !sp.eligible_for_matching) throw new M.ApiError(409, "not_eligible", "You declined an earlier offer, so you cannot apply again this cycle.");
     if (l.filled_slots >= l.available_slots) throw new M.ApiError(409, "fully_allocated", "All slots on this project are filled.");
     if (b.statement.length < 50) throw new M.ApiError(422, "invalid", "Write at least 50 characters.", "statement");

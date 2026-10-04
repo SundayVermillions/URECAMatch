@@ -29,6 +29,12 @@ def test_REQ_APPLY_1_withdraw_after_window_rejected(as_student, fresh_store, mon
     assert r.status_code == 422 and r.json()["code"] == "window_closed"
 
 
+def test_REQ_APPLY_1_profile_incomplete_rejected(as_student, fresh_store):
+    fresh_store.student("stu-1").profile_complete = False
+    r = as_student.post("/applications", json={"listing_id": "lst-8", "statement": STATEMENT})
+    assert r.status_code == 409 and r.json()["code"] == "profile_incomplete"
+
+
 def test_REQ_APPLY_2_statement_required(as_student):
     r = as_student.post("/applications", json={"listing_id": "lst-8", "statement": "too short"})
     assert r.status_code == 422 and r.json()["field"] == "statement"
