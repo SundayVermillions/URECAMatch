@@ -7,6 +7,8 @@ from fastapi import APIRouter
 from app.deps import SettingsDep, StoreDep, StudentUser, SupervisorUser
 from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
+    AccountStatus,
+    ApplicantStudent,
     ApplicationStatus,
     Listing,
     ListingStatus,
@@ -17,6 +19,7 @@ from app.models import (
     Proposal,
     ProposalCreate,
     ProposalStatus,
+    Window,
 )
 from app.services import windows
 from app.services.notify import notify
@@ -24,13 +27,34 @@ from app.services.notify import notify
 router = APIRouter(tags=["proposals"])
 
 
+DESCRIPTION_MAX_WORDS = 500  # use case 2-4 special requirements
+STATEMENT_MAX_WORDS = 300
+
+
+def _words(text: str) -> int:
+    return len(text.split())
+
+
 @router.post("/proposals", response_model=Proposal, status_code=201)
 def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: SettingsDep) -> Proposal:
     if not windows.in_application_window(store.cycle, settings.now()):  # REQ-PROPOSE-3
         raise invalid("window_closed", "Proposals can only be submitted during an application window.")
+    # REQ-PROPOSE-2: the recipient must be an active project supervisor.
     sup = store.user(body.supervisor_id)
-    if sup is None or store.supervisor(body.supervisor_id) is None:
+    if sup is None or store.supervisor(body.supervisor_id) is None or sup.status != AccountStatus.active:
         raise invalid("unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id")
+    # REQ-PROPOSE-1: title, description and at least one research interest.
+    interests = [t.strip() for t in body.research_interests if t.strip()]
+    if not interests:
+        raise invalid("interests_required", "Add at least one research interest.", "research_interests")
+    if _words(body.description) > DESCRIPTION_MAX_WORDS:
+        raise invalid("too_long", f"Keep the description to {DESCRIPTION_MAX_WORDS} words or fewer.", "description")
+    if _words(body.statement) > STATEMENT_MAX_WORDS:
+        raise invalid("too_long", f"Keep this to {STATEMENT_MAX_WORDS} words or fewer.", "statement")
+    # Attach only your own documents, so nobody can share another student's file.
+    own = {d.id for d in (store.student(user.id).documents if store.student(user.id) else [])}
+    if any(d not in own for d in body.document_ids):
+        raise invalid("unknown_document", "Attach documents from your own profile only.", "document_ids")
     p = Proposal(
         id=store.next_id("prp"),
         student_id=user.id,
@@ -39,13 +63,13 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
         supervisor_name=sup.name,
         title=body.title,
         description=body.description,
-        research_interests=body.research_interests,
+        research_interests=interests,
         statement=body.statement,
         status=ProposalStatus.submitted,
         submitted_at=settings.now(),
         document_ids=body.document_ids,
     )
-    store.proposals.append(p)
+    store.save_proposal(p)
     notify(
         store,
         [sup.id],
@@ -60,16 +84,38 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
 
 @router.get("/me/proposals", response_model=list[Proposal])
 def my_proposals(user: StudentUser, store: StoreDep) -> list[Proposal]:
-    return [p for p in store.proposals if p.student_id == user.id]
+    return store.proposals_for(student_id=user.id)
+
+
+def _with_student(store, p: Proposal) -> Proposal:
+    """REQ-REVPROP-1: attach the proposing student's profile and the documents they attached.
+
+    Read live from the store on every request, so the supervisor always sees the current profile.
+    Returns a copy; the stored proposal is not changed.
+    """
+    u, sp = store.user(p.student_id), store.student(p.student_id)
+    if u is None or sp is None:
+        return p
+    student = ApplicantStudent(
+        id=u.id,
+        name=u.name,
+        school=sp.school,
+        year_of_study=sp.year_of_study,
+        cgpa=sp.cgpa,
+        completed_modules=sp.completed_modules,
+        research_interests=sp.research_interests,
+    )
+    documents = [d for d in sp.documents if d.id in p.document_ids]
+    return p.model_copy(update={"student": student, "documents": documents})
 
 
 @router.get("/supervisor/proposals", response_model=list[Proposal])
 def incoming(user: SupervisorUser, store: StoreDep) -> list[Proposal]:  # REQ-REVPROP-1
-    return [p for p in store.proposals if p.supervisor_id == user.id]
+    return [_with_student(store, p) for p in store.proposals_for(supervisor_id=user.id)]
 
 
 def _get(store, proposal_id: str, user) -> Proposal:
-    p = next((p for p in store.proposals if p.id == proposal_id), None)
+    p = store.proposal(proposal_id)
     if p is None:
         raise not_found("Proposal")
     if p.supervisor_id != user.id:
@@ -79,9 +125,19 @@ def _get(store, proposal_id: str, user) -> Proposal:
     return p
 
 
+def _require_cycle_open(store, settings) -> None:
+    """REQ-REVPROP-3: a student may only be registered while the application cycle is running.
+
+    Declining stays open outside the cycle: SRS 4.18.3 restricts accepting only.
+    """
+    if windows.phase(store.cycle, settings.now()).window in (Window.before_cycle, Window.closed):
+        raise invalid("cycle_closed", "The application cycle is not open, so this proposal can no longer be accepted.")
+
+
 @router.post("/supervisor/proposals/{proposal_id}/accept", response_model=Proposal)
 def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Proposal:
     p = _get(store, proposal_id, user)
+    _require_cycle_open(store, settings)  # REQ-REVPROP-3
     now = settings.now()
     p.status, p.decided_at = ProposalStatus.accepted, now
     # REQ-REVPROP-2: register the student. A one-slot listing plus an accepted match makes the
@@ -100,8 +156,10 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
         status=ListingStatus.closed,
         created_at=now,
     )
-    store.listings.append(lst)
+    store.save_listing(lst)
     phase = windows.phase(store.cycle, now)
+    # Slice D (matches) and slice C (applications) are still in memory in Supabase mode.
+    # TODO(slice D/C): save through the store once those tables are migrated.
     store.matches.append(
         Match(
             id=store.next_id("mt"),
@@ -124,6 +182,8 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
     sp = store.student(p.student_id)
     if sp:
         sp.eligible_for_matching = False
+        store.save_student(sp)  # in Supabase mode store.student() returns a copy, so the flag must be saved
+    store.save_proposal(p)
     notify(
         store,
         [p.student_id],
@@ -140,6 +200,7 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
 def decline(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Proposal:
     p = _get(store, proposal_id, user)
     p.status, p.decided_at = ProposalStatus.declined, settings.now()
+    store.save_proposal(p)
     notify(
         store,
         [p.student_id],

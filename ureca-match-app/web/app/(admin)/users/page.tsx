@@ -38,13 +38,13 @@ export default function Users() {
       {error && !error.field && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
       <div className="flex items-center gap-1.5 flex-wrap mb-4">
         <div className="relative w-64 mr-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"><I.Search size={16} /></span><Input id="q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name or e-mail" className="w-full pl-9" /></div>
-        <span className="overline">Role</span>
+        <span className="eyebrow">Role</span>
         {[undefined, "student", "supervisor", "admin"].map((r) => <Chip key={String(r)} active={role === r} onClick={() => setRole(r as Role | undefined)}>{r ?? "Any"}</Chip>)}
-        <span className="overline ml-2">Status</span>
+        <span className="eyebrow ml-2">Status</span>
         {[undefined, "active", "inactive", "pending_verification"].map((s) => <Chip key={String(s)} active={status === s} onClick={() => setStatus(s as AccountStatus | undefined)}>{s === "pending_verification" ? "Unverified" : s ?? "Any"}</Chip>)}
       </div>
       <div className="bg-surface border border-border rounded-card overflow-hidden">
-        <div className="grid grid-cols-[1fr_140px_120px_120px_170px] gap-3 px-4 py-2.5 border-b border-border overline"><span>User</span><span>Role</span><span>School</span><span>Status</span><span /></div>
+        <div className="grid grid-cols-[1fr_140px_120px_120px_170px] gap-3 px-4 py-2.5 border-b border-border eyebrow"><span>User</span><span>Role</span><span>School</span><span>Status</span><span /></div>
         {loading && !data ? <Loading /> : (data ?? []).map((u) => (
           <div key={u.user.id} className="grid grid-cols-[1fr_140px_120px_120px_170px] gap-3 items-center px-4 py-2.5 border-b border-border last:border-b-0">
             <div className="flex items-center gap-2.5 min-w-0"><Avatar name={u.user.name} size={30} tone={u.user.role === "student" ? "neutral" : "navy"} /><div className="min-w-0"><div className="text-[13.5px] font-semibold truncate">{u.user.name}</div><div className="text-[12px] text-muted truncate">{u.user.email}</div></div></div>

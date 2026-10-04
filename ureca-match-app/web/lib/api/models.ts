@@ -41,6 +41,7 @@ export type SupervisorSummary = S["SupervisorSummary"];
 export type Application = S["Application"];
 export type ApplicationCreate = S["ApplicationCreate"];
 export type Applicant = S["Applicant"];
+export type ApplicantStudent = S["ApplicantStudent"];
 export type ApplicantRanking = S["ApplicantRanking"];
 export type Proposal = S["Proposal"];
 export type ProposalCreate = S["ProposalCreate"];

@@ -124,6 +124,7 @@ class Document(BaseModel):
     file_size: int
     uploaded_at: datetime
     url: str | None = None  # signed URL for in-app viewing (REQ-VRANK-3)
+    storage_path: str | None = None  # path in Storage bucket (REQ-PROF-3)
 
 
 # ---------------------------------------------------------------- users
@@ -319,6 +320,7 @@ class ListingUpdate(BaseModel):
     available_slots: int | None = Field(default=None, ge=1, le=20)
     offering_faculty: str | None = None
     research_location: str | None = None
+    publish: bool | None = None  # True publishes a draft (REQ-PROJ-1). Closing has its own endpoint.
 
 
 class SupervisorSummary(BaseModel):
@@ -405,6 +407,9 @@ class Proposal(BaseModel):
     submitted_at: datetime
     decided_at: datetime | None = None
     document_ids: list[str] = []
+    # Filled in only when a supervisor reads their proposals (REQ-REVPROP-1). Not stored.
+    student: ApplicantStudent | None = None
+    documents: list[Document] = []
 
 
 class ProposalCreate(BaseModel):

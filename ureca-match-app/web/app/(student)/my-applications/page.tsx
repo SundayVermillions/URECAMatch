@@ -48,7 +48,7 @@ export default function MyApplications() {
         <Card className="mb-5 border-accent-border">
           <div className="flex items-start gap-4">
             <div className="flex-1">
-              <div className="overline mb-1">Match offer · Round {me?.phase.round_number}</div>
+              <div className="eyebrow mb-1">Match offer · Round {me?.phase.round_number}</div>
               <div className="font-display text-[17px] font-bold">{m.listing_title}</div>
               <div className="text-[13px] text-muted mt-0.5">{m.supervisor_name}{m.preference_rank ? ` · your preference ${m.preference_rank}` : ""}</div>
               {m.status === "published" && <div className="text-[12.5px] text-muted mt-2">Respond by <strong>{fmtDate(m.offer_expires_at)}</strong>. Declining reopens the slot for others and makes you ineligible for later rounds this cycle. No response by the deadline counts as a decline.</div>}

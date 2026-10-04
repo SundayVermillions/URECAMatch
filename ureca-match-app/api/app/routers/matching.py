@@ -47,7 +47,7 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
     r = _round(store, round_id)
     now = settings.now()
     if now <= r.review_end:  # REQ-EXEC-1
-        raise conflict("review_open", f"Matching can run after the review window closes on {r.review_end:%-d %b}.")
+        raise conflict("review_open", f"Matching can run after the review window closes on {r.review_end:%d %b}.")
     if r.executed_at is not None:  # REQ-EXEC-2
         raise conflict("already_executed", "Matching has already been run for this round.")
     apps = [a for a in store.applications if a.round_id == round_id and a.status == ApplicationStatus.submitted]
@@ -201,7 +201,7 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
         [m.student_id for m in ms if m.status == MatchStatus.published],
         NotificationEvent.offer_received,
         "You have a match offer",
-        f"Respond by {expires:%-d %b}.",
+        f"Respond by {expires:%d %b}.",
         now,
         "/my-applications",
     )  # REQ-PUB-2

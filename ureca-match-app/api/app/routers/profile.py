@@ -9,6 +9,7 @@ from fastapi import APIRouter, File, UploadFile
 from app.deps import SettingsDep, StoreDep, StudentUser
 from app.errors import invalid, not_found
 from app.models import Document, ProfileUpdate, StudentProfile
+from app.services.storage import get_storage
 
 router = APIRouter(tags=["profile"])
 
@@ -31,6 +32,7 @@ def update_profile(body: ProfileUpdate, user: StudentUser, store: StoreDep) -> S
     p.school, p.cgpa, p.year_of_study = body.school, body.cgpa, body.year_of_study
     p.completed_modules, p.research_interests = body.completed_modules, body.research_interests
     p.profile_complete = True  # REQ-PROF-1
+    store.save_student(p)
     return p
 
 
@@ -43,14 +45,20 @@ async def upload_document(
     data = await file.read()
     if len(data) > MAX_PDF_BYTES:
         raise invalid("too_large", "The file is larger than 5 MB.", "file")
+
+    doc_id = store.next_id("doc")
+    storage = get_storage()
+    path = storage.put("documents", f"{user.id}/{doc_id}.pdf", data, content_type="application/pdf")
+
     doc = Document(
-        id=store.next_id("doc"),
+        id=doc_id,
         owner_id=user.id,
         file_name=file.filename or "document.pdf",
         file_size=len(data),
         uploaded_at=settings.now(),
+        storage_path=path,
     )
-    # TODO(slice A): put bytes in Supabase Storage bucket `documents` and store the path.
+    store.save_document(doc.model_dump(mode="json", exclude={"url"}))
     p = store.student(user.id)
     if p:
         p.documents.append(doc)

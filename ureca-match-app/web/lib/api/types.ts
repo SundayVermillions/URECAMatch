@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend */
+        post: operations["resend_auth_resend_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/sign-in": {
         parameters: {
             query?: never;
@@ -166,7 +183,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Browse */
+        /**
+         * Browse
+         * @description REQ-BROWSE-1: open in every phase, including before the cycle opens.
+         *     REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive.
+         */
         get: operations["browse_listings_get"];
         put?: never;
         post?: never;
@@ -200,7 +221,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Supervisors */
+        /**
+         * Supervisors
+         * @description Picker for proposals (REQ-PROPOSE-2): active supervisors only, sorted by name.
+         */
         get: operations["supervisors_supervisors_get"];
         put?: never;
         post?: never;
@@ -271,7 +295,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cover */
+        /**
+         * Cover
+         * @description Upload or replace a listing's cover image. Changing the cover is an edit, so REQ-PROJ-2 applies.
+         */
         post: operations["cover_supervisor_listings__listing_id__cover_post"];
         delete?: never;
         options?: never;
@@ -1156,6 +1183,8 @@ export interface components {
             uploaded_at: string;
             /** Url */
             url?: string | null;
+            /** Storage Path */
+            storage_path?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1265,6 +1294,8 @@ export interface components {
             offering_faculty?: string | null;
             /** Research Location */
             research_location?: string | null;
+            /** Publish */
+            publish?: boolean | null;
         };
         /** ManualAssignRequest */
         ManualAssignRequest: {
@@ -1439,6 +1470,12 @@ export interface components {
              * @default []
              */
             document_ids: string[];
+            student?: components["schemas"]["ApplicantStudent"] | null;
+            /**
+             * Documents
+             * @default []
+             */
+            documents: components["schemas"]["Document"][];
         };
         /** ProposalCreate */
         ProposalCreate: {
@@ -1485,6 +1522,14 @@ export interface components {
             /** Password */
             password: string;
             role: components["schemas"]["Role"];
+        };
+        /** ResendCodeRequest */
+        ResendCodeRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
         };
         /**
          * Role
@@ -1797,6 +1842,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["VerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_auth_resend_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResendCodeRequest"];
             };
         };
         responses: {

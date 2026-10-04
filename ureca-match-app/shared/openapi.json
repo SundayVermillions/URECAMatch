@@ -88,6 +88,47 @@
         }
       }
     },
+    "/auth/resend": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Resend",
+        "operationId": "resend_auth_resend_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/sign-in": {
       "post": {
         "tags": [
@@ -761,6 +802,7 @@
           "listings"
         ],
         "summary": "Browse",
+        "description": "REQ-BROWSE-1: open in every phase, including before the cycle opens.\nREQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive.",
         "operationId": "browse_listings_get",
         "parameters": [
           {
@@ -968,6 +1010,7 @@
           "listings"
         ],
         "summary": "Supervisors",
+        "description": "Picker for proposals (REQ-PROPOSE-2): active supervisors only, sorted by name.",
         "operationId": "supervisors_supervisors_get",
         "parameters": [
           {
@@ -1337,6 +1380,7 @@
           "listings"
         ],
         "summary": "Cover",
+        "description": "Upload or replace a listing's cover image. Changing the cover is an edit, so REQ-PROJ-2 applies.",
         "operationId": "cover_supervisor_listings__listing_id__cover_post",
         "parameters": [
           {
@@ -4801,6 +4845,17 @@
               }
             ],
             "title": "Url"
+          },
+          "storage_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Path"
           }
         },
         "type": "object",
@@ -5090,6 +5145,17 @@
               }
             ],
             "title": "Research Location"
+          },
+          "publish": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publish"
           }
         },
         "type": "object",
@@ -5598,6 +5664,24 @@
             "type": "array",
             "title": "Document Ids",
             "default": []
+          },
+          "student": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApplicantStudent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "type": "array",
+            "title": "Documents",
+            "default": []
           }
         },
         "type": "object",
@@ -5719,6 +5803,20 @@
           "role"
         ],
         "title": "RegisterRequest"
+      },
+      "ResendCodeRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ResendCodeRequest"
       },
       "Role": {
         "type": "string",

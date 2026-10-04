@@ -6,6 +6,7 @@ export interface ApiClient {
   // slice A
   register(body: M.RegisterRequest): Promise<void>;
   verify(body: M.VerifyRequest): Promise<void>;
+  resendCode(email: string): Promise<void>;
   signIn(body: M.SignInRequest): Promise<M.Session>;
   me(): Promise<M.Me>;
   getProfile(): Promise<M.StudentProfile>;
@@ -23,6 +24,7 @@ export interface ApiClient {
   createListing(body: M.ListingCreate): Promise<M.Listing>;
   updateListing(id: string, body: M.ListingUpdate): Promise<M.Listing>;
   closeListing(id: string): Promise<M.Listing>;
+  uploadCover(id: string, file: File): Promise<M.Listing>;
   propose(body: M.ProposalCreate): Promise<M.Proposal>;
   myProposals(): Promise<M.Proposal[]>;
   incomingProposals(): Promise<M.Proposal[]>;

@@ -9,6 +9,7 @@ Rule: routers never query directly. They call a service, the service calls the s
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 from app.db import seed_data
@@ -38,12 +39,18 @@ class Store(Protocol):
     notifications: list[Notification]
     audit: list[AuditEntry]
     applicant_rankings: dict[str, list[str]]  # f"{listing_id}:{round_id}" -> ordered application ids
+    verification_codes: dict[str, tuple[str, datetime]]  # email -> (code, expiry)
 
     def user(self, user_id: str) -> User | None: ...
     def user_by_email(self, email: str) -> User | None: ...
     def student(self, user_id: str) -> StudentProfile | None: ...
     def supervisor(self, user_id: str) -> SupervisorProfile | None: ...
     def listing(self, listing_id: str) -> Listing | None: ...
+    def all_listings(self) -> list[Listing]: ...  # slice B: every listing, any status
+    def save_listing(self, listing: Listing) -> Listing: ...  # slice B: insert or update
+    def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]: ...  # slice B
+    def proposal(self, proposal_id: str) -> Proposal | None: ...  # slice B
+    def save_proposal(self, proposal: Proposal) -> Proposal: ...  # slice B: insert or update
     def next_id(self, prefix: str) -> str: ...
 
 
@@ -66,6 +73,7 @@ class MockStore:
             # Prof. Chua has started ranking lst-1 for Round 2
             "lst-1:rnd-2": [a.id for a in self.applications if a.listing_id == "lst-1" and a.round_id == "rnd-2"][:4],
         }
+        self.verification_codes: dict[str, tuple[str, datetime]] = {}
         self._counter = 1000
 
     def user(self, user_id: str) -> User | None:
@@ -83,29 +91,223 @@ class MockStore:
     def listing(self, listing_id: str) -> Listing | None:
         return next((lst for lst in self.listings if lst.id == listing_id), None)
 
+    # --- Slice B: listings. In memory, an object is already "saved" once it is in the list.
+    def all_listings(self) -> list[Listing]:
+        return list(self.listings)
+
+    def save_listing(self, listing: Listing) -> Listing:
+        if all(x.id != listing.id for x in self.listings):
+            self.listings.append(listing)
+        return listing
+
+    # --- Slice B: self-proposed projects
+    def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]:
+        return [
+            p for p in self.proposals
+            if (student_id is None or p.student_id == student_id) and (supervisor_id is None or p.supervisor_id == supervisor_id)
+        ]
+
+    def proposal(self, proposal_id: str) -> Proposal | None:
+        return next((p for p in self.proposals if p.id == proposal_id), None)
+
+    def save_proposal(self, proposal: Proposal) -> Proposal:
+        if all(x.id != proposal.id for x in self.proposals):
+            self.proposals.append(proposal)
+        return proposal
+
     def next_id(self, prefix: str) -> str:
         self._counter += 1
         return f"{prefix}-{self._counter}"
 
+    def save_student(self, student: StudentProfile) -> StudentProfile:
+        """Save or update student profile in mock store."""
+        for i, s in enumerate(self.students):
+            if s.user_id == student.user_id:
+                self.students[i] = student
+                return student
+        self.students.append(student)
+        return student
+
+    def save_supervisor(self, supervisor: SupervisorProfile) -> SupervisorProfile:
+        """Save or update supervisor profile in mock store."""
+        for i, s in enumerate(self.supervisors):
+            if s.user_id == supervisor.user_id:
+                self.supervisors[i] = supervisor
+                return supervisor
+        self.supervisors.append(supervisor)
+        return supervisor
+
+    def save_document(self, doc_data: dict) -> dict:
+        """Save document in mock store."""
+        # In mock mode, the document is already appended to student.documents in memory
+        return doc_data
+
 
 class SupabaseStore(MockStore):
-    """TODO(all slices): replace the in-memory lists with Supabase queries table by table.
-
-    Keep the same method names so services do not change. Suggested order:
-    slice A users/students/supervisors, slice B listings/proposals,
-    slice C applications/applicant_rankings, slice D cycle/matches/audit, slice E notifications.
-    Until then this subclass behaves like MockStore so the app keeps running.
-    """
+    """Real Supabase store. Slice A tables are persisted to Postgres."""
 
     def __init__(self) -> None:
         super().__init__()
-        from supabase import create_client  # noqa: F401  (imported here so mock mode needs no network)
+        from supabase import create_client
 
         from app.settings import get_settings
 
         s = get_settings()
         self.client = create_client(s.supabase_url, s.supabase_service_role_key) if s.supabase_url else None
 
+    def next_id(self, prefix: str) -> str:
+        import uuid
+
+        short_id = uuid.uuid4().hex[:8]
+        return f"{prefix}-{short_id}"
+    
+    # --- Slice A: Users & Profiles Read ---
+
+    def user(self, user_id: str) -> User | None:
+        if not self.client:
+            return super().user(user_id)
+        res = self.client.table("users").select("*").eq("id", user_id).limit(1).execute()
+        if not res.data:
+            return None
+        return User.model_validate(res.data[0])
+
+    def user_by_email(self, email: str) -> User | None:
+        if not self.client:
+            return super().user_by_email(email)
+        res = self.client.table("users").select("*").ilike("email", email.strip()).limit(1).execute()
+        if not res.data:
+            return None
+        return User.model_validate(res.data[0])
+
+    def student(self, user_id: str) -> StudentProfile | None:
+        if not self.client:
+            return super().student(user_id)
+        res = self.client.table("student_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        if not res.data:
+            return None
+        row = res.data[0]
+        # Query supporting_documents by owner_id
+        doc_res = self.client.table("supporting_documents").select("*").eq("owner_id", user_id).execute()
+        row["documents"] = doc_res.data or []
+        return StudentProfile.model_validate(row)
+
+    def supervisor(self, user_id: str) -> SupervisorProfile | None:
+        if not self.client:
+            return super().supervisor(user_id)
+        res = self.client.table("supervisor_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        if not res.data:
+            return None
+        return SupervisorProfile.model_validate(res.data[0])
+
+    # --- Slice A: Users & Profiles Write / Mutation ---
+
+    def save_user(self, user: User) -> User:
+        """Upsert a user record."""
+        if not self.client:
+            return user
+        payload = user.model_dump(mode="json")
+        self.client.table("users").upsert(payload).execute()
+        return user
+
+    def save_student(self, student: StudentProfile) -> StudentProfile:
+        """Upsert a student profile record."""
+        if not self.client:
+            return student
+        payload = student.model_dump(mode="json", exclude={"documents"})
+        self.client.table("student_profiles").upsert(payload).execute()
+        return student
+
+    def save_supervisor(self, supervisor: SupervisorProfile) -> SupervisorProfile:
+        """Upsert a supervisor profile record."""
+        if not self.client:
+            return supervisor
+        payload = supervisor.model_dump(mode="json")
+        self.client.table("supervisor_profiles").upsert(payload).execute()
+        return supervisor
+
+    def save_document(self, doc_data: dict) -> dict:
+        """Insert a document record into Postgres."""
+        if not self.client:
+            return doc_data
+        res = self.client.table("supporting_documents").insert(doc_data).execute()
+        return res.data[0] if res.data else doc_data
+
+
+    # --- Slice B: listings (table project_listings) ---
+
+    # Columns that exist in project_listings. Other Listing fields are computed per request
+    # (supervisor_name is joined from users; applicant_count, applied, applied_rank by the router).
+    _LISTING_COLUMNS = {
+        "id", "supervisor_id", "title", "description", "prerequisites", "topic_tags", "available_slots",
+        "filled_slots", "offering_faculty", "research_location", "cover_url", "status", "created_at",
+    }
+
+    @staticmethod
+    def _listing_from_row(row: dict) -> Listing:
+        joined = row.pop("users", None) or {}
+        return Listing.model_validate({**row, "supervisor_name": joined.get("name", "")})
+
+    def all_listings(self) -> list[Listing]:
+        if not self.client:
+            return super().all_listings()
+        res = self.client.table("project_listings").select("*, users(name)").order("created_at").execute()
+        return [self._listing_from_row(r) for r in res.data or []]
+
+    def listing(self, listing_id: str) -> Listing | None:
+        if not self.client:
+            return super().listing(listing_id)
+        res = self.client.table("project_listings").select("*, users(name)").eq("id", listing_id).limit(1).execute()
+        return self._listing_from_row(res.data[0]) if res.data else None
+
+    def save_listing(self, listing: Listing) -> Listing:
+        if not self.client:
+            return super().save_listing(listing)
+        payload = listing.model_dump(mode="json", include=self._LISTING_COLUMNS)
+        self.client.table("project_listings").upsert(payload).execute()
+        return listing
+
+    # --- Slice B: self-proposed projects (table self_proposed_applications) ---
+
+    _PROPOSAL_COLUMNS = {
+        "id", "student_id", "supervisor_id", "title", "description", "research_interests", "statement",
+        "status", "submitted_at", "decided_at", "document_ids",
+    }
+    # Two foreign keys point at users, so each join names the constraint it follows.
+    _PROPOSAL_SELECT = (
+        "*, student:users!self_proposed_applications_student_id_fkey(name),"
+        " supervisor:users!self_proposed_applications_supervisor_id_fkey(name)"
+    )
+
+    @staticmethod
+    def _proposal_from_row(row: dict) -> Proposal:
+        student = row.pop("student", None) or {}
+        supervisor = row.pop("supervisor", None) or {}
+        names = {"student_name": student.get("name", ""), "supervisor_name": supervisor.get("name", "")}
+        return Proposal.model_validate({**row, **names})
+
+    def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]:
+        if not self.client:
+            return super().proposals_for(student_id, supervisor_id)
+        q = self.client.table("self_proposed_applications").select(self._PROPOSAL_SELECT)
+        if student_id is not None:
+            q = q.eq("student_id", student_id)
+        if supervisor_id is not None:
+            q = q.eq("supervisor_id", supervisor_id)
+        return [self._proposal_from_row(r) for r in q.order("submitted_at").execute().data or []]
+
+    def proposal(self, proposal_id: str) -> Proposal | None:
+        if not self.client:
+            return super().proposal(proposal_id)
+        table = self.client.table("self_proposed_applications")
+        res = table.select(self._PROPOSAL_SELECT).eq("id", proposal_id).limit(1).execute()
+        return self._proposal_from_row(res.data[0]) if res.data else None
+
+    def save_proposal(self, proposal: Proposal) -> Proposal:
+        if not self.client:
+            return super().save_proposal(proposal)
+        payload = proposal.model_dump(mode="json", include=self._PROPOSAL_COLUMNS)
+        self.client.table("self_proposed_applications").upsert(payload).execute()
+        return proposal
 
 _store: Store | None = None
 

@@ -43,12 +43,12 @@ export default function ReviewMatches() {
         )} />
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
       <div className="flex items-center gap-1.5 mb-4">
-        <span className="overline">Status</span>
+        <span className="eyebrow">Status</span>
         {[undefined, "proposed", "approved", "rejected", "reassigned", "published", "accepted", "declined"].map((v) => <Chip key={String(v)} active={status === v} onClick={() => setStatus(v as MatchStatus | undefined)}>{v ? v[0].toUpperCase() + v.slice(1) : "All"}</Chip>)}
       </div>
       {matches.loading && !matches.data ? <Loading /> : !matches.data?.length ? <Empty title="No matches" note={status ? "Nothing with this status." : "Run matching first."} /> : (
         <div className="bg-surface border border-border rounded-card overflow-hidden">
-          <div className="flex items-center gap-3.5 px-4 py-2.5 border-b border-border overline"><span className="flex-1">Student → project</span><span className="w-40">Status</span><span className="w-24" /></div>
+          <div className="flex items-center gap-3.5 px-4 py-2.5 border-b border-border eyebrow"><span className="flex-1">Student → project</span><span className="w-40">Status</span><span className="w-24" /></div>
           {matches.data.map((m) => (
             <div key={m.id} className="border-b border-border last:border-b-0">
               <div className="flex items-center gap-3.5 px-4 py-3">

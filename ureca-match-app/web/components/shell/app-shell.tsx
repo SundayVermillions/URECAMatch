@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useMe } from "./app-provider";
 import { I } from "./icons";
+import { GlassIndicator, LiquidGlassFilter } from "./liquid-glass";
 import type { Role } from "@/lib/api/models";
 import { Avatar } from "@/components/ui";
 
@@ -20,7 +21,7 @@ const NAV: Record<Role, (unread: number, extra: Record<string, number>) => Item[
   ],
   supervisor: (unread, x) => [
     { href: "/projects", label: "My projects", icon: <I.Folder /> },
-    { href: "/proposals", label: "Proposals from students", icon: <I.Bulb />, badge: x.proposals },
+    { href: "/proposals", label: "Proposals", icon: <I.Bulb />, badge: x.proposals },
     { href: "/approvals", label: "Match approvals", icon: <I.Check />, badge: x.approvals },
     { href: "/notifications", label: "Notifications", icon: <I.Bell />, badge: unread },
   ],
@@ -49,44 +50,47 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
 
   if (loading || !me || me.user.role !== role) return <div className="p-10 text-muted">Loading…</div>;
   const items = NAV[role](me.unread_notifications, badges);
-  const sub = role === "student" ? `${me.student?.school || "Student"} · Year ${me.student?.year_of_study ?? "?"}` : role === "supervisor" ? `Project Supervisor · ${me.supervisor?.faculty ?? ""}` : "URECA Programme Admin";
+  const activeIndex = items.findIndex((it) => path === it.href || path.startsWith(it.href + "/"));
+  const sub = role === "student" ? `${me.student?.school || "Student"} · Year ${me.student?.year_of_study ?? "?"}` : role === "supervisor" ? `Supervisor${me.supervisor?.faculty ? ` · ${me.supervisor.faculty}` : ""}` : "URECA Programme Admin";
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-60 shrink-0 bg-surface border-r border-border flex flex-col justify-between px-4 py-6 sticky top-0 h-screen">
+      <div className="w-60 shrink-0 p-3 pr-0 sticky top-0 h-screen">
+      {/* Frosted glass, one layer only: translucent white, blur, a single hairline and a soft shadow. */}
+      <aside className="h-full rounded-[20px] bg-white/60 backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-black/[0.05] shadow-[0_4px_24px_rgba(0,0,0,0.04)] flex flex-col justify-between p-3">
         <div>
-          <div className="flex items-center gap-2 px-2 pb-6">
+          <div className="flex items-center gap-2.5 px-2.5 pb-6 pt-2">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="12" r="3.4" stroke="var(--navy)" strokeWidth="1.8" /><circle cx="18" cy="12" r="3.4" stroke="var(--navy)" strokeWidth="1.8" /><line x1="9.4" y1="12" x2="14.6" y2="12" stroke="var(--navy)" strokeWidth="1.8" strokeLinecap="round" /></svg>
-            <span className="font-display font-bold text-[16.5px] tracking-tight">URECAMatch</span>
+            <span className="font-display font-semibold text-[16px] tracking-[-0.02em]">URECAMatch</span>
           </div>
-          <div className="overline px-3 pb-2">{SECTION[role]}</div>
-          <nav className="flex flex-col gap-0.5">
-            {items.map((it) => {
-              const active = path === it.href || path.startsWith(it.href + "/");
+          <div className="eyebrow px-2.5 pb-2">{SECTION[role]}</div>
+          <LiquidGlassFilter />
+          <nav className="relative flex flex-col gap-0.5">
+            <GlassIndicator index={activeIndex} />
+            {items.map((it, i) => {
+              const active = i === activeIndex;
               return (
-                <Link key={it.href} href={it.href} className={`flex items-center gap-[11px] px-3 py-2.5 rounded-button font-display text-[14px] ${active ? "bg-accent-soft text-accent-ink font-semibold" : "text-muted font-medium hover:bg-sunken hover:text-text"}`}>
-                  {it.icon}
-                  {it.label}
-                  {it.badge ? <span className="ml-auto bg-bad text-white text-[10.5px] font-bold rounded-pill px-[6.5px] py-px">{it.badge}</span> : null}
+                <Link key={it.href} href={it.href} className={`group flex items-center gap-3 h-10 px-2.5 rounded-[12px] font-display text-[14px] transition-colors ${active ? "text-text font-semibold" : "text-muted font-medium hover:bg-black/[0.03] hover:text-text"}`}>
+                  <span className={`shrink-0 ${active ? "text-text" : "text-faint group-hover:text-muted"}`}>{it.icon}</span>
+                  <span className="truncate">{it.label}</span>
+                  {it.badge ? <span className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full bg-accent text-white text-[11px] font-semibold tabular">{it.badge}</span> : null}
                 </Link>
               );
             })}
           </nav>
         </div>
-        <div className="flex flex-col gap-2.5">
-          <div className="h-px bg-border" />
-          <div className="flex items-center gap-2.5 p-2">
-            <Avatar name={me.user.name} size={32} tone="navy" />
-            <div className="min-w-0">
-              <div className="text-[13.5px] font-semibold truncate">{me.user.name}</div>
-              <div className="text-[11.5px] text-faint truncate">{sub}</div>
-            </div>
+        <div className="flex items-center gap-2.5 px-2 pt-3 border-t border-black/[0.06]">
+          <Avatar name={me.user.name} size={32} tone="navy" />
+          <div className="min-w-0 flex-1" title={`${me.user.name} · ${sub}`}>
+            <div className="text-[13.5px] font-medium truncate">{me.user.name}</div>
+            <div className="text-[12px] text-faint truncate">{sub}</div>
           </div>
-          <button onClick={signOut} className="text-left text-[12.5px] text-muted px-2 hover:text-text">Sign out</button>
+          <button onClick={signOut} title="Sign out" aria-label="Sign out" className="shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-full text-faint transition-colors hover:text-text hover:bg-black/[0.06]"><I.LogOut size={16} /></button>
         </div>
       </aside>
+      </div>
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <div className="max-w-[1080px] py-6 pl-10 pr-5">{children}</div>
+        <div className="max-w-[1080px] pt-10 pb-16 pl-12 pr-10">{children}</div>
       </main>
     </div>
   );
@@ -95,16 +99,16 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
 /** Page title row with optional description, back link and right-hand slot (deadline chip, action). */
 export function PageHeader({ title, description, back, right }: { title: string; description?: string; back?: { href: string; label: string }; right?: React.ReactNode }) {
   return (
-    <div className="mb-5">
+    <div className="mb-8">
       {back && (
-        <Link href={back.href} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted mb-3.5 hover:text-text">
+        <Link href={back.href} className="inline-flex items-center gap-1 text-[13.5px] font-medium text-accent mb-4 hover:text-accent-ink">
           <I.ChevronLeft /> {back.label}
         </Link>
       )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1>{title}</h1>
-          {description && <div className="text-[13.5px] text-muted mt-1">{description}</div>}
+          {description && <div className="text-[15px] text-muted mt-2 max-w-[640px] leading-[1.5]">{description}</div>}
         </div>
         {right && <div className="shrink-0">{right}</div>}
       </div>

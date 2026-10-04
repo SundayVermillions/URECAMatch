@@ -91,6 +91,12 @@ export class MockClient implements ApiClient {
     if (b.code !== "000000") throw new M.ApiError(422, "bad_code", "That code is not correct. Check your e-mail and try again.", "code");
     u.status = "active";
   }
+  async resendCode(email: string) {
+    await sleep();
+    const u = this.db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (!u) throw new M.ApiError(422, "unknown_email", "No account found for this e-mail.", "email");
+    if (u.status !== "pending_verification") throw new M.ApiError(409, "already_active", "This account is already active. Sign in instead.");
+  }
   async signIn(b: M.SignInRequest): Promise<M.Session> {
     await sleep();
     const u = this.db.users.find((u) => u.email.toLowerCase() === b.email.toLowerCase());
@@ -147,10 +153,14 @@ export class MockClient implements ApiClient {
   // ---- slice B
   async browse(f: M.ListingFilters = {}) {
     const u = this.user(); await sleep(80);
+    // REQ-BROWSE-2: same rules as routers/listings.py. Fields are joined with a line break,
+    // so a keyword never matches across the end of one field and the start of the next.
+    const lc = (x?: string) => (x ?? "").toLowerCase();
     return this.db.listings.filter((l) => l.status === "published"
-      && (!f.q || (l.title + l.description + l.topic_tags.join(" ")).toLowerCase().includes(f.q.toLowerCase()))
-      && (!f.school || l.offering_faculty === f.school) && (!f.tag || l.topic_tags.includes(f.tag))
-      && (!f.supervisor || l.supervisor_name.toLowerCase().includes(f.supervisor.toLowerCase())))
+      && (!f.q || lc([l.title, l.description, ...l.topic_tags].join("\n")).includes(lc(f.q)))
+      && (!f.school || lc(l.offering_faculty) === lc(f.school))
+      && (!f.tag || l.topic_tags.some((t) => lc(t) === lc(f.tag)))
+      && (!f.supervisor || lc(l.supervisor_name).includes(lc(f.supervisor))))
       .map((l) => this.decorate(l, u));
   }
   async listing(id: string) {
@@ -158,10 +168,25 @@ export class MockClient implements ApiClient {
     if (l.status !== "published" && u.id !== l.supervisor_id && u.role !== "admin") throw new M.ApiError(404, "not_found", "Project was not found.");
     return this.decorate(l, u);
   }
-  async supervisors() { this.user(); return this.db.supervisors.map((s) => ({ id: s.user_id, name: this.db.users.find((u) => u.id === s.user_id)!.name, faculty: s.faculty })); }
+  async supervisors() { // REQ-PROPOSE-2 picker: active supervisors only, sorted by surname-ish name
+    this.user();
+    const bare = (n: string) => n.replace(/^(Assoc\. )?(Prof\. |Dr\. )/, "");
+    return this.db.supervisors.map((s) => ({ s, u: this.db.users.find((u) => u.id === s.user_id) }))
+      .filter((x) => x.u && x.u.status === "active")
+      .map(({ s, u }) => ({ id: s.user_id, name: u!.name, faculty: s.faculty }))
+      .sort((a, b) => bare(a.name).localeCompare(bare(b.name)));
+  }
   async myListings() { const u = this.need("supervisor"); return this.db.listings.filter((l) => l.supervisor_id === u.id).map((l) => this.decorate(l, u)); }
+  /** True once the cycle closing date has passed (REQ-PROJ-1, REQ-PROJ-2), as in routers/listings.py. */
+  private cycleClosed() { return this.now.getTime() > Date.parse(this.db.cycle.closing_date); }
+  private checkListingText(title?: string | null, description?: string | null) {
+    if (title != null && title.trim().length < 5) throw new M.ApiError(422, "title_too_short", "Give the project a title of at least 5 characters.", "title");
+    if (description != null && description.trim().length < 20) throw new M.ApiError(422, "description_too_short", "Describe the project in at least 20 characters.", "description");
+  }
   async createListing(b: M.ListingCreate) {
     const u = this.need("supervisor");
+    if (b.publish !== false && this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Save this as a draft for the next cycle.");
+    this.checkListingText(b.title, b.description);
     const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, title: b.title, description: b.description,
       prerequisites: b.prerequisites ?? [], topic_tags: b.topic_tags ?? [], available_slots: b.available_slots, filled_slots: 0,
       offering_faculty: b.offering_faculty, research_location: b.research_location, cover_url: null, status: b.publish === false ? "draft" : "published",
@@ -171,25 +196,61 @@ export class MockClient implements ApiClient {
   async updateListing(id: string, b: M.ListingUpdate) {
     const u = this.need("supervisor"); const l = this.listingOr404(id);
     if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
+    if (this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Listings can no longer be edited."); // REQ-PROJ-2
+    this.checkListingText(b.title, b.description);
     if (b.available_slots != null && b.available_slots < l.filled_slots) throw new M.ApiError(422, "slots_below_matched", `${l.filled_slots} students are already matched. Slots cannot go below that.`, "available_slots");
-    for (const [k, v] of Object.entries(b)) if (v != null) (l as unknown as Record<string, unknown>)[k] = v;
+    const { publish, ...changes } = b;
+    if (publish && l.status === "draft") l.status = "published"; // REQ-PROJ-1: publish a draft
+    for (const [k, v] of Object.entries(changes)) if (v != null) (l as unknown as Record<string, unknown>)[k] = typeof v === "string" ? v.trim() : v;
     return l;
+  }
+  async uploadCover(id: string, file: File) { // same rules as routers/listings.py cover()
+    const u = this.need("supervisor"); const l = this.listingOr404(id);
+    if (l.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Project was not found.");
+    if (this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Listings can no longer be edited.");
+    if (!["image/jpeg", "image/png"].includes(file.type)) throw new M.ApiError(422, "not_image", "Upload a JPEG or PNG image.", "file");
+    if (file.size > 5 * 1024 * 1024) throw new M.ApiError(422, "too_large", "The image is larger than 5 MB.", "file");
+    l.cover_url = URL.createObjectURL(file); // lives as long as the tab, like the rest of the mock data
+    return this.decorate(l, u);
   }
   async closeListing(id: string) { const u = this.need("supervisor"); const l = this.listingOr404(id); if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "No access."); l.status = "closed"; return l; }
   async propose(b: M.ProposalCreate) {
-    const u = this.need("student"); this.requireApplicationWindow();
+    const u = this.need("student"); this.requireApplicationWindow(); // REQ-PROPOSE-3
+    // REQ-PROPOSE-2: an active project supervisor
     const sup = this.db.users.find((x) => x.id === b.supervisor_id);
-    if (!sup) throw new M.ApiError(422, "unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id");
+    if (!sup || sup.role !== "supervisor" || sup.status !== "active") throw new M.ApiError(422, "unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id");
+    // REQ-PROPOSE-1: at least one interest, word limits, own documents only (same rules as routers/proposals.py)
+    const interests = (b.research_interests ?? []).map((t) => t.trim()).filter(Boolean);
+    if (!interests.length) throw new M.ApiError(422, "interests_required", "Add at least one research interest.", "research_interests");
+    const words = (t: string) => t.split(/\s+/).filter(Boolean).length;
+    if (words(b.description) > 500) throw new M.ApiError(422, "too_long", "Keep the description to 500 words or fewer.", "description");
+    if (words(b.statement) > 300) throw new M.ApiError(422, "too_long", "Keep this to 300 words or fewer.", "statement");
+    const own = new Set((this.student(u.id)?.documents ?? []).map((d) => d.id));
+    if ((b.document_ids ?? []).some((d) => !own.has(d))) throw new M.ApiError(422, "unknown_document", "Attach documents from your own profile only.", "document_ids");
     const p: M.Proposal = { id: this.id("prp"), student_id: u.id, student_name: u.name, supervisor_id: sup.id, supervisor_name: sup.name, title: b.title,
-      description: b.description, research_interests: b.research_interests ?? [], statement: b.statement, status: "submitted", submitted_at: this.iso(), decided_at: null, document_ids: b.document_ids ?? [] };
+      description: b.description, research_interests: interests, statement: b.statement, status: "submitted", submitted_at: this.iso(), decided_at: null, document_ids: b.document_ids ?? [], student: null, documents: [] };
     this.db.proposals.push(p); this.notify([sup.id], "proposal_decided", `New proposal from ${u.name}`, p.title, "/proposals"); return p;
   }
   async myProposals() { const u = this.need("student"); return this.db.proposals.filter((p) => p.student_id === u.id); }
-  async incomingProposals() { const u = this.need("supervisor"); return this.db.proposals.filter((p) => p.supervisor_id === u.id); }
+  async incomingProposals() { // REQ-REVPROP-1: attach the student's profile and attached documents
+    const u = this.need("supervisor");
+    return this.db.proposals.filter((p) => p.supervisor_id === u.id).map((p): M.Proposal => {
+      const su = this.db.users.find((x) => x.id === p.student_id), sp = this.student(p.student_id);
+      if (!su || !sp) return p;
+      const student: M.ApplicantStudent = { id: su.id, name: su.name, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null,
+        completed_modules: sp.completed_modules ?? [], research_interests: sp.research_interests ?? [] };
+      return { ...p, student, documents: (sp.documents ?? []).filter((d) => (p.document_ids ?? []).includes(d.id)) };
+    });
+  }
   async decideProposal(id: string, accept: boolean, note?: string) {
     const u = this.need("supervisor"); const p = this.db.proposals.find((p) => p.id === id);
     if (!p || p.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Proposal was not found.");
     if (p.status !== "submitted") throw new M.ApiError(409, "already_decided", "This proposal has already been decided.");
+    if (accept) { // REQ-REVPROP-3: registering a student needs an open cycle. Declining stays open.
+      const t = this.now.getTime();
+      if (t < Date.parse(this.db.cycle.opening_date) || t > Date.parse(this.db.cycle.closing_date))
+        throw new M.ApiError(422, "cycle_closed", "The application cycle is not open, so this proposal can no longer be accepted.");
+    }
     p.status = accept ? "accepted" : "declined"; p.decided_at = this.iso();
     if (accept) {
       const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, title: p.title, description: p.description, prerequisites: [], topic_tags: p.research_interests,

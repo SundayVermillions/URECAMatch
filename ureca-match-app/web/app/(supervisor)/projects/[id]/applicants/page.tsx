@@ -46,9 +46,9 @@ export default function Applicants() {
         <div className="bg-surface border border-border rounded-card overflow-hidden">
           <div className="flex items-baseline gap-2 px-[18px] pt-4 pb-2.5"><h2>Applicants</h2><span className="text-[12.5px] text-muted font-semibold">{pool.length} not ranked</span></div>
           <div className="flex items-center gap-1.5 px-[18px] pb-3 border-b border-border flex-wrap">
-            <span className="overline">CGPA</span>
+            <span className="eyebrow">CGPA</span>
             {[undefined, 4.0, 4.5].map((v) => <Chip key={String(v)} active={filters.min_cgpa === v} onClick={() => setFilters({ ...filters, min_cgpa: v })}>{v ? `${v.toFixed(2)}+` : "Any"}</Chip>)}
-            <span className="overline ml-2">School</span>
+            <span className="eyebrow ml-2">School</span>
             {[undefined, "CCDS", "EEE", "SBS", "MAE", "SPMS"].map((s) => <Chip key={String(s)} active={filters.school === s} onClick={() => setFilters({ ...filters, school: s })}>{s ?? "Any"}</Chip>)}
             <Chip active={!!filters.prerequisites_only} onClick={() => setFilters({ ...filters, prerequisites_only: !filters.prerequisites_only })}>Meets prerequisites</Chip>
             <Chip active={recommendedOnly} onClick={() => setRecommendedOnly(!recommendedOnly)}>Top 10</Chip>
@@ -112,14 +112,14 @@ export default function Applicants() {
               <span className="ml-auto">{ids.includes(detail.application_id) ? <Pill tone="accent">Ranked #{ids.indexOf(detail.application_id) + 1}</Pill> : <Pill>Not ranked</Pill>}</span>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="overline">CGPA</div><div className="text-[15px] font-bold mt-0.5 tabular">{detail.student.cgpa?.toFixed(2)} / 5.00</div></div>
-              <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="overline">Prerequisite</div><div className={`text-[13px] font-bold mt-0.5 ${detail.meets_prerequisites ? "text-good-ink" : "text-warn-ink"}`}>{detail.meets_prerequisites ? "Met" : `Missing ${listing.data?.prerequisites.filter((p) => !detail.student.completed_modules.includes(p)).join(", ")}`}</div></div>
-              <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="overline">Modules</div><div className="text-[13px] font-semibold mt-0.5">{detail.student.completed_modules.join(", ")}</div></div>
-              <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="overline">Interests</div><div className="text-[13px] font-semibold mt-0.5">{detail.student.research_interests.join(", ")}</div></div>
+              <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="eyebrow">CGPA</div><div className="text-[15px] font-bold mt-0.5 tabular">{detail.student.cgpa?.toFixed(2)} / 5.00</div></div>
+              <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="eyebrow">Prerequisite</div><div className={`text-[13px] font-bold mt-0.5 ${detail.meets_prerequisites ? "text-good-ink" : "text-warn-ink"}`}>{detail.meets_prerequisites ? "Met" : `Missing ${listing.data?.prerequisites.filter((p) => !detail.student.completed_modules.includes(p)).join(", ")}`}</div></div>
+              <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="eyebrow">Modules</div><div className="text-[13px] font-semibold mt-0.5">{detail.student.completed_modules.join(", ")}</div></div>
+              <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="eyebrow">Interests</div><div className="text-[13px] font-semibold mt-0.5">{detail.student.research_interests.join(", ")}</div></div>
             </div>
-            <div><div className="overline mb-1.5">Statement of interest</div><p className="text-[13px] leading-[1.65]">{detail.statement}</p></div>
+            <div><div className="eyebrow mb-1.5">Statement of interest</div><p className="text-[13px] leading-[1.65]">{detail.statement}</p></div>
             <div>
-              <div className="overline mb-2">Documents</div>
+              <div className="eyebrow mb-2">Documents</div>
               <div className="flex flex-col gap-2">
                 {detail.documents.map((d) => (
                   <details key={d.id} className="border border-border rounded-button">
