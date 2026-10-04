@@ -28,7 +28,7 @@ Update the row for every REQ-ID your PR touches. "Screen" is the dialog-map page
 | REVPROP-1 | B | GET /supervisor/proposals | StudentProposalPage | test_REQ_REVPROP_1_supervisor_sees_student_profile | mock |
 | REVPROP-2 | B | POST /supervisor/proposals/{id}/accept | StudentProposalPage | test_REQ_REVPROP_2_accepting_registers_student | mock |
 | REVPROP-3 | B | POST /supervisor/proposals/{id}/accept | StudentProposalPage | test_REQ_REVPROP_3_cannot_accept_after_cycle_closes | mock |
-| APPLY-1 | C | POST /applications | ApplyProjectPage | | todo |
+| APPLY-1 | C | POST /applications, DELETE /applications/{id} | ApplyProjectPage | test_REQ_APPLY_1_apply_after_window_rejected, test_REQ_APPLY_1_withdraw_after_window_rejected | mock |
 | APPLY-2 | C | POST /applications | ApplyProjectPage | test_REQ_APPLY_2_statement_required | mock |
 | SRANK-1..2 | C | PUT /me/ranking | MyApplicationPage | test_REQ_SRANK_2_ranking_must_cover_every_active_application | mock |
 | VRANK-1 | C | GET /supervisor/listings/{id}/applicants | ApplicantAndRankingsPage | test_REQ_VRANK_1_top_ten_flag_limited | mock |
