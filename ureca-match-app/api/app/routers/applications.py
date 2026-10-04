@@ -29,6 +29,8 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
     if lst is None or lst.status != ListingStatus.published:
         raise not_found("Project")
     sp = store.student(user.id)
+    if sp and not sp.profile_complete:  # REQ-APPLY-1 (use case 2-2 precondition 4)
+        raise conflict("profile_incomplete", "Complete your profile before applying. Go to My Profile to finish it.")
     if sp and not sp.eligible_for_matching:
         raise conflict("not_eligible", "You declined an earlier offer, so you cannot apply again this cycle.")
     if lst.filled_slots >= lst.available_slots:
