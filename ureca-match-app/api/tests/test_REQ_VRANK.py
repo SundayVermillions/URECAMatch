@@ -1,5 +1,10 @@
 """Slice C. Supervisor applicant review, ranking and document access."""
 
+from datetime import timedelta
+
+from app.services import windows
+from app.settings import get_settings
+
 
 def _supervisors_applied_to(store, student_id):
     return {store.listing(a.listing_id).supervisor_id for a in store.applications if a.student_id == student_id}
@@ -70,3 +75,12 @@ def test_REQ_VRANK_1_min_cgpa_filter(as_supervisor, fresh_store):
     assert 0 < len(rows) < len(every) and all(r["student"]["cgpa"] >= cutoff for r in rows)
     # top 10 is picked after filtering, so with 10 or fewer rows left every row is recommended
     assert len(rows) <= 10 and all(r["recommended"] for r in rows)
+
+
+def test_REQ_VRANK_2_ranking_after_review_end_rejected(as_supervisor, fresh_store, monkeypatch):
+    ids = [r["application_id"] for r in as_supervisor.get("/supervisor/listings/lst-1/applicants").json()]
+    settings = get_settings()
+    rnd = windows.current_round(fresh_store.cycle, settings.now())
+    monkeypatch.setattr(settings, "demo_now", rnd.review_end + timedelta(minutes=1))
+    r = as_supervisor.put("/supervisor/listings/lst-1/ranking", json={"application_ids": ids})
+    assert r.status_code == 422 and r.json()["code"] == "ranking_closed"
