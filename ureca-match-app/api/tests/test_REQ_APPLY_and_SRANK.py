@@ -67,3 +67,16 @@ def test_REQ_SRANK_2_ranking_must_cover_every_active_application(as_student):
 def test_REQ_VRANK_1_top_ten_flag_limited(as_supervisor):
     rows = as_supervisor.get("/supervisor/listings/lst-1/applicants").json()
     assert sum(1 for r in rows if r["recommended"]) <= 10
+
+
+def test_REQ_SRANK_1_order_persisted(as_student):
+    ids = [a["id"] for a in as_student.get("/me/applications").json() if a["status"] == "submitted"]
+    assert as_student.put("/me/ranking", json={"application_ids": ids[::-1]}).status_code == 200
+    again = [a["id"] for a in as_student.get("/me/applications").json() if a["status"] == "submitted"]
+    assert again == ids[::-1]
+
+
+def test_REQ_SRANK_2_duplicate_ids_rejected(as_student):
+    ids = [a["id"] for a in as_student.get("/me/applications").json() if a["status"] == "submitted"]
+    r = as_student.put("/me/ranking", json={"application_ids": [*ids, ids[0]]})
+    assert r.status_code == 422 and r.json()["code"] == "ranking_incomplete"
