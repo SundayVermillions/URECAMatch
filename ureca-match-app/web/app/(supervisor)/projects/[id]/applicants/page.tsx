@@ -19,6 +19,7 @@ export default function Applicants() {
   const listing = useApi((api) => api.listing(id), [id]);
   const rows = useApi((api) => api.applicants(id, filters), [id, JSON.stringify(filters)]);
   const ranking = useApi((api) => api.getRanking(id), [id]);
+  const everyone = useApi((api) => api.applicants(id, {}), [id]); // unfiltered, for the unranked warning
   const [detail, setDetail] = useState<Applicant | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -27,6 +28,8 @@ export default function Applicants() {
   const ids = ranking.data?.application_ids ?? [];
   const byId = useMemo(() => new Map((rows.data ?? []).map((r) => [r.application_id, r])), [rows.data]);
   const ranked = ids.map((i) => byId.get(i)).filter(Boolean) as Applicant[];
+  // Decision (guide section 10): applicants a supervisor does not rank are never matched.
+  const unranked = (everyone.data ?? []).filter((r) => !ids.includes(r.application_id)).length;
   const pool = (rows.data ?? []).filter((r) => !ids.includes(r.application_id) && (!recommendedOnly || r.recommended));
 
   async function save(next: string[]) {
@@ -41,6 +44,7 @@ export default function Applicants() {
       <PageHeader title="Applicants and ranking" back={{ href: "/projects", label: "Back to my projects" }} description={listing.data?.title ?? ""}
         right={me && <DeadlineChip>{me.phase.label}</DeadlineChip>} />
       {!canRank && <div className="mb-4"><Banner tone="warn" title="Ranking is closed for this round.">{me?.phase.label}</Banner></div>}
+      {canRank && unranked > 0 && <div className="mb-4"><Banner tone="warn" title={`${unranked} ${unranked === 1 ? "applicant is" : "applicants are"} not ranked yet.`}>Students you do not rank cannot be matched to this project. Rank them before the deadline: {me?.phase.label}.</Banner></div>}
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
       <div className="grid grid-cols-[1fr_420px] gap-5 items-start">
         <div className="bg-surface border border-border rounded-card overflow-hidden">
