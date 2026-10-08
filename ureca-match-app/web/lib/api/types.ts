@@ -520,7 +520,8 @@ export interface paths {
         };
         /**
          * View Document
-         * @description Returns a signed URL for the in-app PDF viewer (REQ-VRANK-3). TODO(slice C): sign the Storage URL.
+         * @description Returns a 10-minute signed URL for the in-app PDF viewer (REQ-VRANK-3).
+         *     url is null when no file was ever uploaded for the document.
          */
         get: operations["view_document_documents__document_id__view_get"];
         put?: never;

@@ -8,6 +8,7 @@ from app.deps import CurrentUser, SettingsDep, StoreDep, SupervisorUser
 from app.errors import forbidden, invalid, not_found
 from app.models import Applicant, ApplicantRanking, ApplicantRankingUpdate, ApplicantStudent, ApplicationStatus, Document
 from app.services import windows
+from app.services.storage import get_storage
 
 router = APIRouter(tags=["rankings"])
 
@@ -136,12 +137,16 @@ def _may_view(store, user, owner_id: str) -> bool:
 
 
 @router.get("/documents/{document_id}/view", response_model=Document)
-def view_document(document_id: str, user: CurrentUser, store: StoreDep) -> Document:
-    """Returns a signed URL for the in-app PDF viewer (REQ-VRANK-3). TODO(slice C): sign the Storage URL."""
+def view_document(document_id: str, user: CurrentUser, store: StoreDep, settings: SettingsDep) -> Document:
+    """Returns a 10-minute signed URL for the in-app PDF viewer (REQ-VRANK-3).
+    url is null when no file was ever uploaded for the document."""
     for sp in store.students:
         for d in sp.documents:
             if d.id == document_id:
                 if not _may_view(store, user, sp.user_id):
                     raise forbidden()
-                return d.model_copy(update={"url": f"/mock-documents/{document_id}.pdf"})
+                # Mock storage serves a sample PDF for every document; live storage needs the uploaded file.
+                has_file = d.storage_path is not None or settings.api_mode == "mock"
+                url = get_storage().signed_url("documents", d.storage_path or "", minutes=10) if has_file else None
+                return d.model_copy(update={"url": url})
     raise not_found("Document")

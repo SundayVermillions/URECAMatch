@@ -84,3 +84,19 @@ def test_REQ_VRANK_2_ranking_after_review_end_rejected(as_supervisor, fresh_stor
     monkeypatch.setattr(settings, "demo_now", rnd.review_end + timedelta(minutes=1))
     r = as_supervisor.put("/supervisor/listings/lst-1/ranking", json={"application_ids": ids})
     assert r.status_code == 422 and r.json()["code"] == "ranking_closed"
+
+
+def test_REQ_VRANK_3_view_returns_signed_storage_url(client_for, fresh_store, monkeypatch):
+    calls = []
+
+    class FakeStorage:
+        def signed_url(self, bucket, path, minutes=10):
+            calls.append((bucket, path, minutes))
+            return "https://storage.example/signed"
+
+    monkeypatch.setattr("app.routers.rankings.get_storage", lambda: FakeStorage())
+    doc = next(d for d in fresh_store.student("stu-1").documents if d.id == "doc-stu-1-t")
+    doc.storage_path = "documents/stu-1/doc-stu-1-t.pdf"
+    r = client_for("stu-1").get("/documents/doc-stu-1-t/view")
+    assert r.status_code == 200 and r.json()["url"] == "https://storage.example/signed"
+    assert calls == [("documents", "documents/stu-1/doc-stu-1-t.pdf", 10)]
