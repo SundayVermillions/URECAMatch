@@ -35,6 +35,9 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
         raise conflict("not_eligible", "You declined an earlier offer, so you cannot apply again this cycle.")
     if lst.filled_slots >= lst.available_slots:
         raise conflict("fully_allocated", "All slots on this project are filled.")
+    own = {d.id for d in (sp.documents if sp else [])}
+    if any(d not in own for d in body.document_ids):  # REQ-APPLY-2: own documents only
+        raise invalid("unknown_document", "Attach documents from your own profile only.", "document_ids")
     phase = windows.phase(store.cycle, settings.now())
     active = [
         a

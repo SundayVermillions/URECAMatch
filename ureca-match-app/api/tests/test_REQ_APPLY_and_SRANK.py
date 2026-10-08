@@ -41,6 +41,14 @@ def test_REQ_APPLY_1_cannot_withdraw_matched_application(client_for, fresh_store
     assert r.status_code == 409 and r.json()["code"] == "not_withdrawable"
 
 
+def test_REQ_APPLY_2_document_must_belong_to_applicant(as_student):
+    body = {"listing_id": "lst-8", "statement": STATEMENT, "document_ids": ["doc-stu-7-t"]}
+    r = as_student.post("/applications", json=body)
+    assert r.status_code == 422 and r.json()["code"] == "unknown_document"
+    r = as_student.post("/applications", json={**body, "document_ids": ["doc-stu-1-t"]})
+    assert r.status_code == 201 and r.json()["document_ids"] == ["doc-stu-1-t"]
+
+
 def test_REQ_APPLY_2_statement_required(as_student):
     r = as_student.post("/applications", json={"listing_id": "lst-8", "statement": "too short"})
     assert r.status_code == 422 and r.json()["field"] == "statement"
