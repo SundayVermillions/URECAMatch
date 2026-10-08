@@ -273,6 +273,8 @@ export class MockClient implements ApiClient {
     if (sp && !sp.profile_complete) throw new M.ApiError(409, "profile_incomplete", "Complete your profile before applying. Go to My Profile to finish it.");
     if (sp && !sp.eligible_for_matching) throw new M.ApiError(409, "not_eligible", "You declined an earlier offer, so you cannot apply again this cycle.");
     if (l.filled_slots >= l.available_slots) throw new M.ApiError(409, "fully_allocated", "All slots on this project are filled.");
+    const own = new Set((sp?.documents ?? []).map((d) => d.id)); // REQ-APPLY-2: own documents only
+    if ((b.document_ids ?? []).some((d) => !own.has(d))) throw new M.ApiError(422, "unknown_document", "Attach documents from your own profile only.", "document_ids");
     if (b.statement.length < 50) throw new M.ApiError(422, "invalid", "Write at least 50 characters.", "statement");
     const round = this.phase().round_id ?? "";
     const active = this.db.applications.filter((a) => a.student_id === u.id && a.round_id === round && a.status === "submitted");
