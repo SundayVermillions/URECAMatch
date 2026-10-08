@@ -19,7 +19,13 @@ def _require_window(store, settings):
 
 @router.get("/me/applications", response_model=list[Application])
 def mine(user: StudentUser, store: StoreDep) -> list[Application]:
-    return sorted((a for a in store.applications if a.student_id == user.id), key=lambda a: a.preference_rank or 99)
+    return sorted(store.applications_for(student_id=user.id), key=lambda a: a.preference_rank or 99)
+
+
+def _active(store, student_id: str, round_id: str | None) -> list[Application]:
+    """The student's applications still under review in this round."""
+    apps = store.applications_for(student_id=student_id, round_id=round_id)
+    return [a for a in apps if a.status == ApplicationStatus.submitted]
 
 
 @router.post("/applications", response_model=Application, status_code=201)
@@ -39,11 +45,7 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
     if any(d not in own for d in body.document_ids):  # REQ-APPLY-2: own documents only
         raise invalid("unknown_document", "Attach documents from your own profile only.", "document_ids")
     phase = windows.phase(store.cycle, settings.now())
-    active = [
-        a
-        for a in store.applications
-        if a.student_id == user.id and a.round_id == phase.round_id and a.status == ApplicationStatus.submitted
-    ]
+    active = _active(store, user.id, phase.round_id)
     if any(a.listing_id == lst.id for a in active):
         raise conflict("already_applied", "You have already applied to this project. See My Applications.")
     app = Application(
@@ -59,15 +61,15 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
         status=ApplicationStatus.submitted,
         document_ids=body.document_ids,
     )  # REQ-APPLY-2 (statement required by the model)
-    store.applications.append(app)
+    store.save_applications(app)
     return app
 
 
 @router.delete("/applications/{application_id}", response_model=Ok)
 def withdraw(application_id: str, user: StudentUser, store: StoreDep, settings: SettingsDep) -> Ok:
     _require_window(store, settings)
-    app = next((a for a in store.applications if a.id == application_id and a.student_id == user.id), None)
-    if app is None:
+    app = store.application(application_id)
+    if app is None or app.student_id != user.id:
         raise not_found("Application")
     if app.status != ApplicationStatus.submitted:  # matched or decided applications belong to matching (slice D)
         raise conflict("not_withdrawable", "Only applications still under review can be withdrawn.")
@@ -75,15 +77,11 @@ def withdraw(application_id: str, user: StudentUser, store: StoreDep, settings: 
     app.preference_rank = None
     # re-sequence remaining ranks (REQ-SRANK-2)
     remaining = sorted(
-        (
-            a
-            for a in store.applications
-            if a.student_id == user.id and a.status == ApplicationStatus.submitted and a.round_id == app.round_id
-        ),
-        key=lambda a: a.preference_rank or 99,
+        (a for a in _active(store, user.id, app.round_id) if a.id != app.id), key=lambda a: a.preference_rank or 99
     )
     for i, a in enumerate(remaining, start=1):
         a.preference_rank = i
+    store.save_applications(app, *remaining)
     return Ok()
 
 
@@ -91,13 +89,10 @@ def withdraw(application_id: str, user: StudentUser, store: StoreDep, settings: 
 def rank(body: PreferenceRankingUpdate, user: StudentUser, store: StoreDep, settings: SettingsDep) -> list[Application]:
     _require_window(store, settings)
     phase = windows.phase(store.cycle, settings.now())
-    active = {
-        a.id: a
-        for a in store.applications
-        if a.student_id == user.id and a.round_id == phase.round_id and a.status == ApplicationStatus.submitted
-    }
+    active = {a.id: a for a in _active(store, user.id, phase.round_id)}
     if sorted(body.application_ids) != sorted(active):  # REQ-SRANK-2: every active application, each exactly once
         raise invalid("ranking_incomplete", "Rank every active application exactly once.", "application_ids")
     for i, aid in enumerate(body.application_ids, start=1):
         active[aid].preference_rank = i
+    store.save_applications(*active.values())
     return mine(user, store)

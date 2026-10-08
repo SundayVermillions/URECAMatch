@@ -51,6 +51,15 @@ class Store(Protocol):
     def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]: ...  # slice B
     def proposal(self, proposal_id: str) -> Proposal | None: ...  # slice B
     def save_proposal(self, proposal: Proposal) -> Proposal: ...  # slice B: insert or update
+    def applications_for(
+        self, student_id: str | None = None, listing_id: str | None = None, round_id: str | None = None
+    ) -> list[Application]: ...  # slice C: None means "any"
+    def application(self, application_id: str) -> Application | None: ...  # slice C
+    def save_applications(self, *apps: Application) -> None: ...  # slice C: insert or update
+    def ranking(self, listing_id: str, round_id: str | None) -> list[str]: ...  # slice C: ordered application ids
+    def save_ranking(  # slice C
+        self, listing_id: str, round_id: str | None, application_ids: list[str], submitted_at: datetime
+    ) -> None: ...
     def next_id(self, prefix: str) -> str: ...
 
 
@@ -141,6 +150,32 @@ class MockStore:
         """Save document in mock store."""
         # In mock mode, the document is already appended to student.documents in memory
         return doc_data
+
+    # --- Slice C: applications and rankings. In memory, an object is already "saved" once it is in the list.
+    def applications_for(
+        self, student_id: str | None = None, listing_id: str | None = None, round_id: str | None = None
+    ) -> list[Application]:
+        return [
+            a
+            for a in self.applications
+            if (student_id is None or a.student_id == student_id)
+            and (listing_id is None or a.listing_id == listing_id)
+            and (round_id is None or a.round_id == round_id)
+        ]
+
+    def application(self, application_id: str) -> Application | None:
+        return next((a for a in self.applications if a.id == application_id), None)
+
+    def save_applications(self, *apps: Application) -> None:
+        for app in apps:
+            if all(a.id != app.id for a in self.applications):
+                self.applications.append(app)
+
+    def ranking(self, listing_id: str, round_id: str | None) -> list[str]:
+        return list(self.applicant_rankings.get(f"{listing_id}:{round_id}", []))
+
+    def save_ranking(self, listing_id: str, round_id: str | None, application_ids: list[str], submitted_at: datetime) -> None:
+        self.applicant_rankings[f"{listing_id}:{round_id}"] = list(application_ids)
 
 
 class SupabaseStore(MockStore):
@@ -308,6 +343,73 @@ class SupabaseStore(MockStore):
         payload = proposal.model_dump(mode="json", include=self._PROPOSAL_COLUMNS)
         self.client.table("self_proposed_applications").upsert(payload).execute()
         return proposal
+    # --- Slice C: applications (table listing_applications) and rankings (table applicant_rankings) ---
+
+    _APPLICATION_COLUMNS = {
+        "id", "student_id", "listing_id", "round_id", "statement", "submitted_at", "preference_rank", "status",
+        "document_ids",
+    }
+    # listing_title and supervisor_name are not columns: they come from the listing and its supervisor.
+    _APPLICATION_SELECT = "*, project_listings(title, users(name))"
+
+    @staticmethod
+    def _application_from_row(row: dict) -> Application:
+        listing = row.pop("project_listings", None) or {}
+        supervisor = listing.get("users") or {}
+        names = {"listing_title": listing.get("title", ""), "supervisor_name": supervisor.get("name", "")}
+        return Application.model_validate({**row, **names})
+
+    def applications_for(
+        self, student_id: str | None = None, listing_id: str | None = None, round_id: str | None = None
+    ) -> list[Application]:
+        if not self.client:
+            return super().applications_for(student_id, listing_id, round_id)
+        q = self.client.table("listing_applications").select(self._APPLICATION_SELECT)
+        for column, value in (("student_id", student_id), ("listing_id", listing_id), ("round_id", round_id)):
+            if value is not None:
+                q = q.eq(column, value)
+        return [self._application_from_row(r) for r in q.order("submitted_at").execute().data or []]
+
+    def application(self, application_id: str) -> Application | None:
+        if not self.client:
+            return super().application(application_id)
+        table = self.client.table("listing_applications")
+        res = table.select(self._APPLICATION_SELECT).eq("id", application_id).limit(1).execute()
+        return self._application_from_row(res.data[0]) if res.data else None
+
+    def save_applications(self, *apps: Application) -> None:
+        if not self.client:
+            return super().save_applications(*apps)
+        if not apps:
+            return
+        rows = [a.model_dump(mode="json", include=self._APPLICATION_COLUMNS) for a in apps]
+        table = self.client.table("listing_applications")
+        # REQ-SRANK-2: a unique index allows one rank per student per round, so clear the ranks first.
+        # Otherwise swapping ranks 1 and 2 would clash halfway through the update.
+        if any(r["preference_rank"] is not None for r in rows):
+            table.upsert([{**r, "preference_rank": None} for r in rows]).execute()
+        table.upsert(rows).execute()
+
+    def ranking(self, listing_id: str, round_id: str | None) -> list[str]:
+        if not self.client:
+            return super().ranking(listing_id, round_id)
+        if round_id is None:
+            return []
+        table = self.client.table("applicant_rankings")
+        res = table.select("application_ids").eq("listing_id", listing_id).eq("round_id", round_id).limit(1).execute()
+        return list(res.data[0]["application_ids"]) if res.data else []
+
+    def save_ranking(self, listing_id: str, round_id: str | None, application_ids: list[str], submitted_at: datetime) -> None:
+        if not self.client:
+            return super().save_ranking(listing_id, round_id, application_ids, submitted_at)
+        row = {
+            "listing_id": listing_id,
+            "round_id": round_id,
+            "application_ids": list(application_ids),
+            "submitted_at": submitted_at.isoformat(),
+        }
+        self.client.table("applicant_rankings").upsert(row).execute()
+
 
 _store: Store | None = None
 

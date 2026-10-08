@@ -17,8 +17,8 @@ TOP_N = 10  # REQ-VRANK-1
 def _applicants(store, listing_id: str, round_id: str | None) -> list[Applicant]:
     lst = store.listing(listing_id)
     out = []
-    for a in store.applications:
-        if a.listing_id != listing_id or a.status != ApplicationStatus.submitted or (round_id and a.round_id != round_id):
+    for a in store.applications_for(listing_id=listing_id, round_id=round_id or None):
+        if a.status != ApplicationStatus.submitted:
             continue
         u, sp = store.user(a.student_id), store.student(a.student_id)
         if u is None or sp is None:
@@ -70,7 +70,7 @@ def applicants(
     # top-10 recommendation: prerequisites met first, then CGPA (REQ-VRANK-1)
     for r in sorted(rows, key=lambda r: (not r.meets_prerequisites, -(r.student.cgpa or 0)))[:TOP_N]:
         r.recommended = True
-    ranking = store.applicant_rankings.get(f"{listing_id}:{phase.round_id}", [])
+    ranking = store.ranking(listing_id, phase.round_id)
     for r in rows:
         r.rank = ranking.index(r.application_id) + 1 if r.application_id in ranking else None
     return rows
@@ -78,7 +78,7 @@ def applicants(
 
 @router.get("/supervisor/applicants/{application_id}", response_model=Applicant)
 def applicant(application_id: str, user: SupervisorUser, store: StoreDep) -> Applicant:
-    a = next((a for a in store.applications if a.id == application_id), None)
+    a = store.application(application_id)
     if a is None:
         raise not_found("Application")
     lst = store.listing(a.listing_id)
@@ -99,7 +99,7 @@ def get_ranking(listing_id: str, user: SupervisorUser, store: StoreDep, settings
     return ApplicantRanking(
         listing_id=listing_id,
         round_id=phase.round_id or "",
-        application_ids=store.applicant_rankings.get(f"{listing_id}:{phase.round_id}", []),
+        application_ids=store.ranking(listing_id, phase.round_id),
     )
 
 
@@ -117,7 +117,7 @@ def put_ranking(
     valid = {a.application_id for a in _applicants(store, listing_id, phase.round_id)}
     if any(aid not in valid for aid in body.application_ids) or len(set(body.application_ids)) != len(body.application_ids):
         raise invalid("bad_ranking", "Ranking must list applicants to this project, each once.", "application_ids")
-    store.applicant_rankings[f"{listing_id}:{phase.round_id}"] = list(body.application_ids)
+    store.save_ranking(listing_id, phase.round_id, body.application_ids, now)
     return ApplicantRanking(
         listing_id=listing_id, round_id=phase.round_id or "", application_ids=body.application_ids, submitted_at=now
     )
@@ -131,8 +131,7 @@ def _may_view(store, user, owner_id: str) -> bool:
         return False
     return any(
         (lst := store.listing(a.listing_id)) is not None and lst.supervisor_id == user.id
-        for a in store.applications
-        if a.student_id == owner_id
+        for a in store.applications_for(student_id=owner_id)
     )
 
 
