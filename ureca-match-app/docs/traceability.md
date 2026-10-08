@@ -30,8 +30,8 @@ Update the row for every REQ-ID your PR touches. "Screen" is the dialog-map page
 | REVPROP-3 | B | POST /supervisor/proposals/{id}/accept | StudentProposalPage | test_REQ_REVPROP_3_cannot_accept_after_cycle_closes | mock |
 | APPLY-1 | C | POST /applications, DELETE /applications/{id} | ApplyProjectPage | test_REQ_APPLY_1_apply_after_window_rejected, test_REQ_APPLY_1_withdraw_after_window_rejected, test_REQ_APPLY_1_profile_incomplete_rejected, test_REQ_APPLY_1_cannot_withdraw_matched_application | mock |
 | APPLY-2 | C | POST /applications | ApplyProjectPage | test_REQ_APPLY_2_statement_required, test_REQ_APPLY_2_document_must_belong_to_applicant | mock |
-| SRANK-1..2 | C | PUT /me/ranking | MyApplicationPage | test_REQ_SRANK_2_ranking_must_cover_every_active_application | mock |
-| VRANK-1 | C | GET /supervisor/listings/{id}/applicants | ApplicantAndRankingsPage | test_REQ_VRANK_1_top_ten_flag_limited | mock |
+| SRANK-1..2 | C | PUT /me/ranking | MyApplicationPage | test_REQ_SRANK_1_order_persisted, test_REQ_SRANK_2_ranking_must_cover_every_active_application, test_REQ_SRANK_2_duplicate_ids_rejected | mock |
+| VRANK-1 | C | GET /supervisor/listings/{id}/applicants | ApplicantAndRankingsPage | test_REQ_VRANK_1_top_ten_flag_limited, test_REQ_VRANK_1_at_most_ten_recommended, test_REQ_VRANK_1_min_cgpa_filter | mock |
 | VRANK-2 | C | GET/PUT /supervisor/listings/{id}/ranking | ApplicantAndRankingsPage | test_REQ_VRANK_2_cannot_read_other_supervisors_ranking (deadline test still to do) | todo |
 | VRANK-3 | C | GET /documents/{id}/view, GET /supervisor/applicants/{id} | ApplicantAndRankingsPage drawer | test_REQ_VRANK_3_other_student_cannot_view, test_REQ_VRANK_3_supervisor_of_applied_listing_can_view, test_REQ_VRANK_3_unrelated_supervisor_cannot_view, test_REQ_VRANK_3_drawer_for_closed_application_is_404 (PDF viewer still to do) | todo |
 | CYCLE-1..3 | D | /admin/cycles | MatchingRoundsPage | | todo |

@@ -37,3 +37,36 @@ def test_REQ_VRANK_2_cannot_read_other_supervisors_ranking(as_supervisor, fresh_
     other = next(lst for lst in fresh_store.listings if lst.supervisor_id != "sup-1")
     r = as_supervisor.get(f"/supervisor/listings/{other.id}/ranking")
     assert r.status_code == 403
+
+
+def _with_applicants(store, listing_id, n):
+    """Make sure the listing has at least n applicants this round (seed data is random, so build our own)."""
+    template = next(a for a in store.applications if a.listing_id == listing_id and a.status.value == "submitted")
+    have = {a.student_id for a in store.applications if a.listing_id == listing_id and a.round_id == template.round_id}
+    for sp in store.students:
+        if len(have) >= n:
+            break
+        if sp.user_id not in have and sp.cgpa is not None:
+            store.applications.append(template.model_copy(update={"id": store.next_id("app"), "student_id": sp.user_id}))
+            have.add(sp.user_id)
+
+
+def test_REQ_VRANK_1_at_most_ten_recommended(as_supervisor, fresh_store):
+    _with_applicants(fresh_store, "lst-1", 14)
+    rows = as_supervisor.get("/supervisor/listings/lst-1/applicants").json()
+    assert len(rows) > 10
+    recommended = [r for r in rows if r["recommended"]]
+    assert len(recommended) == 10
+    # prerequisites met first, then highest CGPA
+    best = sorted(rows, key=lambda r: (not r["meets_prerequisites"], -(r["student"]["cgpa"] or 0)))[:10]
+    assert {r["application_id"] for r in recommended} == {r["application_id"] for r in best}
+
+
+def test_REQ_VRANK_1_min_cgpa_filter(as_supervisor, fresh_store):
+    _with_applicants(fresh_store, "lst-1", 14)
+    every = as_supervisor.get("/supervisor/listings/lst-1/applicants").json()
+    cutoff = sorted((r["student"]["cgpa"] for r in every), reverse=True)[4]  # keep roughly the best five
+    rows = as_supervisor.get("/supervisor/listings/lst-1/applicants", params={"min_cgpa": cutoff}).json()
+    assert 0 < len(rows) < len(every) and all(r["student"]["cgpa"] >= cutoff for r in rows)
+    # top 10 is picked after filtering, so with 10 or fewer rows left every row is recommended
+    assert len(rows) <= 10 and all(r["recommended"] for r in rows)
