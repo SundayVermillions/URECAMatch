@@ -285,6 +285,7 @@ export class MockClient implements ApiClient {
     const u = this.need("student"); this.requireApplicationWindow();
     const a = this.db.applications.find((a) => a.id === id && a.student_id === u.id);
     if (!a) throw new M.ApiError(404, "not_found", "Application was not found.");
+    if (a.status !== "submitted") throw new M.ApiError(409, "not_withdrawable", "Only applications still under review can be withdrawn.");
     a.status = "withdrawn"; a.preference_rank = null;
     this.db.applications.filter((x) => x.student_id === u.id && x.round_id === a.round_id && x.status === "submitted")
       .sort((x, y) => (x.preference_rank ?? 99) - (y.preference_rank ?? 99)).forEach((x, i) => (x.preference_rank = i + 1));
@@ -321,9 +322,13 @@ export class MockClient implements ApiClient {
   async applicant(applicationId: string) {
     this.need("supervisor"); const a = this.db.applications.find((a) => a.id === applicationId);
     if (!a) throw new M.ApiError(404, "not_found", "Application was not found.");
-    return this.applicantRows(a.listing_id, null).find((r) => r.application_id === applicationId)!;
+    const row = this.applicantRows(a.listing_id, null).find((r) => r.application_id === applicationId);
+    if (!row) throw new M.ApiError(404, "not_found", "Application was not found.");
+    return row;
   }
-  async getRanking(listingId: string) { this.need("supervisor"); const round = this.phase().round_id ?? ""; return { listing_id: listingId, round_id: round, application_ids: this.db.applicant_rankings[`${listingId}:${round}`] ?? [], submitted_at: null }; }
+  async getRanking(listingId: string) {
+    const u = this.need("supervisor"); if (this.listingOr404(listingId).supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
+    const round = this.phase().round_id ?? ""; return { listing_id: listingId, round_id: round, application_ids: this.db.applicant_rankings[`${listingId}:${round}`] ?? [], submitted_at: null }; }
   async putRanking(listingId: string, ids: string[]) {
     const u = this.need("supervisor"); const l = this.listingOr404(listingId);
     if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
@@ -333,8 +338,14 @@ export class MockClient implements ApiClient {
     return { listing_id: listingId, round_id: round, application_ids: ids, submitted_at: this.iso() };
   }
   async documentUrl(id: string) {
-    this.user();
-    for (const s of this.db.students) { const d = s.documents.find((d) => d.id === id); if (d) return { ...d, url: "/sample-transcript.pdf" }; }
+    const u = this.user();
+    for (const s of this.db.students) {
+      const d = s.documents.find((d) => d.id === id); if (!d) continue;
+      // REQ-VRANK-3: owner, admins, and the supervisor of any listing the owner applied to
+      const ok = u.id === s.user_id || u.role === "admin" || (u.role === "supervisor" && this.db.applications.some((a) => a.student_id === s.user_id && this.db.listings.find((l) => l.id === a.listing_id)?.supervisor_id === u.id));
+      if (!ok) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
+      return { ...d, url: "/sample-transcript.pdf" };
+    }
     throw new M.ApiError(404, "not_found", "Document was not found.");
   }
 
