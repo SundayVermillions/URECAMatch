@@ -35,6 +35,12 @@ def test_REQ_APPLY_1_profile_incomplete_rejected(as_student, fresh_store):
     assert r.status_code == 409 and r.json()["code"] == "profile_incomplete"
 
 
+def test_REQ_APPLY_1_cannot_withdraw_matched_application(client_for, fresh_store):
+    a = next(a for a in fresh_store.applications if a.student_id == "stu-33" and a.status.value == "matched")
+    r = client_for("stu-33").delete(f"/applications/{a.id}")
+    assert r.status_code == 409 and r.json()["code"] == "not_withdrawable"
+
+
 def test_REQ_APPLY_2_statement_required(as_student):
     r = as_student.post("/applications", json={"listing_id": "lst-8", "statement": "too short"})
     assert r.status_code == 422 and r.json()["field"] == "statement"

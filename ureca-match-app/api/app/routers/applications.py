@@ -66,6 +66,8 @@ def withdraw(application_id: str, user: StudentUser, store: StoreDep, settings: 
     app = next((a for a in store.applications if a.id == application_id and a.student_id == user.id), None)
     if app is None:
         raise not_found("Application")
+    if app.status != ApplicationStatus.submitted:  # matched or decided applications belong to matching (slice D)
+        raise conflict("not_withdrawable", "Only applications still under review can be withdrawn.")
     app.status = ApplicationStatus.withdrawn
     app.preference_rank = None
     # re-sequence remaining ranks (REQ-SRANK-2)

@@ -84,12 +84,17 @@ def applicant(application_id: str, user: SupervisorUser, store: StoreDep) -> App
     lst = store.listing(a.listing_id)
     if lst is None or lst.supervisor_id != user.id:
         raise forbidden()
-    rows = _applicants(store, a.listing_id, None)
-    return next(r for r in rows if r.application_id == application_id)
+    row = next((r for r in _applicants(store, a.listing_id, None) if r.application_id == application_id), None)
+    if row is None:  # withdrawn or already matched: no longer under review
+        raise not_found("Application")
+    return row
 
 
 @router.get("/supervisor/listings/{listing_id}/ranking", response_model=ApplicantRanking)
 def get_ranking(listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> ApplicantRanking:
+    lst = store.listing(listing_id)
+    if lst is None or lst.supervisor_id != user.id:
+        raise forbidden()
     phase = windows.phase(store.cycle, settings.now())
     return ApplicantRanking(
         listing_id=listing_id,
@@ -118,14 +123,26 @@ def put_ranking(
     )
 
 
+def _may_view(store, user, owner_id: str) -> bool:
+    """Owner, admins, and the supervisor of any listing the owner applied to (REQ-VRANK-3)."""
+    if user.id == owner_id or user.role.value == "admin":
+        return True
+    if user.role.value != "supervisor":
+        return False
+    return any(
+        (lst := store.listing(a.listing_id)) is not None and lst.supervisor_id == user.id
+        for a in store.applications
+        if a.student_id == owner_id
+    )
+
+
 @router.get("/documents/{document_id}/view", response_model=Document)
 def view_document(document_id: str, user: CurrentUser, store: StoreDep) -> Document:
-    """Returns a signed URL for the in-app PDF viewer (REQ-VRANK-3). Owner or the supervisor of a listing
-    the owner applied to may view. TODO(slice C): sign the Storage URL."""
+    """Returns a signed URL for the in-app PDF viewer (REQ-VRANK-3). TODO(slice C): sign the Storage URL."""
     for sp in store.students:
         for d in sp.documents:
             if d.id == document_id:
-                if user.id != sp.user_id and user.role.value == "student":
+                if not _may_view(store, user, sp.user_id):
                     raise forbidden()
                 return d.model_copy(update={"url": f"/mock-documents/{document_id}.pdf"})
     raise not_found("Document")
