@@ -23,6 +23,7 @@ export default function Applicants() {
   const [detail, setDetail] = useState<Applicant | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [opened, setOpened] = useState<string[]>([]); // documents expanded in the drawer, loaded on first open
   const canRank = me?.phase.window === "review" || me?.phase.window === "application";
 
   const ids = ranking.data?.application_ids ?? [];
@@ -126,11 +127,10 @@ export default function Applicants() {
               <div className="eyebrow mb-2">Documents</div>
               <div className="flex flex-col gap-2">
                 {detail.documents.map((d) => (
-                  <details key={d.id} className="border border-border rounded-button">
+                  <details key={d.id} className="border border-border rounded-button"
+                    onToggle={(e) => { if (e.currentTarget.open && !opened.includes(d.id)) setOpened([...opened, d.id]); }}>
                     <summary className="flex items-center gap-2 px-3 py-2.5 text-[12.5px] font-medium text-muted cursor-pointer list-none"><I.File size={14} /> {d.file_name}<span className="ml-auto text-accent font-semibold text-[11.5px]">View</span></summary>
-                    <div className="border-t border-border bg-sunken h-[360px] flex items-center justify-center text-[12px] text-faint px-4 text-center">
-                      In-app PDF viewer (REQ-VRANK-3). TODO(slice C): render with pdf.js from the signed URL returned by GET /documents/{"{id}"}/view.
-                    </div>
+                    {opened.includes(d.id) && <DocumentViewer id={d.id} name={d.file_name} />}
                   </details>
                 ))}
               </div>
@@ -140,4 +140,14 @@ export default function Applicants() {
       </Drawer>
     </>
   );
+}
+
+/** In-app PDF viewer (REQ-VRANK-3). The API returns a 10-minute signed link; the browser's own PDF viewer renders it. */
+function DocumentViewer({ id, name }: { id: string; name: string }) {
+  const doc = useApi((api) => api.documentUrl(id), [id]);
+  const box = "border-t border-border bg-sunken h-[460px] flex items-center justify-center text-[12px] text-faint px-4 text-center";
+  if (doc.loading) return <div className={box}><Loading /></div>;
+  if (doc.error) return <div className={box}>{doc.error.message}</div>;
+  if (!doc.data?.url) return <div className={box}>This file has not been uploaded yet, so it cannot be shown.</div>;
+  return <iframe src={doc.data.url} title={name} className="block w-full h-[460px] border-0 border-t border-border bg-white" />;
 }

@@ -33,7 +33,7 @@ Update the row for every REQ-ID your PR touches. "Screen" is the dialog-map page
 | SRANK-1..2 | C | PUT /me/ranking | MyApplicationPage | test_REQ_SRANK_1_order_persisted, test_REQ_SRANK_2_ranking_must_cover_every_active_application, test_REQ_SRANK_2_duplicate_ids_rejected | mock |
 | VRANK-1 | C | GET /supervisor/listings/{id}/applicants | ApplicantAndRankingsPage | test_REQ_VRANK_1_top_ten_flag_limited, test_REQ_VRANK_1_at_most_ten_recommended, test_REQ_VRANK_1_min_cgpa_filter | mock |
 | VRANK-2 | C | GET/PUT /supervisor/listings/{id}/ranking | ApplicantAndRankingsPage | test_REQ_VRANK_2_cannot_read_other_supervisors_ranking, test_REQ_VRANK_2_ranking_after_review_end_rejected | mock |
-| VRANK-3 | C | GET /documents/{id}/view, GET /supervisor/applicants/{id} | ApplicantAndRankingsPage drawer | test_REQ_VRANK_3_other_student_cannot_view, test_REQ_VRANK_3_supervisor_of_applied_listing_can_view, test_REQ_VRANK_3_unrelated_supervisor_cannot_view, test_REQ_VRANK_3_drawer_for_closed_application_is_404 (PDF viewer still to do) | todo |
+| VRANK-3 | C | GET /documents/{id}/view, GET /supervisor/applicants/{id} | ApplicantAndRankingsPage drawer | test_REQ_VRANK_3_other_student_cannot_view, test_REQ_VRANK_3_supervisor_of_applied_listing_can_view, test_REQ_VRANK_3_unrelated_supervisor_cannot_view, test_REQ_VRANK_3_drawer_for_closed_application_is_404, test_REQ_VRANK_3_view_returns_signed_storage_url | mock |
 | CYCLE-1..3 | D | /admin/cycles | MatchingRoundsPage | | todo |
 | ROUND-1..3 | D | PUT /admin/cycles/{id}/rounds | MatchingRoundsPage | | todo |
 | EXEC-1 | D | POST /admin/rounds/{id}/execute | MatchingRoundsPage | test_REQ_EXEC_1_cannot_execute_before_review_window_ends | mock |
