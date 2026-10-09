@@ -1390,7 +1390,7 @@ export interface components {
          * NotificationEvent
          * @enum {string}
          */
-        NotificationEvent: "cycle_changed" | "round_opened" | "results_published" | "offer_received" | "proposal_decided" | "match_approved" | "match_rejected" | "account_changed";
+        NotificationEvent: "cycle_changed" | "round_opened" | "results_published" | "offer_received" | "proposal_decided" | "matches_proposed" | "match_approved" | "match_rejected" | "account_changed";
         /** Ok */
         Ok: {
             /**

@@ -1,1 +1,25 @@
+# OS
 .DS_Store
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# IDE / editor local config
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# Claude Code local config
+.claude/
+
+# Office temp lock files
+~$*
+
+# Local working copy of the dev plan
+URECAMatch-Development-Plan.docx

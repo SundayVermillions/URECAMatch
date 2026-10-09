@@ -91,6 +91,7 @@ class NotificationEvent(str, Enum):
     results_published = "results_published"
     offer_received = "offer_received"
     proposal_decided = "proposal_decided"
+    matches_proposed = "matches_proposed"  # execute produced matches; supervisors must review
     match_approved = "match_approved"
     match_rejected = "match_rejected"
     account_changed = "account_changed"
