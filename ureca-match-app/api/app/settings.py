@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     approved_email_domains: str = "e.ntu.edu.sg,ntu.edu.sg"  # REQ-REG-1
     session_minutes: int = 30  # REQ-AUTH-3
     cron_secret: str = "change-me"
+    email_mode: str = "off"  # off | log | send (NFR 5.1.2); send only in production
+    resend_api_key: str = ""
+    email_from: str = "URECAMatch <onboarding@resend.dev>"
+    app_url: str = "http://localhost:3000"  # base for links in e-mails
     # Fixed "now" for mock mode so the demo is deterministic: inside Round 2's application window.
     demo_now: datetime = datetime(2026, 9, 7, 10, 0, tzinfo=UTC)
 
