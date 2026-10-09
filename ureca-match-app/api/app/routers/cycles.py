@@ -141,7 +141,7 @@ def update_cycle(cycle_id: str, body: CycleUpdate, admin: AdminUser, store: Stor
             affected,
             NotificationEvent.cycle_changed,
             "Application cycle dates changed",
-            f"The cycle now closes on {c.closing_date:%-d %b %Y}.",
+            f"The cycle now closes on {c.closing_date:%d %b %Y}.",
             now,
         )
     audit(store, admin, AuditOperation.cycle_updated, [c.id], now)
@@ -169,7 +169,7 @@ def set_rounds(cycle_id: str, body: RoundsUpdate, admin: AdminUser, store: Store
         rev_start = app_start + timedelta(days=spec.application_days)
         rev_end = rev_start + timedelta(days=spec.review_days) - timedelta(seconds=1)
         if rev_end > c.closing_date:  # REQ-ROUND-3
-            raise invalid("outside_cycle", f"Round {spec.number} would end after the cycle closes on {c.closing_date:%-d %b}.")
+            raise invalid("outside_cycle", f"Round {spec.number} would end after the cycle closes on {c.closing_date:%d %b}.")
         rounds.append(
             Round(
                 id=old.id if old else store.next_id("rnd"),

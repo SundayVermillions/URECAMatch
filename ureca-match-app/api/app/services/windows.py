@@ -67,7 +67,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_number=r.number,
             window=Window.review,
             window_ends_at=r.review_end,
-            label=f"Round {r.number} rankings due {r.review_end:%-d %b}",
+            label=f"Round {r.number} rankings due {r.review_end:%d %b}",
         )
     if r.published_at is None:
         return Phase(
