@@ -20,13 +20,27 @@ class Settings(BaseSettings):
     cron_secret: str = "change-me"
     # Fixed "now" for mock mode so the demo is deterministic: inside Round 2's application window.
     demo_now: datetime = datetime(2026, 9, 7, 10, 0, tzinfo=UTC)
+    # Developer tool: lets /debug/clock replace "now" so a cycle can be tested without waiting. Off unless DEBUG_CLOCK=true.
+    debug_clock: bool = False
 
     @property
     def domains(self) -> list[str]:
         return [d.strip().lower() for d in self.approved_email_domains.split(",") if d.strip()]
 
     def now(self) -> datetime:
+        """The single clock for the whole API. Every window, deadline and timeout reads this."""
+        if self.debug_clock and _clock_override is not None:
+            return _clock_override
         return self.demo_now if self.api_mode == "mock" else datetime.now(UTC)
+
+
+# Held in memory for this API process only; a restart returns to the real (or demo) clock.
+_clock_override: datetime | None = None
+
+
+def set_clock_override(value: datetime | None) -> None:
+    global _clock_override
+    _clock_override = value
 
 
 @lru_cache

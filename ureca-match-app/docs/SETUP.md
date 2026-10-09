@@ -63,6 +63,12 @@ shared/openapi.json     GENERATED contract
 
 Set `NEXT_PUBLIC_API_MODE=live` in `web/.env.local` and run the API. Mock mode sends `X-Demo-User`; live mode sends the Supabase JWT. Both are read by `api/app/deps.py`.
 
+### Fake clock (testing a cycle without waiting)
+
+Add `NEXT_PUBLIC_DEBUG_CLOCK=true` to `web/.env.local` and restart `npm run dev`. A clock chip appears top right. Open it to set any date and time, jump +1 hour, day or week, skip past the current window, or go back to the real clock. Every screen reloads for the new time.
+
+In live mode the API must also allow it: put `DEBUG_CLOCK=true` in `api/.env` and restart the API. The clock moves for every user on that API, is held in memory only, and a restart resets it. Leave both flags off in production.
+
 ## Work split
 
 Owners: Edwin (A), Robin (B), Ian (C), Nicholas (D), Benjamin (E). The full guide is `URECAMatch-Development-Guide.docx`: goal, per-slice build steps, tests, who to talk to. [DEV-PLAN.md](DEV-PLAN.md) is the live progress board. Traceability from REQ-ID to code and tests lives in [traceability.md](traceability.md).

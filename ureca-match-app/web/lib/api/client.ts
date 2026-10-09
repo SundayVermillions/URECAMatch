@@ -60,6 +60,10 @@ export interface ApiClient {
   myMatch(): Promise<M.Match | null>;
   respondToOffer(accept: boolean): Promise<M.Match>;
   tick(): Promise<void>;
+  // developer tool: debug clock (needs DEBUG_CLOCK=true on the API; always on in mock mode)
+  clock(): Promise<M.ClockState>;
+  setClock(nowIso: string): Promise<M.ClockState>;
+  resetClock(): Promise<M.ClockState>;
   // slice E
   notifications(): Promise<M.Notification[]>;
   markRead(id: string): Promise<void>;

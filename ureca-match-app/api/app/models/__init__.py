@@ -517,5 +517,17 @@ class SupervisorDashboard(BaseModel):
     phase: Phase
 
 
+class ClockState(BaseModel):
+    """Debug clock (developer tool). `enabled` is false when the server has DEBUG_CLOCK off."""
+
+    enabled: bool
+    now: datetime
+    overridden: bool = False
+
+
+class ClockSet(BaseModel):
+    now: datetime
+
+
 class Ok(BaseModel):
     ok: bool = True

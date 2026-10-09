@@ -53,6 +53,7 @@ export type AuditEntry = S["AuditEntry"];
 export type Notification = S["Notification"];
 export type AdminDashboard = S["AdminDashboard"];
 export type SupervisorDashboard = S["SupervisorDashboard"];
+export type ClockState = S["ClockState"];
 
 export type ListingFilters = { q?: string; school?: string; tag?: string; supervisor?: string };
 export type ApplicantFilters = { school?: string; min_cgpa?: number; prerequisites_only?: boolean };

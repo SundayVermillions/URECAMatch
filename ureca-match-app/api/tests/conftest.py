@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from app.db import store as store_module
 from app.main import app
+from app.settings import set_clock_override
 
 
 @pytest.fixture(autouse=True)
@@ -19,6 +20,7 @@ def fresh_store(monkeypatch):
     store_module.reset_store()
     yield store_module.get_store()
     store_module.reset_store()
+    set_clock_override(None)  # a test that moved the debug clock must not leak into the next one
 
 
 @pytest.fixture
