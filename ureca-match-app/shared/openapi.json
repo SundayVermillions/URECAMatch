@@ -4505,6 +4505,166 @@
         }
       }
     },
+    "/debug/clock": {
+      "get": {
+        "tags": [
+          "debug"
+        ],
+        "summary": "Get Clock",
+        "description": "Current API time. `enabled` is false when DEBUG_CLOCK is off, so the UI can hide itself.",
+        "operationId": "get_clock_debug_clock_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockState"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "debug"
+        ],
+        "summary": "Put Clock",
+        "description": "Freeze the API clock at the given moment. Applies to every user until reset.",
+        "operationId": "put_clock_debug_clock_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClockSet"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "debug"
+        ],
+        "summary": "Reset Clock",
+        "description": "Go back to the real clock (or the fixed demo clock in mock mode).",
+        "operationId": "reset_clock_debug_clock_delete",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -4966,6 +5126,45 @@
           "file"
         ],
         "title": "Body_upload_document_me_documents_post"
+      },
+      "ClockSet": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now"
+        ],
+        "title": "ClockSet"
+      },
+      "ClockState": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "overridden": {
+            "type": "boolean",
+            "title": "Overridden",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "now"
+        ],
+        "title": "ClockState",
+        "description": "Debug clock (developer tool). `enabled` is false when the server has DEBUG_CLOCK off."
       },
       "Cycle": {
         "properties": {
