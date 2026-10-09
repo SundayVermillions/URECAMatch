@@ -958,6 +958,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/debug/clock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Clock
+         * @description Current API time. `enabled` is false when DEBUG_CLOCK is off, so the UI can hide itself.
+         */
+        get: operations["get_clock_debug_clock_get"];
+        /**
+         * Put Clock
+         * @description Freeze the API clock at the given moment. Applies to every user until reset.
+         */
+        put: operations["put_clock_debug_clock_put"];
+        post?: never;
+        /**
+         * Reset Clock
+         * @description Go back to the real clock (or the fixed demo clock in mock mode).
+         */
+        delete: operations["reset_clock_debug_clock_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1149,6 +1177,32 @@ export interface components {
         Body_upload_document_me_documents_post: {
             /** File */
             file: string;
+        };
+        /** ClockSet */
+        ClockSet: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+        };
+        /**
+         * ClockState
+         * @description Debug clock (developer tool). `enabled` is false when the server has DEBUG_CLOCK off.
+         */
+        ClockState: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /**
+             * Overridden
+             * @default false
+             */
+            overridden: boolean;
         };
         /** Cycle */
         Cycle: {
@@ -3907,6 +3961,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupervisorDashboard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_clock_debug_clock_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClockState"];
+                };
+            };
+        };
+    };
+    put_clock_debug_clock_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClockSet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClockState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_clock_debug_clock_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClockState"];
                 };
             };
             /** @description Validation Error */

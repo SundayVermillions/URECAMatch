@@ -84,6 +84,10 @@ export class LiveClient implements ApiClient {
   respondToOffer = (accept: boolean) => this.req<M.Match>("POST", `/me/match/${accept ? "accept" : "decline"}`);
   tick = () => this.req<void>("POST", "/internal/tick");
 
+  clock = () => this.req<M.ClockState>("GET", "/debug/clock");
+  setClock = (now: string) => this.req<M.ClockState>("PUT", "/debug/clock", { now });
+  resetClock = () => this.req<M.ClockState>("DELETE", "/debug/clock");
+
   notifications = () => this.req<M.Notification[]>("GET", "/me/notifications");
   markRead = (id: string) => this.req<void>("POST", `/me/notifications/${id}/read`);
   adminDashboard = () => this.req<M.AdminDashboard>("GET", "/admin/dashboard");

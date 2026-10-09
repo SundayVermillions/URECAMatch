@@ -521,6 +521,12 @@ export class MockClient implements ApiClient {
     for (const m of this.db.matches) if (m.status === "published" && m.offer_expires_at && this.now.getTime() > Date.parse(m.offer_expires_at)) { m.status = "timed_out"; const sp = this.student(m.student_id); if (sp) sp.eligible_for_matching = false; }
   }
 
+  // ---- debug clock (mirror of routers/debug.py; the mock has no env flag, the UI hides the widget instead)
+  private clockState(): M.ClockState { return { enabled: true, now: this.iso(), overridden: this.now.getTime() !== DEMO_NOW.getTime() }; }
+  async clock() { return this.clockState(); }
+  async setClock(nowIso: string) { this.user(); this.now = new Date(nowIso); return this.clockState(); }
+  async resetClock() { this.user(); this.now = DEMO_NOW; return this.clockState(); }
+
   // ---- slice E
   async notifications() { const u = this.user(); return this.db.notifications.filter((n) => n.user_id === u.id).sort((a, b) => b.created_at.localeCompare(a.created_at)); }
   async markRead(id: string) { const u = this.user(); const n = this.db.notifications.find((n) => n.id === id && n.user_id === u.id); if (n) n.read = true; }

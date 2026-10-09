@@ -2,8 +2,9 @@
 /** The common shell (style sheet 03): fixed 240 px sidebar, content region max 1080, 24/40 insets. */
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMe } from "./app-provider";
+import { DEBUG_CLOCK_ON, DebugClock } from "./debug-clock";
 import { I } from "./icons";
 import { GlassIndicator, LiquidGlassFilter } from "./liquid-glass";
 import type { Role } from "@/lib/api/models";
@@ -40,6 +41,7 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
   const role = wanted ?? me?.user.role ?? "student";
   const path = usePathname();
   const router = useRouter();
+  const [epoch, setEpoch] = useState(0);
 
   useEffect(() => {
     if (loading) return;
@@ -90,7 +92,9 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
       </aside>
       </div>
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <div className="max-w-[1080px] pt-10 pb-16 pl-12 pr-10">{children}</div>
+        {DEBUG_CLOCK_ON && <DebugClock onChanged={() => setEpoch((n) => n + 1)} />}
+        {/* The key remounts the page after the debug clock moves, so every screen re-fetches for the new "now". */}
+        <div key={epoch} className="max-w-[1080px] pt-10 pb-16 pl-12 pr-10">{children}</div>
       </main>
     </div>
   );
