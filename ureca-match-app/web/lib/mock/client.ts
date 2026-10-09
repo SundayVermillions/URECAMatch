@@ -21,6 +21,7 @@ export class MockClient implements ApiClient {
   db: Seed = clone(seedJson as unknown as Seed);
   now = DEMO_NOW;
   private counter = 5000;
+  private passwords: Record<string, string> = {};
 
   private id(p: string) { return `${p}-${++this.counter}`; }
   private iso() { return this.now.toISOString(); }
@@ -93,6 +94,7 @@ export class MockClient implements ApiClient {
     if (this.db.users.some((u) => u.email.toLowerCase() === b.email.toLowerCase())) throw new M.ApiError(409, "email_taken", "An account with this e-mail already exists. Sign in instead.");
     const u: M.User = { id: this.id(b.role.slice(0, 3)), email: b.email, name: b.name, role: b.role, status: "pending_verification", created_at: this.iso(), last_login_at: null };
     this.db.users.push(u);
+    this.passwords[b.email.toLowerCase()] = b.password;
     if (b.role === "student") this.db.students.push({ user_id: u.id, school: "", cgpa: null, year_of_study: null, completed_modules: [], research_interests: [], profile_complete: false, eligible_for_matching: true, documents: [] });
     else this.db.supervisors.push({ user_id: u.id, faculty: "", organisation: "NTU" });
   }
@@ -112,7 +114,8 @@ export class MockClient implements ApiClient {
   async signIn(b: M.SignInRequest): Promise<M.Session> {
     await sleep();
     const u = this.db.users.find((u) => u.email.toLowerCase() === b.email.toLowerCase());
-    if (!u || b.password !== "password") throw new M.ApiError(401, "bad_credentials", "E-mail or password is incorrect.");
+    const expected = this.passwords[b.email.toLowerCase()] ?? "password";
+    if (!u || b.password !== expected) throw new M.ApiError(401, "bad_credentials", "E-mail or password is incorrect.");
     if (u.status === "inactive") throw new M.ApiError(403, "account_inactive", "This account has been deactivated. Contact the URECA office.");
     if (u.status === "pending_verification") throw new M.ApiError(403, "not_verified", "Verify your e-mail before signing in.");
     u.last_login_at = this.iso();
@@ -147,7 +150,8 @@ export class MockClient implements ApiClient {
     const a = this.need("admin");
     if (this.db.users.some((u) => u.email.toLowerCase() === b.email.toLowerCase())) throw new M.ApiError(409, "email_taken", "An account with this e-mail already exists.");
     const u: M.User = { id: this.id(b.role.slice(0, 3)), email: b.email, name: b.name, role: b.role, status: "active", created_at: this.iso(), last_login_at: null };
-    this.db.users.push(u); this.audit(a, "user_updated", [u.id], "created");
+    this.db.users.push(u);
+    this.passwords[b.email.toLowerCase()] = b.password; this.audit(a, "user_updated", [u.id], "created");
     return u;
   }
   async updateUser(id: string, b: M.UserUpdate) {
