@@ -45,18 +45,25 @@ export class MockClient implements ApiClient {
 
   // ---- phase (mirror of services/windows.py)
   phase(): M.Phase {
-    const c = this.db.cycle, now = this.now, t = now.getTime();
+    const c = this.db.cycle, t = this.now.getTime();
+    if (t < Date.parse(c.opening_date))
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "before_cycle", window_ends_at: null, label: "No application cycle is open" };
+    if (t > Date.parse(c.closing_date))
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "closed", window_ends_at: null, label: "The application cycle has closed" };
+    if (c.rounds.length === 0 || t < Date.parse(c.rounds[0].application_start)) {
+      const ends = c.rounds.length ? c.rounds[0].application_start : c.closing_date;
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: ends, label: `Applications open ${fmt(ends)}` };
+    }
     const r = c.rounds.find((r) => t >= Date.parse(r.application_start) && t <= Date.parse(r.review_end))
       ?? c.rounds.find((r) => Date.parse(r.application_start) > t) ?? c.rounds[c.rounds.length - 1];
-    if (t < Date.parse(c.rounds[0].application_start))
-      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: c.rounds[0].application_start, label: `Applications open ${fmt(c.rounds[0].application_start)}` };
     if (t >= Date.parse(r.application_start) && t <= Date.parse(r.application_end))
       return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "application", window_ends_at: r.application_end, label: `Round ${r.number} closes ${fmt(r.application_end)}` };
     if (t >= Date.parse(r.review_start) && t <= Date.parse(r.review_end))
       return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "review", window_ends_at: r.review_end, label: `Round ${r.number} rankings due ${fmt(r.review_end)}` };
     if (!r.published_at)
-      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "awaiting_results", window_ends_at: r.application_start, label: `Round ${r.number} results pending` };
-    return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "results", window_ends_at: r.application_start, label: `Round ${r.number} results published` };
+      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "awaiting_results", window_ends_at: null, label: `Round ${r.number} results pending` };
+    const nxt = c.rounds.find((x) => x.number === r.number + 1);
+    return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "results", window_ends_at: nxt ? nxt.review_start : c.closing_date, label: `Round ${r.number} results published` };
   }
   private requireApplicationWindow() {
     if (this.phase().window !== "application") throw new M.ApiError(422, "window_closed", "Applications can only be changed during an application window.");
@@ -355,8 +362,18 @@ export class MockClient implements ApiClient {
   async cycle() { this.user(); return this.db.cycle; }
   async createCycle(b: M.CycleCreate) {
     const a = this.need("admin");
+    if (this.db.cycle && this.db.cycle.status !== "closed") throw new M.ApiError(409, "cycle_active", "Close the current cycle before creating a new one.");
+    if (Date.parse(b.closing_date) <= Date.parse(b.opening_date)) throw new M.ApiError(422, "bad_dates", "Closing date must be after the opening date.");
     this.db.cycle = { id: this.id("cyc"), academic_year: b.academic_year, opening_date: b.opening_date, closing_date: b.closing_date, pre_application_days: b.pre_application_days ?? 7, status: "draft", rounds: [] };
     this.audit(a, "cycle_updated", [this.db.cycle.id], "created"); return this.db.cycle;
+  }
+  async closeCycle(id: string) {
+    const a = this.need("admin"); const c = this.db.cycle;
+    if (!c || c.id !== id) throw new M.ApiError(404, "not_found", "Cycle was not found.");
+    if (c.status === "closed") throw new M.ApiError(409, "already_closed", "This cycle is already closed.");
+    c.status = "closed";
+    this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle closed", `The ${c.academic_year} cycle is now closed.`);
+    this.audit(a, "cycle_updated", [c.id], "closed"); return c;
   }
   async updateCycle(id: string, b: M.CycleUpdate) {
     const a = this.need("admin"); const c = this.db.cycle;

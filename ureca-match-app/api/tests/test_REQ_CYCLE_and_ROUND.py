@@ -31,6 +31,34 @@ def test_REQ_CYCLE_1_create_new_cycle_when_none_active(as_admin, fresh_store):
     assert r.json()["status"] == "draft" and r.json()["rounds"] == []
 
 
+def test_REQ_CYCLE_1_close_then_create_next_cycle(as_admin):
+    # The seeded cycle is active, so creating is refused until it is closed.
+    assert as_admin.post("/admin/cycles", json={
+        "academic_year": "AY27/28 Semester 1",
+        "opening_date": "2027-08-01T09:00:00Z",
+        "closing_date": "2027-11-01T09:00:00Z",
+        "pre_application_days": 7,
+    }).status_code == 409
+    closed = as_admin.post(f"/admin/cycles/{CYCLE_ID}/close")
+    assert closed.status_code == 200 and closed.json()["status"] == "closed"
+    # Closing twice is refused.
+    assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 409
+    # With the old cycle closed, a new one can now be created.
+    created = as_admin.post("/admin/cycles", json={
+        "academic_year": "AY27/28 Semester 1",
+        "opening_date": "2027-08-01T09:00:00Z",
+        "closing_date": "2027-11-01T09:00:00Z",
+        "pre_application_days": 7,
+    })
+    assert created.status_code == 201 and created.json()["status"] == "draft"
+
+
+def test_REQ_CYCLE_1_close_notifies_students(as_admin, as_student):
+    assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 200
+    events = [n["event"] for n in as_student.get("/me/notifications").json()]
+    assert "cycle_changed" in events
+
+
 def test_REQ_CYCLE_1_rejects_closing_before_opening(as_admin, fresh_store):
     fresh_store.cycle = None
     body = {

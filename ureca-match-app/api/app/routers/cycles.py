@@ -50,6 +50,29 @@ def create_cycle(body: CycleCreate, admin: AdminUser, store: StoreDep, settings:
     return store.cycle
 
 
+@router.post("/admin/cycles/{cycle_id}/close", response_model=Cycle)
+def close_cycle(cycle_id: str, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Cycle:
+    """Close the current cycle so a new one can be created (REQ-CYCLE-1)."""
+    c = store.cycle
+    if c is None or c.id != cycle_id:
+        raise not_found("Cycle")
+    if c.status == CycleStatus.closed:
+        raise conflict("already_closed", "This cycle is already closed.")
+    c.status = CycleStatus.closed
+    now = settings.now()
+    audit(store, admin, AuditOperation.cycle_updated, [c.id], now, "closed")
+    affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]
+    notify(
+        store,
+        affected,
+        NotificationEvent.cycle_changed,
+        "Application cycle closed",
+        f"The {c.academic_year} cycle is now closed.",
+        now,
+    )
+    return c
+
+
 @router.put("/admin/cycles/{cycle_id}", response_model=Cycle)
 def update_cycle(cycle_id: str, body: CycleUpdate, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Cycle:
     c = store.cycle

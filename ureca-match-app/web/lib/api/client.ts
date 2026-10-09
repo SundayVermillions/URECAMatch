@@ -42,6 +42,7 @@ export interface ApiClient {
   // slice D
   cycle(): Promise<M.Cycle | null>;
   createCycle(body: M.CycleCreate): Promise<M.Cycle>;
+  closeCycle(id: string): Promise<M.Cycle>;
   updateCycle(id: string, body: M.CycleUpdate): Promise<M.Cycle>;
   setRounds(cycleId: string, body: M.RoundsUpdate): Promise<M.Cycle>;
   execute(roundId: string): Promise<M.RoundSummary>;
