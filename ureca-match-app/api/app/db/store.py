@@ -60,6 +60,9 @@ class Store(Protocol):
     def save_ranking(  # slice C
         self, listing_id: str, round_id: str | None, application_ids: list[str], submitted_at: datetime
     ) -> None: ...
+    def notifications_for(self, user_id: str) -> list[Notification]: ...  # slice E: any order; the router sorts
+    def save_notifications(self, *notifications: Notification) -> None: ...  # slice E: insert. Only services/notify.py
+    def mark_notification_read(self, notification_id: str, user_id: str) -> bool: ...  # slice E: False if not theirs
     def next_id(self, prefix: str) -> str: ...
 
 
@@ -176,6 +179,20 @@ class MockStore:
 
     def save_ranking(self, listing_id: str, round_id: str | None, application_ids: list[str], submitted_at: datetime) -> None:
         self.applicant_rankings[f"{listing_id}:{round_id}"] = list(application_ids)
+
+    # --- Slice E: notifications
+    def notifications_for(self, user_id: str) -> list[Notification]:
+        return [n for n in self.notifications if n.user_id == user_id]
+
+    def save_notifications(self, *notifications: Notification) -> None:
+        self.notifications.extend(notifications)
+
+    def mark_notification_read(self, notification_id: str, user_id: str) -> bool:
+        n = next((n for n in self.notifications if n.id == notification_id and n.user_id == user_id), None)
+        if n is None:
+            return False
+        n.read = True
+        return True
 
 
 class SupabaseStore(MockStore):
@@ -409,6 +426,28 @@ class SupabaseStore(MockStore):
             "submitted_at": submitted_at.isoformat(),
         }
         self.client.table("applicant_rankings").upsert(row).execute()
+
+    # --- Slice E: notifications (table notifications). Columns match the Notification model one to one.
+
+    def notifications_for(self, user_id: str) -> list[Notification]:
+        if not self.client:
+            return super().notifications_for(user_id)
+        table = self.client.table("notifications")
+        res = table.select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        return [Notification.model_validate(r) for r in res.data or []]
+
+    def save_notifications(self, *notifications: Notification) -> None:
+        if not self.client:
+            return super().save_notifications(*notifications)
+        if notifications:
+            self.client.table("notifications").insert([n.model_dump(mode="json") for n in notifications]).execute()
+
+    def mark_notification_read(self, notification_id: str, user_id: str) -> bool:
+        if not self.client:
+            return super().mark_notification_read(notification_id, user_id)
+        table = self.client.table("notifications")
+        res = table.update({"read": True}).eq("id", notification_id).eq("user_id", user_id).execute()
+        return bool(res.data)
 
 
 _store: Store | None = None

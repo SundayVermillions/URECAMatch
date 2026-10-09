@@ -16,12 +16,10 @@ from app.services import email
 def notify(
     store: Store, user_ids: list[str], event: NotificationEvent, title: str, message: str, now: datetime, link: str | None = None
 ) -> list[Notification]:
-    created = []
-    for uid in user_ids:
-        n = Notification(
-            id=store.next_id("ntf"), user_id=uid, event=event, title=title, message=message, created_at=now, link=link
-        )
-        store.notifications.append(n)
-        created.append(n)
+    created = [
+        Notification(id=store.next_id("ntf"), user_id=uid, event=event, title=title, message=message, created_at=now, link=link)
+        for uid in user_ids
+    ]
+    store.save_notifications(*created)
     email.send_for(store, created)
     return created

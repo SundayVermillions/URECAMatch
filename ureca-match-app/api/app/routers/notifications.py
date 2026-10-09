@@ -24,15 +24,13 @@ router = APIRouter(tags=["notifications", "dashboards"])
 
 @router.get("/me/notifications", response_model=list[Notification])
 def mine(user: CurrentUser, store: StoreDep) -> list[Notification]:  # REQ-NOTIF-1: own only, newest first
-    return sorted((n for n in store.notifications if n.user_id == user.id), key=lambda n: n.created_at, reverse=True)
+    return sorted(store.notifications_for(user.id), key=lambda n: n.created_at, reverse=True)
 
 
 @router.post("/me/notifications/{notification_id}/read", response_model=Ok)
 def mark_read(notification_id: str, user: CurrentUser, store: StoreDep) -> Ok:  # REQ-NOTIF-2
-    n = next((n for n in store.notifications if n.id == notification_id and n.user_id == user.id), None)
-    if n is None:
+    if not store.mark_notification_read(notification_id, user.id):  # someone else's reads as not found
         raise not_found("Notification")
-    n.read = True
     return Ok()
 
 
