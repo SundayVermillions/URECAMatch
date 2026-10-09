@@ -69,8 +69,8 @@ def register(body: RegisterRequest, store: StoreDep, settings: SettingsDep) -> O
         except Exception as e:
             err_msg = str(e).lower()
             if "already registered" in err_msg or "already exists" in err_msg:
-                raise conflict("email_taken", "An account with this e-mail already exists. Sign in instead.")
-            raise ApiError(500, "auth_provider_error", f"Supabase Auth error: {e}")
+                raise conflict("email_taken", "An account with this e-mail already exists. Sign in instead.") from e
+            raise ApiError(500, "auth_provider_error", f"Supabase Auth error: {e}") from e
     else:
         store.passwords[body.email.lower()] = body.password
 
@@ -142,11 +142,9 @@ def sign_in(body: SignInRequest, store: StoreDep, settings: SettingsDep) -> Sess
 
     if settings.api_mode == "supabase" and hasattr(store, "client") and store.client:
         try:
-            auth_res = store.client.auth.sign_in_with_password(
-                {"email": body.email, "password": body.password}
-            )
+            store.client.auth.sign_in_with_password({"email": body.email, "password": body.password})
         except Exception:
-            raise ApiError(401, "bad_credentials", "E-mail or password is incorrect.")
+            raise ApiError(401, "bad_credentials", "E-mail or password is incorrect.") from None
     else:
         expected_pw = store.passwords.get(body.email.lower(), "password")
         if body.password != expected_pw:

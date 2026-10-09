@@ -1,4 +1,4 @@
-﻿"""Seed Supabase Auth with demo users from seed_data.
+"""Seed Supabase Auth with demo users from seed_data.
 
 Run with:
     uv run python -m app.db.seed_auth
@@ -7,7 +7,9 @@ Run with:
 from __future__ import annotations
 
 import sys
+
 from supabase import create_client
+
 from app.db import seed_data
 from app.settings import get_settings
 

@@ -39,12 +39,15 @@ def test_REQ_CYCLE_1_close_then_reopen_restores_active_cycle(as_admin):
 def test_REQ_CYCLE_1_create_rejected_when_dates_overlap(as_admin):
     assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 200
     # Overlaps the (now closed) AY26/27 cycle, which runs 18 Aug to 30 Sep 2026.
-    r = as_admin.post("/admin/cycles", json={
-        "academic_year": "AY26/27 Semester 1 (dup)",
-        "opening_date": "2026-09-01T09:00:00Z",
-        "closing_date": "2026-12-01T09:00:00Z",
-        "pre_application_days": 7,
-    })
+    r = as_admin.post(
+        "/admin/cycles",
+        json={
+            "academic_year": "AY26/27 Semester 1 (dup)",
+            "opening_date": "2026-09-01T09:00:00Z",
+            "closing_date": "2026-12-01T09:00:00Z",
+            "pre_application_days": 7,
+        },
+    )
     assert r.status_code == 409 and r.json()["code"] == "cycle_overlap"
 
 
@@ -77,23 +80,32 @@ def test_REQ_CYCLE_1_create_new_cycle_when_none_active(as_admin, fresh_store):
 
 def test_REQ_CYCLE_1_close_then_create_next_cycle(as_admin):
     # The seeded cycle is active, so creating is refused until it is closed.
-    assert as_admin.post("/admin/cycles", json={
-        "academic_year": "AY27/28 Semester 1",
-        "opening_date": "2027-08-01T09:00:00Z",
-        "closing_date": "2027-11-01T09:00:00Z",
-        "pre_application_days": 7,
-    }).status_code == 409
+    assert (
+        as_admin.post(
+            "/admin/cycles",
+            json={
+                "academic_year": "AY27/28 Semester 1",
+                "opening_date": "2027-08-01T09:00:00Z",
+                "closing_date": "2027-11-01T09:00:00Z",
+                "pre_application_days": 7,
+            },
+        ).status_code
+        == 409
+    )
     closed = as_admin.post(f"/admin/cycles/{CYCLE_ID}/close")
     assert closed.status_code == 200 and closed.json()["status"] == "closed"
     # Closing twice is refused.
     assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 409
     # With the old cycle closed, a new one can now be created.
-    created = as_admin.post("/admin/cycles", json={
-        "academic_year": "AY27/28 Semester 1",
-        "opening_date": "2027-08-01T09:00:00Z",
-        "closing_date": "2027-11-01T09:00:00Z",
-        "pre_application_days": 7,
-    })
+    created = as_admin.post(
+        "/admin/cycles",
+        json={
+            "academic_year": "AY27/28 Semester 1",
+            "opening_date": "2027-08-01T09:00:00Z",
+            "closing_date": "2027-11-01T09:00:00Z",
+            "pre_application_days": 7,
+        },
+    )
     assert created.status_code == 201 and created.json()["status"] == "draft"
 
 
@@ -140,11 +152,13 @@ def test_REQ_CYCLE_3_closing_change_notifies_students(as_admin, as_student, as_s
 
 
 def test_REQ_ROUND_1_rounds_derived_sequentially(as_admin):
-    body = {"rounds": [
-        {"number": 1, "application_days": 5, "review_days": 2},
-        {"number": 2, "application_days": 5, "review_days": 2},
-        {"number": 3, "application_days": 3, "review_days": 2},
-    ]}
+    body = {
+        "rounds": [
+            {"number": 1, "application_days": 5, "review_days": 2},
+            {"number": 2, "application_days": 5, "review_days": 2},
+            {"number": 3, "application_days": 3, "review_days": 2},
+        ]
+    }
     r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)
     assert r.status_code == 200
     rounds = sorted(r.json()["rounds"], key=lambda x: x["number"])
@@ -158,11 +172,13 @@ def test_REQ_ROUND_1_rounds_derived_sequentially(as_admin):
 def test_REQ_ROUND_2_only_future_rounds_change(as_admin):
     before = {rd["number"]: rd for rd in as_admin.get("/cycle").json()["rounds"]}
     # Round 1 already started (before the demo clock), so a new spec must not move its dates.
-    body = {"rounds": [
-        {"number": 1, "application_days": 1, "review_days": 1},
-        {"number": 2, "application_days": 5, "review_days": 2},
-        {"number": 3, "application_days": 3, "review_days": 2},
-    ]}
+    body = {
+        "rounds": [
+            {"number": 1, "application_days": 1, "review_days": 1},
+            {"number": 2, "application_days": 5, "review_days": 2},
+            {"number": 3, "application_days": 3, "review_days": 2},
+        ]
+    }
     r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)
     assert r.status_code == 200
     after = {rd["number"]: rd for rd in r.json()["rounds"]}
@@ -172,10 +188,12 @@ def test_REQ_ROUND_2_only_future_rounds_change(as_admin):
 
 def test_REQ_ROUND_3_round_past_cycle_close_rejected(as_admin):
     # Round 3 recomputed at the maximum window lengths would end after the cycle closes.
-    body = {"rounds": [
-        {"number": 1, "application_days": 5, "review_days": 2},
-        {"number": 2, "application_days": 5, "review_days": 2},
-        {"number": 3, "application_days": 14, "review_days": 7},
-    ]}
+    body = {
+        "rounds": [
+            {"number": 1, "application_days": 5, "review_days": 2},
+            {"number": 2, "application_days": 5, "review_days": 2},
+            {"number": 3, "application_days": 14, "review_days": 7},
+        ]
+    }
     r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)
     assert r.status_code == 422 and r.json()["code"] == "outside_cycle"

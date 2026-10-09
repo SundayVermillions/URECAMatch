@@ -114,7 +114,6 @@ class MockStore:
         self.supervisors.append(supervisor)
         return supervisor
 
-
     def user(self, user_id: str) -> User | None:
         return next((u for u in self.users if u.id == user_id), None)
 
@@ -150,7 +149,8 @@ class MockStore:
     # --- Slice B: self-proposed projects
     def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]:
         return [
-            p for p in self.proposals
+            p
+            for p in self.proposals
             if (student_id is None or p.student_id == student_id) and (supervisor_id is None or p.supervisor_id == supervisor_id)
         ]
 
@@ -165,24 +165,6 @@ class MockStore:
     def next_id(self, prefix: str) -> str:
         self._counter += 1
         return f"{prefix}-{self._counter}"
-
-    def save_student(self, student: StudentProfile) -> StudentProfile:
-        """Save or update student profile in mock store."""
-        for i, s in enumerate(self.students):
-            if s.user_id == student.user_id:
-                self.students[i] = student
-                return student
-        self.students.append(student)
-        return student
-
-    def save_supervisor(self, supervisor: SupervisorProfile) -> SupervisorProfile:
-        """Save or update supervisor profile in mock store."""
-        for i, s in enumerate(self.supervisors):
-            if s.user_id == supervisor.user_id:
-                self.supervisors[i] = supervisor
-                return supervisor
-        self.supervisors.append(supervisor)
-        return supervisor
 
     def save_document(self, doc_data: dict) -> dict:
         """Save document in mock store."""
@@ -233,7 +215,7 @@ class SupabaseStore(MockStore):
 
         short_id = uuid.uuid4().hex[:8]
         return f"{prefix}-{short_id}"
-    
+
     # --- Slice A: Users & Profiles Read ---
 
     def user(self, user_id: str) -> User | None:
@@ -305,14 +287,24 @@ class SupabaseStore(MockStore):
         res = self.client.table("supporting_documents").insert(doc_data).execute()
         return res.data[0] if res.data else doc_data
 
-
     # --- Slice B: listings (table project_listings) ---
 
     # Columns that exist in project_listings. Other Listing fields are computed per request
     # (supervisor_name is joined from users; applicant_count, applied, applied_rank by the router).
     _LISTING_COLUMNS = {
-        "id", "supervisor_id", "title", "description", "prerequisites", "topic_tags", "available_slots",
-        "filled_slots", "offering_faculty", "research_location", "cover_url", "status", "created_at",
+        "id",
+        "supervisor_id",
+        "title",
+        "description",
+        "prerequisites",
+        "topic_tags",
+        "available_slots",
+        "filled_slots",
+        "offering_faculty",
+        "research_location",
+        "cover_url",
+        "status",
+        "created_at",
     }
 
     @staticmethod
@@ -342,8 +334,17 @@ class SupabaseStore(MockStore):
     # --- Slice B: self-proposed projects (table self_proposed_applications) ---
 
     _PROPOSAL_COLUMNS = {
-        "id", "student_id", "supervisor_id", "title", "description", "research_interests", "statement",
-        "status", "submitted_at", "decided_at", "document_ids",
+        "id",
+        "student_id",
+        "supervisor_id",
+        "title",
+        "description",
+        "research_interests",
+        "statement",
+        "status",
+        "submitted_at",
+        "decided_at",
+        "document_ids",
     }
     # Two foreign keys point at users, so each join names the constraint it follows.
     _PROPOSAL_SELECT = (
@@ -381,10 +382,18 @@ class SupabaseStore(MockStore):
         payload = proposal.model_dump(mode="json", include=self._PROPOSAL_COLUMNS)
         self.client.table("self_proposed_applications").upsert(payload).execute()
         return proposal
+
     # --- Slice C: applications (table listing_applications) and rankings (table applicant_rankings) ---
 
     _APPLICATION_COLUMNS = {
-        "id", "student_id", "listing_id", "round_id", "statement", "submitted_at", "preference_rank", "status",
+        "id",
+        "student_id",
+        "listing_id",
+        "round_id",
+        "statement",
+        "submitted_at",
+        "preference_rank",
+        "status",
         "document_ids",
     }
     # listing_title and supervisor_name are not columns: they come from the listing and its supervisor.
