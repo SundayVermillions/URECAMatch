@@ -33,7 +33,7 @@ Order for going live: E provisions Supabase, then A (sign-in and JWT), then B an
 | B Robin | done | 12 / 12 | | | all 12: BROWSE-1..3, PROJ-1..3, PROPOSE-1..3, REVPROP-1..3 |
 | C Ian | | 3 / 7 | | | APPLY-2, SRANK-2, VRANK-1 |
 | D Nicholas | | 4 / 24 | | | EXEC-1, EXEC-2, EXEC-3, ASSIGN-2 |
-| E Benjamin | | 0 / 2 | | | role tests only |
+| E Benjamin | | 2 / 2 | | | NOTIF-1, NOTIF-2; NFR 5.1.2 e-mail; NFR 5.3.2 role matrix |
 
 16 of 45 REQ-IDs have a test (18 Sep 2026).
 
@@ -131,16 +131,18 @@ Stage 0
 Stage 1 (platform ready)
 - [ ] Supabase project created; schema and seed applied; buckets and Auth settings done; keys in the shared note
 - [ ] Vercel web and API projects deploy; preview per PR confirmed
-- [ ] NOTIF-1..2 tests; unread badge; mark read and link follow in the UI
-- [ ] Role matrix test replaces the two hand-written role tests
+- [x] NOTIF-1..2 tests; unread badge; mark read and link follow in the UI
+- [x] Role matrix test replaces the two hand-written role tests
 
 Stage 2
 - [ ] `seed_auth.py` run; demo accounts sign in on the preview
-- [ ] Notifications persist in Supabase; e-mail sends through Resend with `EMAIL_MODE=send` in production only
+- [ ] Notifications persist in Supabase; e-mail sends through Resend with `EMAIL_MODE=send` in production only (code and tests done: `SupabaseStore` notification methods, `services/email.py`; not yet verified live)
+- [x] Round banner on AdminDashboardPage
+- [x] Shared `PdfViewer` in components/ui for Ian
 - [ ] Dashboards on live data; NOTIF rows `live`
 
 Stage 3
-- [ ] Playwright full-cycle journey green against the preview
+- [ ] Playwright full-cycle journey green against the preview (spec in `web/e2e/full-cycle.spec.ts`, skipped in CI)
 - [ ] NFR checks recorded in traceability; rows `done`
 
 ## Definition of done for a PR
