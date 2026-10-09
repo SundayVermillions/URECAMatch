@@ -375,3 +375,7 @@ export function Stepper({ value, onChange, min, max, format }: { value: number; 
 export const fmtDate = (iso?: string | null, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }) =>
   iso ? new Date(iso).toLocaleDateString("en-SG", opts) : "";
 export const fmtDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("en-SG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
+
+// ------------------------------------------------------------------ documents
+
+export { PdfViewer } from "./pdf-viewer";
