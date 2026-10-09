@@ -63,7 +63,11 @@ export class LiveClient implements ApiClient {
   documentUrl = (id: string) => this.req<M.Document>("GET", `/documents/${id}/view`);
 
   cycle = () => this.req<M.Cycle | null>("GET", "/cycle");
+  listCycles = () => this.req<M.Cycle[]>("GET", "/admin/cycles");
+  getCycle = (id: string) => this.req<M.Cycle>("GET", `/admin/cycles/${id}`);
   createCycle = (b: M.CycleCreate) => this.req<M.Cycle>("POST", "/admin/cycles", b);
+  closeCycle = (id: string) => this.req<M.Cycle>("POST", `/admin/cycles/${id}/close`);
+  reopenCycle = (id: string) => this.req<M.Cycle>("POST", `/admin/cycles/${id}/reopen`);
   updateCycle = (id: string, b: M.CycleUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}`, b);
   setRounds = (id: string, b: M.RoundsUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}/rounds`, b);
   execute = (id: string) => this.req<M.RoundSummary>("POST", `/admin/rounds/${id}/execute`);

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Card, Field, Input, Loading, Modal, Pill, RankBadge, Spinner, Stat, Status, Stepper, fmtDate } from "@/components/ui";
+import { Banner, Button, Card, Field, Input, Loading, Modal, Pill, RankBadge, Select, Spinner, Stat, Status, Stepper, fmtDate } from "@/components/ui";
 import { getClient } from "@/lib/api/client";
 import { ApiError, type Cycle, type Round, type RoundSummary } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
@@ -14,40 +14,67 @@ import { useApi, useCall } from "@/lib/use-api";
 export default function Rounds() {
   const { me, refresh } = useMe();
   const call = useCall();
-  const cycle = useApi((api) => api.tick().then(() => api.cycle()), []);
+  const data = useApi((api) => api.tick().then(() => Promise.all([api.cycle(), api.listCycles()])).then(([active, all]) => ({ active, all })), []);
+  const active = data.data?.active ?? null;
+  const all = data.data?.all ?? [];
+  const [viewId, setViewId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [running, setRunning] = useState(false);
   const [summary, setSummary] = useState<RoundSummary | null>(null);
-  const rounds = cycle.data?.rounds ?? [];
-  const current = rounds.find((r) => r.id === (selected ?? me?.phase.round_id)) ?? rounds[0];
+
+  const viewed = all.find((c) => c.id === viewId) ?? active ?? all[0] ?? null;
+  const viewedIsActive = !!viewed && !!active && viewed.id === active.id;
+  const rounds = viewed?.rounds ?? [];
+  const now = me?.phase;
+  // "now" comes from the API phase (deterministic in mock mode), never from the browser clock
+  const current = rounds.find((r) => r.id === selected) ?? (viewedIsActive ? rounds.find((r) => r.id === now?.round_id) : undefined) ?? rounds[0];
+  const reload = () => { data.reload(); refresh(); };
 
   useEffect(() => {
-    if (!current) return;
     let alive = true;
-    const load = current.executed_at ? call((api) => api.summary(current.id)) : Promise.resolve(null);
+    const load = current && viewedIsActive && current.executed_at ? call((api) => api.summary(current.id)) : Promise.resolve(null);
     load.then((s) => { if (alive) setSummary(s); }).catch(() => {});
     return () => { alive = false; };
-  }, [current?.id, current?.executed_at, call]);
+  }, [current?.id, current?.executed_at, viewedIsActive, call]);
 
   async function execute() {
     if (!current) return; setRunning(true); setError(null);
-    try { await new Promise((r) => setTimeout(r, 900)); setSummary(await call((api) => api.execute(current.id))); cycle.reload(); await refresh(); }
+    try { await new Promise((r) => setTimeout(r, 900)); setSummary(await call((api) => api.execute(current.id))); reload(); }
     catch (e) { setError(e as ApiError); } finally { setRunning(false); }
   }
-  const now = me?.phase;
-  // "now" comes from the API phase (deterministic in mock mode), never from the browser clock
-  const reviewClosed = !!current && !!now && (current.number < (now.round_number ?? 0) || (now.round_id === current.id && (now.window === "awaiting_results" || now.window === "results")));
-  const statusOf = (r: Round) => (r.published_at ? "published" : r.executed_at ? "awaiting_publication" : now?.round_id === r.id ? (now.window === "review" ? "review_window" : "application_window") : Date.parse(r.review_end) < Date.parse(now?.window_ends_at ?? "") ? "completed" : "scheduled");
+  const reviewClosed = !!current && !!now && viewedIsActive && (current.number < (now.round_number ?? 0) || (now.round_id === current.id && (now.window === "awaiting_results" || now.window === "results")));
+  const statusOf = (r: Round) => {
+    if (!viewedIsActive) return r.published_at ? "published" : r.executed_at ? "awaiting_publication" : "completed";
+    return r.published_at ? "published" : r.executed_at ? "awaiting_publication" : now?.round_id === r.id ? (now.window === "review" ? "review_window" : "application_window") : Date.parse(r.review_end) < Date.parse(now?.window_ends_at ?? "") ? "completed" : "scheduled";
+  };
 
   return (
     <>
-      <PageHeader title="Matching rounds" description={cycle.data ? `${cycle.data.academic_year} · ${rounds.length} rounds · opens ${fmtDate(cycle.data.opening_date)} · closes ${fmtDate(cycle.data.closing_date)}` : "No cycle configured"}
-        right={<Button variant="secondary" onClick={() => setSettings(true)}><I.Gear /> Cycle settings</Button>} />
+      <PageHeader title="Matching rounds" description={viewed ? `${viewed.academic_year} · ${rounds.length} rounds · opens ${fmtDate(viewed.opening_date)} · closes ${fmtDate(viewed.closing_date)}${viewedIsActive ? "" : " · closed"}` : "No application cycle yet"}
+        right={!creating ? (
+          <div className="flex items-center gap-2">
+            {all.length > 1 && (
+              <Select value={viewed?.id ?? ""} onChange={(e) => { setViewId(e.target.value); setSelected(null); }} className="max-w-[240px]">
+                {all.map((c) => <option key={c.id} value={c.id}>{c.academic_year}{c.status === "closed" ? " · closed" : " · active"}</option>)}
+              </Select>
+            )}
+            {viewedIsActive && <Button variant="secondary" onClick={() => setClosing(true)}>Close cycle</Button>}
+            {viewedIsActive && <Button variant="secondary" onClick={() => setSettings(true)}><I.Gear /> Cycle settings</Button>}
+            {viewed && !viewedIsActive && <Button variant="secondary" disabled={!!active} title={active ? `Close the ${active.academic_year} cycle first` : undefined} onClick={() => setReopening(true)}>Reopen cycle</Button>}
+            {!active && <Button onClick={() => setCreating(true)}>New cycle</Button>}
+          </div>
+        ) : undefined} />
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
-      {cycle.loading && !cycle.data ? <Loading /> : (
+      {data.loading && !data.data ? <Loading /> : creating || !viewed ? (
+        <CreateCycle onCreated={() => { setCreating(false); setViewId(null); reload(); }} onCancel={all.length > 0 ? () => setCreating(false) : undefined} />
+      ) : (
         <>
+          {!viewedIsActive && <div className="mb-4"><Banner tone="accent">This cycle is closed. {active ? `Close the ${active.academic_year} cycle to reopen it.` : "Reopen it to make it the active cycle."}</Banner></div>}
           <div className="grid grid-cols-3 gap-3.5 mb-4">
             {rounds.map((r) => {
               const st = statusOf(r);
@@ -58,9 +85,10 @@ export default function Rounds() {
                 </button>
               );
             })}
+            {rounds.length === 0 && <div className="col-span-3 bg-surface rounded-card p-6 text-center text-[13px] text-muted border border-border">No rounds configured yet.{viewedIsActive ? " Use Cycle settings to add rounds." : ""}</div>}
           </div>
 
-          {current && (
+          {viewedIsActive && current && (
             <Card>
               <div className="flex items-center gap-2.5 mb-4"><h2>Round {current.number}</h2><Status value={statusOf(current)} kind="round" /></div>
               {!current.executed_at && (
@@ -102,8 +130,113 @@ export default function Rounds() {
         </>
       )}
 
-      <CycleSettings open={settings} onClose={() => setSettings(false)} onSaved={() => { setSettings(false); cycle.reload(); }} />
+      <CycleSettings open={settings} onClose={() => setSettings(false)} onSaved={() => { setSettings(false); reload(); }} />
+      <CloseCycleModal open={closing} cycleId={viewed?.id} onClose={() => setClosing(false)} onClosed={() => { setClosing(false); reload(); }} />
+      <ReopenCycleModal open={reopening} cycleId={viewed?.id} cycleName={viewed?.academic_year} onClose={() => setReopening(false)} onReopened={() => { setReopening(false); setViewId(viewed?.id ?? null); reload(); }} />
     </>
+  );
+}
+
+const DAY_MS = 86_400_000;
+// Cycle open/close sit at 09:00 UTC like the seed, so dates format to the intended calendar day in local time
+// and a round ending that morning still fits a cycle closing the same day.
+const atNine = (d: string) => new Date(`${d}T09:00:00.000Z`).toISOString();
+const toDateInput = (iso?: string) => (iso ? new Date(iso).toISOString().slice(0, 10) : "");
+
+/** Mirror of setRounds date derivation so the modal can validate before saving.
+ *  Returns each round's review-window end (ms). Rounds already under way (not "scheduled") keep their dates. */
+function derivedRoundEnds(cycle: Cycle, count: number, applyDays: number, reviewDays: number): { number: number; revEnd: number }[] {
+  let cursor = Date.parse(cycle.opening_date) + cycle.pre_application_days * DAY_MS;
+  const out: { number: number; revEnd: number }[] = [];
+  for (let n = 1; n <= count; n++) {
+    const old = cycle.rounds.find((r) => r.number === n);
+    if (old && old.status !== "scheduled") { out.push({ number: n, revEnd: Date.parse(old.review_end) }); cursor = Date.parse(old.review_end) + 4 * DAY_MS; continue; }
+    const revEnd = cursor + applyDays * DAY_MS + reviewDays * DAY_MS - 1000;
+    out.push({ number: n, revEnd });
+    cursor = revEnd + 4 * DAY_MS;
+  }
+  return out;
+}
+
+function CreateCycle({ onCreated, onCancel }: { onCreated: () => void; onCancel?: () => void }) {
+  const call = useCall();
+  const [year, setYear] = useState("");
+  const [opens, setOpens] = useState("");
+  const [closes, setCloses] = useState("");
+  const [preDays, setPreDays] = useState(7);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [busy, setBusy] = useState(false);
+  const valid = year.trim() !== "" && opens !== "" && closes !== "";
+  async function create() {
+    setError(null); setBusy(true);
+    try {
+      await call((api) => api.createCycle({
+        academic_year: year.trim(),
+        opening_date: atNine(opens),
+        closing_date: atNine(closes),
+        pre_application_days: preDays,
+      }));
+      onCreated();
+    } catch (e) { setError(e as ApiError); } finally { setBusy(false); }
+  }
+  return (
+    <Card>
+      <div className="flex flex-col gap-4 max-w-[560px]">
+        <div>
+          <h2>Create an application cycle</h2>
+          <p className="text-[13px] text-muted mt-1">No cycle is active. Set the term and dates to open a new one; add rounds afterwards in Cycle settings. <Pill tone="accent">REQ-CYCLE-1</Pill></p>
+        </div>
+        {error && <Banner tone="bad">{error.message}</Banner>}
+        <Field label="Academic year"><Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="AY26/27 Semester 1" /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Cycle opens"><Input type="date" value={opens} onChange={(e) => setOpens(e.target.value)} /></Field>
+          <Field label="Cycle closes"><Input type="date" value={closes} onChange={(e) => setCloses(e.target.value)} /></Field>
+        </div>
+        <div><div className="text-[12.5px] font-semibold mb-1.5">Pre-application days</div><Stepper value={preDays} onChange={setPreDays} min={0} max={60} format={(v) => `${v} days`} /></div>
+        <div className="flex items-center gap-3">
+          <Button size="lg" disabled={!valid || busy} onClick={create}>{busy ? "Creating…" : "Create cycle"}</Button>
+          {onCancel && <Button variant="secondary" size="lg" onClick={onCancel}>Cancel</Button>}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ReopenCycleModal({ open, cycleId, cycleName, onClose, onReopened }: { open: boolean; cycleId?: string; cycleName?: string; onClose: () => void; onReopened: () => void }) {
+  const call = useCall();
+  const [error, setError] = useState<ApiError | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function confirm() {
+    if (!cycleId) return; setError(null); setBusy(true);
+    try { await call((api) => api.reopenCycle(cycleId)); onReopened(); }
+    catch (e) { setError(e as ApiError); } finally { setBusy(false); }
+  }
+  return (
+    <Modal open={open} onClose={onClose} title="Reopen this cycle?" footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button disabled={busy} onClick={confirm}>{busy ? "Reopening…" : "Reopen cycle"}</Button></>}>
+      <div className="flex flex-col gap-3 text-text">
+        {error && <Banner tone="bad">{error.message}</Banner>}
+        <p className="text-[13px] text-muted">Reopening makes {cycleName ?? "this cycle"} the active cycle again and notifies students and supervisors. Only one cycle can be active at a time.</p>
+      </div>
+    </Modal>
+  );
+}
+
+function CloseCycleModal({ open, cycleId, onClose, onClosed }: { open: boolean; cycleId?: string; onClose: () => void; onClosed: () => void }) {
+  const call = useCall();
+  const [error, setError] = useState<ApiError | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function confirm() {
+    if (!cycleId) return; setError(null); setBusy(true);
+    try { await call((api) => api.closeCycle(cycleId)); onClosed(); }
+    catch (e) { setError(e as ApiError); } finally { setBusy(false); }
+  }
+  return (
+    <Modal open={open} onClose={onClose} title="Close this cycle?" footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button variant="destructive" disabled={busy} onClick={confirm}>{busy ? "Closing…" : "Close cycle"}</Button></>}>
+      <div className="flex flex-col gap-3 text-text">
+        {error && <Banner tone="bad">{error.message}</Banner>}
+        <p className="text-[13px] text-muted">Closing pauses the cycle and notifies students and supervisors. It stays in the history and you can reopen it later or create the next cycle.</p>
+      </div>
+    </Modal>
   );
 }
 
@@ -113,36 +246,59 @@ function CycleSettings({ open, onClose, onSaved }: { open: boolean; onClose: () 
   const [applyDays, setApplyDays] = useState(5);
   const [reviewDays, setReviewDays] = useState(2);
   const [count, setCount] = useState(3);
+  const [closes, setCloses] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!open) return;
     let alive = true;
     getClient().then((api) => api.cycle()).then((c) => {
       if (!alive || !c) return;
       setCycle(c);
-      if (c.rounds.length) { const r = c.rounds[0]; setCount(c.rounds.length); setApplyDays(Math.round((Date.parse(r.application_end) - Date.parse(r.application_start)) / 86_400_000)); setReviewDays(Math.round((Date.parse(r.review_end) - Date.parse(r.review_start)) / 86_400_000)); }
+      setCloses(toDateInput(c.closing_date));
+      if (c.rounds.length) setCount(c.rounds.length);
+      const editable = c.rounds.find((r) => r.status === "scheduled") ?? c.rounds[c.rounds.length - 1];
+      if (editable) { setApplyDays(Math.round((Date.parse(editable.application_end) - Date.parse(editable.application_start)) / DAY_MS)); setReviewDays(Math.round((Date.parse(editable.review_end) - Date.parse(editable.review_start)) / DAY_MS)); }
     });
     return () => { alive = false; };
   }, [open]);
+
+  // Live check (before Save): derive the rounds and confirm they end before the cycle closes.
+  const closesMs = closes ? Date.parse(atNine(closes)) : NaN;
+  const ends = cycle ? derivedRoundEnds(cycle, count, applyDays, reviewDays) : [];
+  const overflow = ends.find((e) => e.revEnd > closesMs);
+  const lastEnd = ends.length ? ends[ends.length - 1].revEnd : NaN;
+  const requiredClose = Number.isNaN(lastEnd) ? "" : toDateInput(new Date(lastEnd).toISOString());
+  const valid = !!cycle && closes !== "" && !overflow;
+
   async function save() {
-    if (!cycle) return; setError(null);
-    try { await call((api) => api.setRounds(cycle.id, { rounds: Array.from({ length: count }, (_, i) => ({ number: i + 1, application_days: applyDays, review_days: reviewDays })), rollover_unmatched: true })); onSaved(); }
-    catch (e) { setError(e as ApiError); }
+    if (!cycle || !valid) return;
+    setError(null); setBusy(true);
+    try {
+      if (toDateInput(cycle.closing_date) !== closes) await call((api) => api.updateCycle(cycle.id, { closing_date: atNine(closes) }));
+      await call((api) => api.setRounds(cycle.id, { rounds: Array.from({ length: count }, (_, i) => ({ number: i + 1, application_days: applyDays, review_days: reviewDays })), rollover_unmatched: true }));
+      onSaved();
+    } catch (e) { setError(e as ApiError); } finally { setBusy(false); }
   }
   return (
-    <Modal open={open} onClose={onClose} title="Cycle settings" footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={save}>Save settings</Button></>}>
+    <Modal open={open} onClose={onClose} title="Cycle settings" footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={save} disabled={!valid || busy}>{busy ? "Saving…" : "Save settings"}</Button></>}>
       <div className="flex flex-col gap-4 text-text">
         {error && <Banner tone="bad">{error.message}</Banner>}
+        {overflow && (
+          <Banner tone="warn" action={requiredClose ? <button type="button" onClick={() => setCloses(requiredClose)} className="text-[12.5px] font-semibold underline whitespace-nowrap">Extend to {fmtDate(new Date(lastEnd).toISOString())}</button> : undefined}>
+            Round {overflow.number} would end {fmtDate(new Date(overflow.revEnd).toISOString())}, after the cycle closes {fmtDate(atNine(closes))}.
+          </Banner>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Cycle opens"><Input id="opens" value={fmtDate(cycle?.opening_date, { day: "numeric", month: "short", year: "numeric" })} readOnly /></Field>
-          <Field label="Cycle closes"><Input id="closes" value={fmtDate(cycle?.closing_date, { day: "numeric", month: "short", year: "numeric" })} readOnly /></Field>
+          <Field label="Cycle opens"><Input value={fmtDate(cycle?.opening_date, { day: "numeric", month: "short", year: "numeric" })} readOnly /></Field>
+          <Field label="Cycle closes"><Input type="date" value={closes} onChange={(e) => setCloses(e.target.value)} invalid={!!overflow} /></Field>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div><div className="text-[12.5px] font-semibold mb-1.5">Application window</div><Stepper value={applyDays} onChange={setApplyDays} min={1} max={14} format={(v) => `${v} days`} /></div>
           <div><div className="text-[12.5px] font-semibold mb-1.5">Review window</div><Stepper value={reviewDays} onChange={setReviewDays} min={1} max={7} format={(v) => `${v} day${v === 1 ? "" : "s"}`} /></div>
           <div><div className="text-[12.5px] font-semibold mb-1.5">Rounds</div><Stepper value={count} onChange={setCount} min={1} max={3} /></div>
         </div>
-        <div className="text-[12px] text-faint">Rounds that have already started are kept. Later rounds are re-derived from these lengths with a 4-day gap, and must end before the cycle closes. <Pill tone="accent">REQ-ROUND-1..3</Pill></div>
+        <div className="text-[12px] text-faint">Rounds that have already started are kept. Later rounds are re-derived from these lengths with a 4-day gap, and the last must end before the cycle closes. <Pill tone="accent">REQ-ROUND-1..3</Pill></div>
       </div>
     </Modal>
   );

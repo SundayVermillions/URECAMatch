@@ -7,7 +7,7 @@ import { getSession } from "../session";
 import seedJson from "./seed.json";
 
 type Seed = {
-  users: M.User[]; students: M.StudentProfile[]; supervisors: M.SupervisorProfile[]; cycle: M.Cycle;
+  users: M.User[]; students: M.StudentProfile[]; supervisors: M.SupervisorProfile[]; cycles: M.Cycle[];
   listings: M.Listing[]; applications: M.Application[]; matches: M.Match[]; proposals: M.Proposal[];
   notifications: M.Notification[]; audit: M.AuditEntry[]; applicant_rankings: Record<string, string[]>;
 };
@@ -43,20 +43,32 @@ export class MockClient implements ApiClient {
     return l;
   }
 
+  // ---- cycle history (mirror of store.cycles + the active-cycle accessor)
+  private activeCycle(): M.Cycle | null { return this.db.cycles.find((c) => c.status !== "closed") ?? null; }
+  private cycleById(id: string): M.Cycle | undefined { return this.db.cycles.find((c) => c.id === id); }
+
   // ---- phase (mirror of services/windows.py)
   phase(): M.Phase {
-    const c = this.db.cycle, now = this.now, t = now.getTime();
+    const c = this.activeCycle(), t = this.now.getTime();
+    if (!c) return { cycle_id: null, round_id: null, round_number: null, window: "before_cycle", window_ends_at: null, label: "No application cycle is open" };
+    if (t < Date.parse(c.opening_date))
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "before_cycle", window_ends_at: null, label: "No application cycle is open" };
+    if (t > Date.parse(c.closing_date))
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "closed", window_ends_at: null, label: "The application cycle has closed" };
+    if (c.rounds.length === 0 || t < Date.parse(c.rounds[0].application_start)) {
+      const ends = c.rounds.length ? c.rounds[0].application_start : c.closing_date;
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: ends, label: `Applications open ${fmt(ends)}` };
+    }
     const r = c.rounds.find((r) => t >= Date.parse(r.application_start) && t <= Date.parse(r.review_end))
       ?? c.rounds.find((r) => Date.parse(r.application_start) > t) ?? c.rounds[c.rounds.length - 1];
-    if (t < Date.parse(c.rounds[0].application_start))
-      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: c.rounds[0].application_start, label: `Applications open ${fmt(c.rounds[0].application_start)}` };
     if (t >= Date.parse(r.application_start) && t <= Date.parse(r.application_end))
       return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "application", window_ends_at: r.application_end, label: `Round ${r.number} closes ${fmt(r.application_end)}` };
     if (t >= Date.parse(r.review_start) && t <= Date.parse(r.review_end))
       return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "review", window_ends_at: r.review_end, label: `Round ${r.number} rankings due ${fmt(r.review_end)}` };
     if (!r.published_at)
-      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "awaiting_results", window_ends_at: r.application_start, label: `Round ${r.number} results pending` };
-    return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "results", window_ends_at: r.application_start, label: `Round ${r.number} results published` };
+      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "awaiting_results", window_ends_at: null, label: `Round ${r.number} results pending` };
+    const nxt = c.rounds.find((x) => x.number === r.number + 1);
+    return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "results", window_ends_at: nxt ? nxt.review_start : c.closing_date, label: `Round ${r.number} results published` };
   }
   private requireApplicationWindow() {
     if (this.phase().window !== "application") throw new M.ApiError(422, "window_closed", "Applications can only be changed during an application window.");
@@ -178,7 +190,7 @@ export class MockClient implements ApiClient {
   }
   async myListings() { const u = this.need("supervisor"); return this.db.listings.filter((l) => l.supervisor_id === u.id).map((l) => this.decorate(l, u)); }
   /** True once the cycle closing date has passed (REQ-PROJ-1, REQ-PROJ-2), as in routers/listings.py. */
-  private cycleClosed() { return this.now.getTime() > Date.parse(this.db.cycle.closing_date); }
+  private cycleClosed() { const c = this.activeCycle(); return !c || this.now.getTime() > Date.parse(c.closing_date); }
   private checkListingText(title?: string | null, description?: string | null) {
     if (title != null && title.trim().length < 5) throw new M.ApiError(422, "title_too_short", "Give the project a title of at least 5 characters.", "title");
     if (description != null && description.trim().length < 20) throw new M.ApiError(422, "description_too_short", "Describe the project in at least 20 characters.", "description");
@@ -247,8 +259,8 @@ export class MockClient implements ApiClient {
     if (!p || p.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Proposal was not found.");
     if (p.status !== "submitted") throw new M.ApiError(409, "already_decided", "This proposal has already been decided.");
     if (accept) { // REQ-REVPROP-3: registering a student needs an open cycle. Declining stays open.
-      const t = this.now.getTime();
-      if (t < Date.parse(this.db.cycle.opening_date) || t > Date.parse(this.db.cycle.closing_date))
+      const c = this.activeCycle(); const t = this.now.getTime();
+      if (!c || t < Date.parse(c.opening_date) || t > Date.parse(c.closing_date))
         throw new M.ApiError(422, "cycle_closed", "The application cycle is not open, so this proposal can no longer be accepted.");
     }
     p.status = accept ? "accepted" : "declined"; p.decided_at = this.iso();
@@ -352,21 +364,47 @@ export class MockClient implements ApiClient {
   }
 
   // ---- slice D
-  async cycle() { this.user(); return this.db.cycle; }
+  async cycle() { this.user(); return this.activeCycle(); }
+  async listCycles() { this.need("admin"); return [...this.db.cycles].sort((x, y) => Date.parse(y.opening_date) - Date.parse(x.opening_date)); }
+  async getCycle(id: string) { this.need("admin"); const c = this.cycleById(id); if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found."); return c; }
   async createCycle(b: M.CycleCreate) {
     const a = this.need("admin");
-    this.db.cycle = { id: this.id("cyc"), academic_year: b.academic_year, opening_date: b.opening_date, closing_date: b.closing_date, pre_application_days: b.pre_application_days ?? 7, status: "draft", rounds: [] };
-    this.audit(a, "cycle_updated", [this.db.cycle.id], "created"); return this.db.cycle;
+    if (this.activeCycle()) throw new M.ApiError(409, "cycle_active", "Close the current cycle before creating a new one.");
+    if (Date.parse(b.closing_date) <= Date.parse(b.opening_date)) throw new M.ApiError(422, "bad_dates", "Closing date must be after the opening date.");
+    const clash = this.db.cycles.find((c) => Date.parse(c.opening_date) <= Date.parse(b.closing_date) && Date.parse(b.opening_date) <= Date.parse(c.closing_date));
+    if (clash) throw new M.ApiError(409, "cycle_overlap", `These dates overlap the ${clash.academic_year} cycle. Cycles cannot overlap.`);
+    const c: M.Cycle = { id: this.id("cyc"), academic_year: b.academic_year, opening_date: b.opening_date, closing_date: b.closing_date, pre_application_days: b.pre_application_days ?? 7, status: "draft", rounds: [] };
+    this.db.cycles.push(c); this.audit(a, "cycle_updated", [c.id], "created"); return c;
+  }
+  async closeCycle(id: string) {
+    const a = this.need("admin"); const c = this.cycleById(id);
+    if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
+    if (c.status === "closed") throw new M.ApiError(409, "already_closed", "This cycle is already closed.");
+    c.status = "closed";
+    this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle closed", `The ${c.academic_year} cycle is now closed.`);
+    this.audit(a, "cycle_updated", [c.id], "closed"); return c;
+  }
+  async reopenCycle(id: string) {
+    const a = this.need("admin"); const c = this.cycleById(id);
+    if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
+    if (c.status !== "closed") throw new M.ApiError(409, "not_closed", "This cycle is already open.");
+    const active = this.activeCycle();
+    if (active) throw new M.ApiError(409, "cycle_active", `Close the ${active.academic_year} cycle before reopening another.`);
+    c.status = "in_progress";
+    this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle reopened", `The ${c.academic_year} cycle has reopened.`);
+    this.audit(a, "cycle_updated", [c.id], "reopened"); return c;
   }
   async updateCycle(id: string, b: M.CycleUpdate) {
-    const a = this.need("admin"); const c = this.db.cycle;
+    const a = this.need("admin"); const c = this.cycleById(id);
+    if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
     const closingChanged = !!b.closing_date && b.closing_date !== c.closing_date;
     Object.assign(c, Object.fromEntries(Object.entries(b).filter(([, v]) => v != null)));
     if (closingChanged) this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle dates changed", `The cycle now closes on ${fmt(c.closing_date)}.`);
     this.audit(a, "cycle_updated", [c.id]); return c;
   }
   async setRounds(cycleId: string, b: M.RoundsUpdate) {
-    const a = this.need("admin"); const c = this.db.cycle; const day = 86_400_000;
+    const a = this.need("admin"); const c = this.cycleById(cycleId); const day = 86_400_000;
+    if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
     let cursor = Date.parse(c.opening_date) + c.pre_application_days * day;
     const rounds: M.Round[] = [];
     for (const spec of [...b.rounds].sort((x, y) => x.number - y.number)) {
@@ -380,7 +418,7 @@ export class MockClient implements ApiClient {
     }
     c.rounds = rounds; this.audit(a, "cycle_updated", [c.id], "rounds configured"); return c;
   }
-  private round(id: string) { const r = this.db.cycle.rounds.find((r) => r.id === id); if (!r) throw new M.ApiError(404, "not_found", "Round was not found."); return r; }
+  private round(id: string) { const r = (this.activeCycle()?.rounds ?? []).find((r) => r.id === id); if (!r) throw new M.ApiError(404, "not_found", "Round was not found."); return r; }
   async execute(roundId: string) {
     const a = this.need("admin"); const r = this.round(roundId);
     if (this.now.getTime() <= Date.parse(r.review_end)) throw new M.ApiError(409, "review_open", `Matching can run after the review window closes on ${fmt(r.review_end)}.`);
@@ -445,8 +483,8 @@ export class MockClient implements ApiClient {
   async publish(roundId: string) {
     const a = this.need("admin"); const r = this.round(roundId); const ms = this.db.matches.filter((m) => m.round_id === roundId);
     if (ms.some((m) => m.status === "proposed")) throw new M.ApiError(409, "approvals_pending", "Some matches are still awaiting supervisor approval.");
-    const nxt = this.db.cycle.rounds.find((x) => x.number === r.number + 1);
-    const expires = nxt ? nxt.review_start : this.db.cycle.closing_date;
+    const c = this.activeCycle()!; const nxt = c.rounds.find((x) => x.number === r.number + 1);
+    const expires = nxt ? nxt.review_start : c.closing_date;
     for (const m of ms) if (m.status === "approved" || m.status === "reassigned") {
       m.status = "published"; m.published_at = this.iso(); m.offer_expires_at = expires;
       for (const x of this.db.applications) if (x.student_id === m.student_id && x.round_id === roundId) x.status = x.listing_id === m.listing_id ? "matched" : "unmatched";
@@ -490,7 +528,7 @@ export class MockClient implements ApiClient {
     this.need("admin"); const round = this.phase().round_id;
     const pending = this.db.matches.filter((m) => m.status === "proposed").length;
     const incomplete = this.db.students.filter((s) => !s.profile_complete).length;
-    return { cycle: this.db.cycle, students: this.db.users.filter((u) => u.role === "student").length, supervisors: this.db.users.filter((u) => u.role === "supervisor").length,
+    return { cycle: this.activeCycle(), students: this.db.users.filter((u) => u.role === "student").length, supervisors: this.db.users.filter((u) => u.role === "supervisor").length,
       listings_published: this.db.listings.filter((l) => l.status === "published").length, applications_this_round: this.db.applications.filter((a) => a.round_id === round && a.status === "submitted").length,
       pending_approvals: pending, alerts: [pending ? `${pending} proposed matches await supervisor approval` : "", incomplete ? `${incomplete} students have not completed their profile` : ""].filter(Boolean) };
   }

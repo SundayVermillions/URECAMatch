@@ -89,7 +89,7 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
     notify(
         store,
         sorted({m.supervisor_id for m in store.matches if m.round_id == round_id}),
-        NotificationEvent.match_approved,
+        NotificationEvent.matches_proposed,
         "Proposed matches ready for approval",
         f"Round {r.number} matches await your decision.",
         now,
@@ -272,6 +272,9 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     lst = store.listing(m.listing_id)
     if lst:
         lst.filled_slots += 1
+    sp = store.student(user.id)
+    if sp:
+        sp.eligible_for_matching = False  # placed: exclude from later rounds (REQ-OUTCOME-1)
     return m
 
 

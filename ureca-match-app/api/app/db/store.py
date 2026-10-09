@@ -17,6 +17,7 @@ from app.models import (
     Application,
     AuditEntry,
     Cycle,
+    CycleStatus,
     Listing,
     Match,
     Notification,
@@ -31,7 +32,8 @@ class Store(Protocol):
     users: list[User]
     students: list[StudentProfile]
     supervisors: list[SupervisorProfile]
-    cycle: Cycle | None
+    cycles: list[Cycle]  # history; at most one is not closed
+    cycle: Cycle | None  # the active (not closed) cycle, or None
     listings: list[Listing]
     applications: list[Application]
     matches: list[Match]
@@ -46,6 +48,7 @@ class Store(Protocol):
     def student(self, user_id: str) -> StudentProfile | None: ...
     def supervisor(self, user_id: str) -> SupervisorProfile | None: ...
     def listing(self, listing_id: str) -> Listing | None: ...
+    def cycle_by_id(self, cycle_id: str) -> Cycle | None: ...  # slice D: any cycle in the history
     def all_listings(self) -> list[Listing]: ...  # slice B: every listing, any status
     def save_listing(self, listing: Listing) -> Listing: ...  # slice B: insert or update
     def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]: ...  # slice B
@@ -71,7 +74,7 @@ class MockStore:
         self.users: list[User] = data["users"]
         self.students: list[StudentProfile] = data["students"]
         self.supervisors: list[SupervisorProfile] = data["supervisors"]
-        self.cycle: Cycle | None = data["cycle"]
+        self.cycles: list[Cycle] = data["cycles"]
         self.listings: list[Listing] = data["listings"]
         self.applications: list[Application] = data["applications"]
         self.matches: list[Match] = data["matches"]
@@ -99,6 +102,14 @@ class MockStore:
 
     def listing(self, listing_id: str) -> Listing | None:
         return next((lst for lst in self.listings if lst.id == listing_id), None)
+
+    @property
+    def cycle(self) -> Cycle | None:
+        """The one active (not closed) cycle, or None. At most one cycle is active at a time."""
+        return next((c for c in self.cycles if c.status != CycleStatus.closed), None)
+
+    def cycle_by_id(self, cycle_id: str) -> Cycle | None:
+        return next((c for c in self.cycles if c.id == cycle_id), None)
 
     # --- Slice B: listings. In memory, an object is already "saved" once it is in the list.
     def all_listings(self) -> list[Listing]:
