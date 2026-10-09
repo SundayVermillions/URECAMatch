@@ -55,7 +55,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (!me) {
       if (!isAuthPath) {
-        router.replace("/sign-in?reason=session_expired");
+        router.replace("/sign-in");
       }
       return;
     }
