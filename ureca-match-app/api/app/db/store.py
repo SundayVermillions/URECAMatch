@@ -42,6 +42,7 @@ class Store(Protocol):
     audit: list[AuditEntry]
     applicant_rankings: dict[str, list[str]]  # f"{listing_id}:{round_id}" -> ordered application ids
     verification_codes: dict[str, tuple[str, datetime]]  # email -> (code, expiry)
+    passwords: dict[str, str]  # email -> password (mock mode)
 
     def user(self, user_id: str) -> User | None: ...
     def user_by_email(self, email: str) -> User | None: ...
@@ -86,7 +87,33 @@ class MockStore:
             "lst-1:rnd-2": [a.id for a in self.applications if a.listing_id == "lst-1" and a.round_id == "rnd-2"][:4],
         }
         self.verification_codes: dict[str, tuple[str, datetime]] = {}
+        self.passwords: dict[str, str] = {}
         self._counter = 1000
+
+    def save_user(self, user: User) -> User:
+        for i, u in enumerate(self.users):
+            if u.id == user.id:
+                self.users[i] = user
+                return user
+        self.users.append(user)
+        return user
+
+    def save_student(self, student: StudentProfile) -> StudentProfile:
+        for i, s in enumerate(self.students):
+            if s.user_id == student.user_id:
+                self.students[i] = student
+                return student
+        self.students.append(student)
+        return student
+
+    def save_supervisor(self, supervisor: SupervisorProfile) -> SupervisorProfile:
+        for i, s in enumerate(self.supervisors):
+            if s.user_id == supervisor.user_id:
+                self.supervisors[i] = supervisor
+                return supervisor
+        self.supervisors.append(supervisor)
+        return supervisor
+
 
     def user(self, user_id: str) -> User | None:
         return next((u for u in self.users if u.id == user_id), None)
