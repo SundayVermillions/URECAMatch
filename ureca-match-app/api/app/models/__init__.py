@@ -352,6 +352,13 @@ class ApplicationCreate(BaseModel):
     document_ids: list[str] = []
 
 
+class ApplicationUpdate(BaseModel):
+    """Edit an application inside the application window (REQ-APPLY-1). The listing cannot change."""
+
+    statement: str = Field(min_length=50)
+    document_ids: list[str] = []
+
+
 class PreferenceRankingUpdate(BaseModel):
     """Ordered application ids, most preferred first (REQ-SRANK-1, 2)."""
 

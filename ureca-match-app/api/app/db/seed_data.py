@@ -665,6 +665,7 @@ def make_audit() -> list[AuditEntry]:
 
 
 def build() -> dict:
+    rng.seed(2006)  # restart the sequence so every build() gives identical data, whatever ran before
     users, students, supervisors = make_users()
     cycle = make_cycle()
     listings = make_listings()
