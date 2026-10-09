@@ -556,10 +556,32 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Cycles
+         * @description Cycle history, newest first, so admins can browse past cycles (REQ-CYCLE-1).
+         */
+        get: operations["list_cycles_admin_cycles_get"];
         put?: never;
         /** Create Cycle */
         post: operations["create_cycle_admin_cycles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/cycles/{cycle_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cycle */
+        get: operations["get_cycle_admin_cycles__cycle_id__get"];
+        /** Update Cycle */
+        put: operations["update_cycle_admin_cycles__cycle_id__put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -577,7 +599,7 @@ export interface paths {
         put?: never;
         /**
          * Close Cycle
-         * @description Close the current cycle so a new one can be created (REQ-CYCLE-1).
+         * @description Close a cycle. It stays in the history and can be reopened later (REQ-CYCLE-1).
          */
         post: operations["close_cycle_admin_cycles__cycle_id__close_post"];
         delete?: never;
@@ -586,7 +608,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/cycles/{cycle_id}": {
+    "/admin/cycles/{cycle_id}/reopen": {
         parameters: {
             query?: never;
             header?: never;
@@ -594,9 +616,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Update Cycle */
-        put: operations["update_cycle_admin_cycles__cycle_id__put"];
-        post?: never;
+        put?: never;
+        /**
+         * Reopen Cycle
+         * @description Reopen a closed cycle. Only one cycle may be active at a time (REQ-CYCLE-1).
+         */
+        post: operations["reopen_cycle_admin_cycles__cycle_id__reopen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3036,6 +3061,38 @@ export interface operations {
             };
         };
     };
+    list_cycles_admin_cycles_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cycle"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_cycle_admin_cycles_post: {
         parameters: {
             query?: never;
@@ -3054,6 +3111,78 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cycle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cycle_admin_cycles__cycle_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                cycle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cycle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_cycle_admin_cycles__cycle_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                cycle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CycleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3106,7 +3235,7 @@ export interface operations {
             };
         };
     };
-    update_cycle_admin_cycles__cycle_id__put: {
+    reopen_cycle_admin_cycles__cycle_id__reopen_post: {
         parameters: {
             query?: never;
             header?: {
@@ -3118,11 +3247,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CycleUpdate"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
