@@ -24,7 +24,7 @@ export function PdfViewer({ url, title, height = 460 }: Props) {
       const task = pdfjs.getDocument({ url });
       destroy = () => void task.destroy();
       const pdf = await task.promise;
-      const width = el.clientWidth || 440;
+      const width = (el.clientWidth || 460) - 16; // minus the p-2 padding
       const ratio = window.devicePixelRatio || 1;
       for (let i = 1; i <= pdf.numPages && !cancelled; i++) {
         const page = await pdf.getPage(i);
