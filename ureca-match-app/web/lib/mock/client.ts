@@ -533,7 +533,7 @@ export class MockClient implements ApiClient {
 
   // ---- slice E
   async notifications() { const u = this.user(); return this.db.notifications.filter((n) => n.user_id === u.id).sort((a, b) => b.created_at.localeCompare(a.created_at)); }
-  async markRead(id: string) { const u = this.user(); const n = this.db.notifications.find((n) => n.id === id && n.user_id === u.id); if (n) n.read = true; }
+  async markRead(id: string) { const u = this.user(); const n = this.db.notifications.find((n) => n.id === id && n.user_id === u.id); if (!n) throw new M.ApiError(404, "not_found", "Notification was not found."); n.read = true; } // REQ-NOTIF-2: someone else's reads as not found
   async adminDashboard(): Promise<M.AdminDashboard> {
     this.need("admin"); const round = this.phase().round_id;
     const pending = this.db.matches.filter((m) => m.status === "proposed").length;

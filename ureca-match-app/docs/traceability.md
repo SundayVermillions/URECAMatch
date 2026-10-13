@@ -45,7 +45,11 @@ Update the row for every REQ-ID your PR touches. "Screen" is the dialog-map page
 | APPRV-1..3 | D | /supervisor/matches/{id}/approve or reject | MatchApprovalsPage | test_REQ_APPRV_1_cannot_approve_before_execute, test_REQ_APPRV_2_reject_frees_the_slot, test_REQ_APPRV_3_no_change_after_publish | mock |
 | OUTCOME-1..4 | D | /me/match/*, POST /internal/tick | MyApplicationPage | test_REQ_OUTCOME_1_student_can_accept_offer, test_REQ_EXEC_2_...(decline), test_REQ_OUTCOME_3_unanswered_offer_times_out | mock |
 | AUDIT-1..2 | D | services/audit.py, schema trigger | AuditOverridesPage | test_REQ_AUDIT_1_execute_and_publish_write_audit, test_REQ_AUDIT_2_audit_log_table_is_append_only | mock |
-| NOTIF-1..2 | E | /me/notifications | NotificationPage | | todo |
+| NOTIF-1 | E | GET /me/notifications, services/notify.py | NotificationPage, sidebar badge | test_REQ_NOTIF_1_only_recipient_sees, test_REQ_NOTIF_1_newest_first, test_REQ_NOTIF_1_supabase_reads_own_newest_first, test_REQ_NOTIF_1_supabase_inserts_rows | mock |
+| NOTIF-2 | E | POST /me/notifications/{id}/read | NotificationPage | test_REQ_NOTIF_2_mark_read_updates_unread_count, test_REQ_NOTIF_2_supabase_mark_read_scoped_to_owner | mock |
+| NFR 5.1.2 | E | services/email.py (Resend, EMAIL_MODE) | | test_NFR_5_1_2_email_dispatched_on_notify, test_NFR_5_1_2_no_send_unless_mode_is_send, test_NFR_5_1_2_failed_send_keeps_notification, test_NFR_5_1_2_every_event_has_a_template | mock |
+| NFR 5.3.2 | E | deps.require_role on every endpoint | | test_NFR_5_3_2_role_matrix (from shared/openapi.json), test_NFR_5_3_2_every_endpoint_classified | mock |
+| NFR 5.4 | E | full journey | all | web/e2e/full-cycle.spec.ts (manual, skipped in CI, not passing yet) | todo |
 
 Status: `todo` (mock only), `live` (real Supabase behind it), `done` (live and tested).
 

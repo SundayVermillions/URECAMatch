@@ -11,12 +11,13 @@ from fastapi.testclient import TestClient
 
 from app.db import store as store_module
 from app.main import app
-from app.settings import set_clock_override
+from app.settings import get_settings, set_clock_override
 
 
 @pytest.fixture(autouse=True)
 def fresh_store(monkeypatch):
     monkeypatch.setenv("API_MODE", "mock")
+    monkeypatch.setattr(get_settings(), "email_mode", "off")  # tests never send e-mail, whatever .env says
     store_module.reset_store()
     yield store_module.get_store()
     store_module.reset_store()
