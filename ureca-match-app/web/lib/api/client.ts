@@ -41,7 +41,11 @@ export interface ApiClient {
   documentUrl(documentId: string): Promise<M.Document>;
   // slice D
   cycle(): Promise<M.Cycle | null>;
+  listCycles(): Promise<M.Cycle[]>;
+  getCycle(id: string): Promise<M.Cycle>;
   createCycle(body: M.CycleCreate): Promise<M.Cycle>;
+  closeCycle(id: string): Promise<M.Cycle>;
+  reopenCycle(id: string): Promise<M.Cycle>;
   updateCycle(id: string, body: M.CycleUpdate): Promise<M.Cycle>;
   setRounds(cycleId: string, body: M.RoundsUpdate): Promise<M.Cycle>;
   execute(roundId: string): Promise<M.RoundSummary>;
@@ -56,6 +60,10 @@ export interface ApiClient {
   myMatch(): Promise<M.Match | null>;
   respondToOffer(accept: boolean): Promise<M.Match>;
   tick(): Promise<void>;
+  // developer tool: debug clock (needs DEBUG_CLOCK=true on the API; always on in mock mode)
+  clock(): Promise<M.ClockState>;
+  setClock(nowIso: string): Promise<M.ClockState>;
+  resetClock(): Promise<M.ClockState>;
   // slice E
   notifications(): Promise<M.Notification[]>;
   markRead(id: string): Promise<void>;

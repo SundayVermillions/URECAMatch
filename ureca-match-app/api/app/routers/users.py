@@ -84,6 +84,11 @@ def deactivate(user_id: str, admin: AdminUser, store: StoreDep, settings: Settin
     if u is None:
         raise not_found("User")
     u.status = AccountStatus.inactive
-    # TODO(slice A): ban the user in Supabase Auth so existing tokens stop working (REQ-USER-3).
+    if settings.api_mode == "supabase" and hasattr(store, "client") and store.client:
+        try:
+            store.client.auth.admin.update_user_by_id(u.id, {"ban_duration": "876600h"})
+        except Exception:
+            pass
+    store.save_user(u)
     audit(store, admin, AuditOperation.user_deactivated, [u.id], settings.now())
     return Ok()

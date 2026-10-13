@@ -556,7 +556,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Cycles
+         * @description Cycle history, newest first, so admins can browse past cycles (REQ-CYCLE-1).
+         */
+        get: operations["list_cycles_admin_cycles_get"];
         put?: never;
         /** Create Cycle */
         post: operations["create_cycle_admin_cycles_post"];
@@ -573,10 +577,51 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Cycle */
+        get: operations["get_cycle_admin_cycles__cycle_id__get"];
         /** Update Cycle */
         put: operations["update_cycle_admin_cycles__cycle_id__put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/cycles/{cycle_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Cycle
+         * @description Close a cycle. It stays in the history and can be reopened later (REQ-CYCLE-1).
+         */
+        post: operations["close_cycle_admin_cycles__cycle_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/cycles/{cycle_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen Cycle
+         * @description Reopen a closed cycle. Only one cycle may be active at a time (REQ-CYCLE-1).
+         */
+        post: operations["reopen_cycle_admin_cycles__cycle_id__reopen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -913,6 +958,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/debug/clock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Clock
+         * @description Current API time. `enabled` is false when DEBUG_CLOCK is off, so the UI can hide itself.
+         */
+        get: operations["get_clock_debug_clock_get"];
+        /**
+         * Put Clock
+         * @description Freeze the API clock at the given moment. Applies to every user until reset.
+         */
+        put: operations["put_clock_debug_clock_put"];
+        post?: never;
+        /**
+         * Reset Clock
+         * @description Go back to the real clock (or the fixed demo clock in mock mode).
+         */
+        delete: operations["reset_clock_debug_clock_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1104,6 +1177,32 @@ export interface components {
         Body_upload_document_me_documents_post: {
             /** File */
             file: string;
+        };
+        /** ClockSet */
+        ClockSet: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+        };
+        /**
+         * ClockState
+         * @description Debug clock (developer tool). `enabled` is false when the server has DEBUG_CLOCK off.
+         */
+        ClockState: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /**
+             * Overridden
+             * @default false
+             */
+            overridden: boolean;
         };
         /** Cycle */
         Cycle: {
@@ -1390,7 +1489,7 @@ export interface components {
          * NotificationEvent
          * @enum {string}
          */
-        NotificationEvent: "cycle_changed" | "round_opened" | "results_published" | "offer_received" | "proposal_decided" | "match_approved" | "match_rejected" | "account_changed";
+        NotificationEvent: "cycle_changed" | "round_opened" | "results_published" | "offer_received" | "proposal_decided" | "matches_proposed" | "match_approved" | "match_rejected" | "account_changed";
         /** Ok */
         Ok: {
             /**
@@ -3016,6 +3115,38 @@ export interface operations {
             };
         };
     };
+    list_cycles_admin_cycles_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cycle"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_cycle_admin_cycles_post: {
         parameters: {
             query?: never;
@@ -3052,6 +3183,40 @@ export interface operations {
             };
         };
     };
+    get_cycle_admin_cycles__cycle_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                cycle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cycle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_cycle_admin_cycles__cycle_id__put: {
         parameters: {
             query?: never;
@@ -3069,6 +3234,74 @@ export interface operations {
                 "application/json": components["schemas"]["CycleUpdate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cycle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_cycle_admin_cycles__cycle_id__close_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                cycle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cycle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reopen_cycle_admin_cycles__cycle_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                cycle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -3728,6 +3961,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupervisorDashboard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_clock_debug_clock_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClockState"];
+                };
+            };
+        };
+    };
+    put_clock_debug_clock_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClockSet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClockState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_clock_debug_clock_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClockState"];
                 };
             };
             /** @description Validation Error */

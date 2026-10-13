@@ -17,6 +17,7 @@ from app.models import (
     Application,
     AuditEntry,
     Cycle,
+    CycleStatus,
     Listing,
     Match,
     Notification,
@@ -31,7 +32,8 @@ class Store(Protocol):
     users: list[User]
     students: list[StudentProfile]
     supervisors: list[SupervisorProfile]
-    cycle: Cycle | None
+    cycles: list[Cycle]  # history; at most one is not closed
+    cycle: Cycle | None  # the active (not closed) cycle, or None
     listings: list[Listing]
     applications: list[Application]
     matches: list[Match]
@@ -40,12 +42,14 @@ class Store(Protocol):
     audit: list[AuditEntry]
     applicant_rankings: dict[str, list[str]]  # f"{listing_id}:{round_id}" -> ordered application ids
     verification_codes: dict[str, tuple[str, datetime]]  # email -> (code, expiry)
+    passwords: dict[str, str]  # email -> password (mock mode)
 
     def user(self, user_id: str) -> User | None: ...
     def user_by_email(self, email: str) -> User | None: ...
     def student(self, user_id: str) -> StudentProfile | None: ...
     def supervisor(self, user_id: str) -> SupervisorProfile | None: ...
     def listing(self, listing_id: str) -> Listing | None: ...
+    def cycle_by_id(self, cycle_id: str) -> Cycle | None: ...  # slice D: any cycle in the history
     def all_listings(self) -> list[Listing]: ...  # slice B: every listing, any status
     def save_listing(self, listing: Listing) -> Listing: ...  # slice B: insert or update
     def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]: ...  # slice B
@@ -74,7 +78,7 @@ class MockStore:
         self.users: list[User] = data["users"]
         self.students: list[StudentProfile] = data["students"]
         self.supervisors: list[SupervisorProfile] = data["supervisors"]
-        self.cycle: Cycle | None = data["cycle"]
+        self.cycles: list[Cycle] = data["cycles"]
         self.listings: list[Listing] = data["listings"]
         self.applications: list[Application] = data["applications"]
         self.matches: list[Match] = data["matches"]
@@ -86,7 +90,32 @@ class MockStore:
             "lst-1:rnd-2": [a.id for a in self.applications if a.listing_id == "lst-1" and a.round_id == "rnd-2"][:4],
         }
         self.verification_codes: dict[str, tuple[str, datetime]] = {}
+        self.passwords: dict[str, str] = {}
         self._counter = 1000
+
+    def save_user(self, user: User) -> User:
+        for i, u in enumerate(self.users):
+            if u.id == user.id:
+                self.users[i] = user
+                return user
+        self.users.append(user)
+        return user
+
+    def save_student(self, student: StudentProfile) -> StudentProfile:
+        for i, s in enumerate(self.students):
+            if s.user_id == student.user_id:
+                self.students[i] = student
+                return student
+        self.students.append(student)
+        return student
+
+    def save_supervisor(self, supervisor: SupervisorProfile) -> SupervisorProfile:
+        for i, s in enumerate(self.supervisors):
+            if s.user_id == supervisor.user_id:
+                self.supervisors[i] = supervisor
+                return supervisor
+        self.supervisors.append(supervisor)
+        return supervisor
 
     def user(self, user_id: str) -> User | None:
         return next((u for u in self.users if u.id == user_id), None)
@@ -103,6 +132,14 @@ class MockStore:
     def listing(self, listing_id: str) -> Listing | None:
         return next((lst for lst in self.listings if lst.id == listing_id), None)
 
+    @property
+    def cycle(self) -> Cycle | None:
+        """The one active (not closed) cycle, or None. At most one cycle is active at a time."""
+        return next((c for c in self.cycles if c.status != CycleStatus.closed), None)
+
+    def cycle_by_id(self, cycle_id: str) -> Cycle | None:
+        return next((c for c in self.cycles if c.id == cycle_id), None)
+
     # --- Slice B: listings. In memory, an object is already "saved" once it is in the list.
     def all_listings(self) -> list[Listing]:
         return list(self.listings)
@@ -115,7 +152,8 @@ class MockStore:
     # --- Slice B: self-proposed projects
     def proposals_for(self, student_id: str | None = None, supervisor_id: str | None = None) -> list[Proposal]:
         return [
-            p for p in self.proposals
+            p
+            for p in self.proposals
             if (student_id is None or p.student_id == student_id) and (supervisor_id is None or p.supervisor_id == supervisor_id)
         ]
 
@@ -130,24 +168,6 @@ class MockStore:
     def next_id(self, prefix: str) -> str:
         self._counter += 1
         return f"{prefix}-{self._counter}"
-
-    def save_student(self, student: StudentProfile) -> StudentProfile:
-        """Save or update student profile in mock store."""
-        for i, s in enumerate(self.students):
-            if s.user_id == student.user_id:
-                self.students[i] = student
-                return student
-        self.students.append(student)
-        return student
-
-    def save_supervisor(self, supervisor: SupervisorProfile) -> SupervisorProfile:
-        """Save or update supervisor profile in mock store."""
-        for i, s in enumerate(self.supervisors):
-            if s.user_id == supervisor.user_id:
-                self.supervisors[i] = supervisor
-                return supervisor
-        self.supervisors.append(supervisor)
-        return supervisor
 
     def save_document(self, doc_data: dict) -> dict:
         """Save document in mock store."""
@@ -212,7 +232,7 @@ class SupabaseStore(MockStore):
 
         short_id = uuid.uuid4().hex[:8]
         return f"{prefix}-{short_id}"
-    
+
     # --- Slice A: Users & Profiles Read ---
 
     def user(self, user_id: str) -> User | None:
@@ -284,14 +304,24 @@ class SupabaseStore(MockStore):
         res = self.client.table("supporting_documents").insert(doc_data).execute()
         return res.data[0] if res.data else doc_data
 
-
     # --- Slice B: listings (table project_listings) ---
 
     # Columns that exist in project_listings. Other Listing fields are computed per request
     # (supervisor_name is joined from users; applicant_count, applied, applied_rank by the router).
     _LISTING_COLUMNS = {
-        "id", "supervisor_id", "title", "description", "prerequisites", "topic_tags", "available_slots",
-        "filled_slots", "offering_faculty", "research_location", "cover_url", "status", "created_at",
+        "id",
+        "supervisor_id",
+        "title",
+        "description",
+        "prerequisites",
+        "topic_tags",
+        "available_slots",
+        "filled_slots",
+        "offering_faculty",
+        "research_location",
+        "cover_url",
+        "status",
+        "created_at",
     }
 
     @staticmethod
@@ -321,8 +351,17 @@ class SupabaseStore(MockStore):
     # --- Slice B: self-proposed projects (table self_proposed_applications) ---
 
     _PROPOSAL_COLUMNS = {
-        "id", "student_id", "supervisor_id", "title", "description", "research_interests", "statement",
-        "status", "submitted_at", "decided_at", "document_ids",
+        "id",
+        "student_id",
+        "supervisor_id",
+        "title",
+        "description",
+        "research_interests",
+        "statement",
+        "status",
+        "submitted_at",
+        "decided_at",
+        "document_ids",
     }
     # Two foreign keys point at users, so each join names the constraint it follows.
     _PROPOSAL_SELECT = (
@@ -360,10 +399,18 @@ class SupabaseStore(MockStore):
         payload = proposal.model_dump(mode="json", include=self._PROPOSAL_COLUMNS)
         self.client.table("self_proposed_applications").upsert(payload).execute()
         return proposal
+
     # --- Slice C: applications (table listing_applications) and rankings (table applicant_rankings) ---
 
     _APPLICATION_COLUMNS = {
-        "id", "student_id", "listing_id", "round_id", "statement", "submitted_at", "preference_rank", "status",
+        "id",
+        "student_id",
+        "listing_id",
+        "round_id",
+        "statement",
+        "submitted_at",
+        "preference_rank",
+        "status",
         "document_ids",
     }
     # listing_title and supervisor_name are not columns: they come from the listing and its supervisor.

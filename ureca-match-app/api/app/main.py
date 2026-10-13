@@ -12,7 +12,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.errors import ApiError
-from app.routers import applications, auth, cycles, listings, matching, notifications, profile, proposals, rankings, users
+from app.routers import (
+    applications,
+    auth,
+    cycles,
+    debug,
+    listings,
+    matching,
+    notifications,
+    profile,
+    proposals,
+    rankings,
+    users,
+)
 
 app = FastAPI(
     title="URECAMatch API",
@@ -29,7 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth, profile, users, listings, proposals, applications, rankings, cycles, matching, notifications):
+for r in (auth, profile, users, listings, proposals, applications, rankings, cycles, matching, notifications, debug):
     app.include_router(r.router)
 
 

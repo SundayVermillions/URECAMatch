@@ -34,6 +34,7 @@ TEMPLATES: dict[NotificationEvent, Template] = {
     NotificationEvent.round_opened: _placeholder,  # TODO copy from slice D (Nicholas)
     NotificationEvent.results_published: _placeholder,  # TODO copy from slice D (Nicholas)
     NotificationEvent.offer_received: _placeholder,  # TODO copy from slice D (Nicholas)
+    NotificationEvent.matches_proposed: _placeholder,  # TODO copy from slice D (Nicholas)
     NotificationEvent.match_approved: _placeholder,  # TODO copy from slice D (Nicholas)
     NotificationEvent.match_rejected: _placeholder,  # TODO copy from slice D (Nicholas)
     NotificationEvent.proposal_decided: _placeholder,  # TODO copy from slice B (Robin)

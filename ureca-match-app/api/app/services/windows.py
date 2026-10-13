@@ -67,7 +67,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_number=r.number,
             window=Window.review,
             window_ends_at=r.review_end,
-            label=f"Round {r.number} rankings due {r.review_end:%-d %b}",
+            label=f"Round {r.number} rankings due {r.review_end:%d %b}",
         )
     if r.published_at is None:
         return Phase(
@@ -75,15 +75,17 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_id=r.id,
             round_number=r.number,
             window=Window.awaiting_results,
-            window_ends_at=r.application_start,
+            window_ends_at=None,  # ends when an admin publishes; no fixed date to count down to
             label=f"Round {r.number} results pending",
         )
+    nxt = next((x for x in cycle.rounds if x.number == r.number + 1), None)
+    responds_by = nxt.review_start if nxt else cycle.closing_date  # offer response deadline (same rule as publish())
     return Phase(
         cycle_id=cycle.id,
         round_id=r.id,
         round_number=r.number,
         window=Window.results,
-        window_ends_at=r.application_start,
+        window_ends_at=responds_by,
         label=f"Round {r.number} results published",
     )
 

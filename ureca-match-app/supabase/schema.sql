@@ -13,7 +13,7 @@ create type listing_status as enum ('draft', 'published', 'closed');
 create type application_status as enum ('submitted', 'withdrawn', 'matched', 'unmatched');
 create type proposal_status as enum ('submitted', 'accepted', 'declined');
 create type match_status as enum ('proposed', 'approved', 'rejected', 'reassigned', 'published', 'accepted', 'declined', 'timed_out');
-create type notification_event as enum ('cycle_changed', 'round_opened', 'results_published', 'offer_received', 'proposal_decided', 'match_approved', 'match_rejected', 'account_changed');
+create type notification_event as enum ('cycle_changed', 'round_opened', 'results_published', 'offer_received', 'proposal_decided', 'matches_proposed', 'match_approved', 'match_rejected', 'account_changed');
 create type audit_operation as enum ('matching_executed', 'manual_reassignment', 'results_published', 'user_updated', 'user_deactivated', 'cycle_updated');
 
 -- ------------------------------------------------------------------ users (slice A)

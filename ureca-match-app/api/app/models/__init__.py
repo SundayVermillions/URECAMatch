@@ -91,6 +91,7 @@ class NotificationEvent(str, Enum):
     results_published = "results_published"
     offer_received = "offer_received"
     proposal_decided = "proposal_decided"
+    matches_proposed = "matches_proposed"  # execute produced matches; supervisors must review
     match_approved = "match_approved"
     match_rejected = "match_rejected"
     account_changed = "account_changed"
@@ -514,6 +515,18 @@ class SupervisorDashboard(BaseModel):
     pending_proposals: int
     pending_approvals: int
     phase: Phase
+
+
+class ClockState(BaseModel):
+    """Debug clock (developer tool). `enabled` is false when the server has DEBUG_CLOCK off."""
+
+    enabled: bool
+    now: datetime
+    overridden: bool = False
+
+
+class ClockSet(BaseModel):
+    now: datetime
 
 
 class Ok(BaseModel):

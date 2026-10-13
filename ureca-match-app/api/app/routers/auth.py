@@ -52,19 +52,43 @@ def register(body: RegisterRequest, store: StoreDep, settings: SettingsDep) -> O
     if body.role == Role.admin:  # REQ-USER-2
         raise invalid("role_not_allowed", "Admin accounts are created by an existing admin.", "role")
 
+    user_id = store.next_id(body.role.value[:3])
+
+    if settings.api_mode == "supabase" and hasattr(store, "client") and store.client:
+        try:
+            auth_res = store.client.auth.admin.create_user(
+                {
+                    "email": body.email,
+                    "password": body.password,
+                    "email_confirm": True,
+                    "user_metadata": {"role": body.role.value, "name": body.name},
+                }
+            )
+            if auth_res.user and auth_res.user.id:
+                user_id = auth_res.user.id
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "already registered" in err_msg or "already exists" in err_msg:
+                raise conflict("email_taken", "An account with this e-mail already exists. Sign in instead.") from e
+            raise ApiError(500, "auth_provider_error", f"Supabase Auth error: {e}") from e
+    else:
+        store.passwords[body.email.lower()] = body.password
+
     user = User(
-        id=store.next_id(body.role.value[:3]),
+        id=user_id,
         email=body.email,
         name=body.name,
         role=body.role,
         status=AccountStatus.pending_verification,
         created_at=settings.now(),
     )
-    store.users.append(user)
+    store.save_user(user)
     if body.role == Role.student:
-        store.students.append(StudentProfile(user_id=user.id, school="", profile_complete=False, documents=[]))
+        sp = StudentProfile(user_id=user.id, school="", profile_complete=False, documents=[])
+        store.save_student(sp)
     else:
-        store.supervisors.append(SupervisorProfile(user_id=user.id, faculty=""))
+        sup = SupervisorProfile(user_id=user.id, faculty="")
+        store.save_supervisor(sup)
 
     _issue_verification_code(body.email, store, settings)  # REQ-REG-2
     return Ok()
@@ -113,8 +137,18 @@ def resend(body: ResendCodeRequest, store: StoreDep, settings: SettingsDep) -> O
 @router.post("/auth/sign-in", response_model=Session)
 def sign_in(body: SignInRequest, store: StoreDep, settings: SettingsDep) -> Session:
     user = store.user_by_email(body.email)
-    if user is None or body.password != "password":  # Mock password check for seeded users
+    if user is None:
         raise ApiError(401, "bad_credentials", "E-mail or password is incorrect.")
+
+    if settings.api_mode == "supabase" and hasattr(store, "client") and store.client:
+        try:
+            store.client.auth.sign_in_with_password({"email": body.email, "password": body.password})
+        except Exception:
+            raise ApiError(401, "bad_credentials", "E-mail or password is incorrect.") from None
+    else:
+        expected_pw = store.passwords.get(body.email.lower(), "password")
+        if body.password != expected_pw:
+            raise ApiError(401, "bad_credentials", "E-mail or password is incorrect.")
     if user.status == AccountStatus.inactive:  # REQ-AUTH-2
         raise ApiError(403, "account_inactive", "This account has been deactivated. Contact the URECA office.")
     if user.status == AccountStatus.pending_verification:

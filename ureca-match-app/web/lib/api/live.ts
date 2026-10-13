@@ -63,7 +63,11 @@ export class LiveClient implements ApiClient {
   documentUrl = (id: string) => this.req<M.Document>("GET", `/documents/${id}/view`);
 
   cycle = () => this.req<M.Cycle | null>("GET", "/cycle");
+  listCycles = () => this.req<M.Cycle[]>("GET", "/admin/cycles");
+  getCycle = (id: string) => this.req<M.Cycle>("GET", `/admin/cycles/${id}`);
   createCycle = (b: M.CycleCreate) => this.req<M.Cycle>("POST", "/admin/cycles", b);
+  closeCycle = (id: string) => this.req<M.Cycle>("POST", `/admin/cycles/${id}/close`);
+  reopenCycle = (id: string) => this.req<M.Cycle>("POST", `/admin/cycles/${id}/reopen`);
   updateCycle = (id: string, b: M.CycleUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}`, b);
   setRounds = (id: string, b: M.RoundsUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}/rounds`, b);
   execute = (id: string) => this.req<M.RoundSummary>("POST", `/admin/rounds/${id}/execute`);
@@ -79,6 +83,10 @@ export class LiveClient implements ApiClient {
   myMatch = () => this.req<M.Match | null>("GET", "/me/match");
   respondToOffer = (accept: boolean) => this.req<M.Match>("POST", `/me/match/${accept ? "accept" : "decline"}`);
   tick = () => this.req<void>("POST", "/internal/tick");
+
+  clock = () => this.req<M.ClockState>("GET", "/debug/clock");
+  setClock = (now: string) => this.req<M.ClockState>("PUT", "/debug/clock", { now });
+  resetClock = () => this.req<M.ClockState>("DELETE", "/debug/clock");
 
   notifications = () => this.req<M.Notification[]>("GET", "/me/notifications");
   markRead = (id: string) => this.req<void>("POST", `/me/notifications/${id}/read`);

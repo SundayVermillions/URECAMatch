@@ -15,18 +15,18 @@ ENDPOINTS = [(m.upper(), p) for p, ops in OPENAPI["paths"].items() for m in ops]
 
 # Skipped, no role to check:
 #   public: POST /auth/register, /auth/verify, /auth/resend, /auth/sign-in; GET /health;
-#           POST /internal/tick (guarded by the cron secret, not a role)
+#           POST /internal/tick (guarded by the cron secret, not a role); GET /debug/clock (DEBUG_CLOCK gate)
 #   auth-only, any active role: GET /me, /cycle, /listings, /listings/{listing_id}, /supervisors,
 #           /documents/{document_id}/view (owner or supervisor rule, see REQ-VRANK-3),
-#           /me/notifications; POST /me/notifications/{notification_id}/read
+#           /me/notifications; POST /me/notifications/{notification_id}/read; PUT, DELETE /debug/clock
 PUBLIC = {
     ("POST", "/auth/register"), ("POST", "/auth/verify"), ("POST", "/auth/resend"), ("POST", "/auth/sign-in"),
-    ("GET", "/health"), ("POST", "/internal/tick"),
+    ("GET", "/health"), ("POST", "/internal/tick"), ("GET", "/debug/clock"),
 }
 AUTH_ONLY = {
     ("GET", "/me"), ("GET", "/cycle"), ("GET", "/listings"), ("GET", "/listings/{listing_id}"), ("GET", "/supervisors"),
     ("GET", "/documents/{document_id}/view"), ("GET", "/me/notifications"),
-    ("POST", "/me/notifications/{notification_id}/read"),
+    ("POST", "/me/notifications/{notification_id}/read"), ("PUT", "/debug/clock"), ("DELETE", "/debug/clock"),
 }
 STUDENT_ONLY = {
     ("GET", "/me/profile"), ("PUT", "/me/profile"), ("POST", "/me/documents"),

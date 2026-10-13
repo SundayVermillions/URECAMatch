@@ -262,6 +262,45 @@ def make_cycle() -> Cycle:
     )
 
 
+def make_past_cycle() -> Cycle:
+    """A completed prior cycle, kept so admins can browse history and reopen one if needed."""
+    cid = "cyc-2526s2"
+    rounds: list[Round] = []
+    cursor = dt(5, 1) + timedelta(days=7)  # opens 5 Jan 2026, one pre-application week
+    for n in range(1, 4):
+        app_start = cursor
+        app_end = app_start + timedelta(days=5) - timedelta(seconds=1)
+        rev_start = app_start + timedelta(days=5)
+        rev_end = rev_start + timedelta(days=2) - timedelta(seconds=1)
+        rounds.append(
+            Round(
+                id=f"rnd-{cid}-{n}",
+                cycle_id=cid,
+                number=n,
+                application_start=app_start,
+                application_end=app_end,
+                review_start=rev_start,
+                review_end=rev_end,
+                status=RoundStatus.completed,
+                executed_at=rev_end + timedelta(hours=2),
+                published_at=rev_end + timedelta(hours=8),
+                eligible_students=0,
+                open_slots=0,
+                reopened_slots=0,
+            )
+        )
+        cursor = rev_start + timedelta(days=2) + timedelta(days=4)
+    return Cycle(
+        id=cid,
+        academic_year="AY25/26 Semester 2",
+        opening_date=dt(5, 1),
+        closing_date=dt(20, 3),
+        pre_application_days=7,
+        status=CycleStatus.closed,
+        rounds=rounds,
+    )
+
+
 # ---------------------------------------------------------------- listings
 
 LISTINGS = [
@@ -674,6 +713,7 @@ def build() -> dict:
         "students": students,
         "supervisors": supervisors,
         "cycle": cycle,
+        "cycles": [make_past_cycle(), cycle],  # history, oldest first; at most one is not closed
         "listings": listings,
         "applications": make_applications(listings),
         "matches": make_matches(users, listings),
