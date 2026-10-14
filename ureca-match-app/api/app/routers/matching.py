@@ -205,6 +205,34 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
         now,
         "/my-applications",
     )  # REQ-PUB-2
+    # REQ-PUB-2 "all affected users": students who applied and got no offer, and supervisors with matches.
+    unmatched = sorted(
+        {a.student_id for a in store.applications if a.round_id == round_id and a.status == ApplicationStatus.submitted}
+    )
+    next_step = f" You can apply again in Round {nxt.number}." if nxt else ""
+    notify(
+        store,
+        unmatched,
+        NotificationEvent.results_published,
+        f"Round {r.number} results are out",
+        f"You were not matched to a project in Round {r.number}.{next_step}",
+        now,
+        "/my-applications",
+    )
+    for sup_id in sorted({m.supervisor_id for m in ms}):
+        offered = sum(1 for m in ms if m.supervisor_id == sup_id and m.status == MatchStatus.published)
+        students = "1 student on your listings was" if offered == 1 else f"{offered} students on your listings were"
+        notify(
+            store,
+            [sup_id],
+            NotificationEvent.results_published,
+            f"Round {r.number} results are out",
+            f"{students} offered a place. They have until {expires:%d %b} to respond."
+            if offered
+            else f"No students on your listings were offered a place in Round {r.number}.",
+            now,
+            "/approvals",
+        )
     return summary(round_id, admin, store)
 
 

@@ -9,6 +9,7 @@ from app.errors import conflict, not_found
 from app.models import (
     AccountStatus,
     AuditOperation,
+    NotificationEvent,
     Ok,
     Role,
     StudentProfile,
@@ -19,6 +20,7 @@ from app.models import (
     UserUpdate,
 )
 from app.services.audit import audit
+from app.services.notify import notify
 
 router = APIRouter(prefix="/admin/users", tags=["admin: users"])
 
@@ -68,13 +70,28 @@ def update_user(user_id: str, body: UserUpdate, admin: AdminUser, store: StoreDe
     u = store.user(user_id)
     if u is None:
         raise not_found("User")
-    if body.name is not None:
+    changes = []
+    if body.name is not None and body.name != u.name:
         u.name = body.name
-    if body.role is not None:
+        changes.append(f"name is now {body.name}")
+    if body.role is not None and body.role != u.role:
         u.role = body.role
-    if body.status is not None:
+        changes.append(f"role is now {body.role.value}")
+    if body.status is not None and body.status != u.status:
         u.status = body.status
-    audit(store, admin, AuditOperation.user_updated, [u.id], settings.now())
+        changes.append(f"status is now {body.status.value.replace('_', ' ')}")
+    store.save_user(u)  # in Supabase mode store.user() returns a copy, so the change must be saved
+    now = settings.now()
+    audit(store, admin, AuditOperation.user_updated, [u.id], now)
+    if changes:
+        notify(
+            store,
+            [u.id],
+            NotificationEvent.account_changed,
+            "Your account was updated",
+            f"An administrator changed your account: {'; '.join(changes)}.",
+            now,
+        )
     return u
 
 
@@ -83,6 +100,7 @@ def deactivate(user_id: str, admin: AdminUser, store: StoreDep, settings: Settin
     u = store.user(user_id)
     if u is None:
         raise not_found("User")
+    was_active = u.status != AccountStatus.inactive
     u.status = AccountStatus.inactive
     if settings.api_mode == "supabase" and hasattr(store, "client") and store.client:
         try:
@@ -90,5 +108,15 @@ def deactivate(user_id: str, admin: AdminUser, store: StoreDep, settings: Settin
         except Exception:
             pass
     store.save_user(u)
-    audit(store, admin, AuditOperation.user_deactivated, [u.id], settings.now())
+    now = settings.now()
+    audit(store, admin, AuditOperation.user_deactivated, [u.id], now)
+    if was_active:  # sign-in is blocked now, so in practice the user learns this from the e-mail
+        notify(
+            store,
+            [u.id],
+            NotificationEvent.account_changed,
+            "Your account was deactivated",
+            "An administrator deactivated your URECAMatch account, so you can no longer sign in.",
+            now,
+        )
     return Ok()
