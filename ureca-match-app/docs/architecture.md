@@ -83,7 +83,7 @@ flowchart LR
   Routers -- "auth.py: create_user,<br/>sign_in_with_password" --> Auth
   StorageI --> Bucket
   Services -- "email.send_for()" --> Resend
-  Cron -- "/internal/tick<br/>Bearer CRON_SECRET" --> Entry
+  Cron -- "GET /internal/tick<br/>Bearer CRON_SECRET" --> Entry
 ```
 
 ## 3. Request lifecycle
@@ -139,20 +139,20 @@ Submitting an application does not notify anyone or write to the audit log. Requ
 - **Generated role-matrix test.** `api/tests/test_NFR_5_3_roles.py` reads every path and method from `shared/openapi.json` and calls each restricted endpoint as each wrong role, expecting 403 (`test_NFR_5_3_2_role_matrix`). `test_NFR_5_3_2_every_endpoint_classified` fails when someone adds an endpoint without classifying it, so new endpoints cannot skip the check.
 - **Object-level rules.** Beyond roles, handlers check ownership: a student may only attach their own documents (`apply()`); a supervisor may only decide their own matches (`_decide()`), edit their own listings and see their own proposals; documents are visible only to the owner, admins, or a supervisor the student applied to (`_may_view()` in `rankings.py`); notifications are marked read only by their owner. Tests include `test_REQ_APPRV_supervisor_cannot_decide_another_supervisors_match`, `test_REQ_PROJ_2_cannot_edit_another_supervisors_listing`, `test_REQ_VRANK_3_other_student_cannot_view` and `test_REQ_NOTIF_2_supabase_mark_read_scoped_to_owner`.
 - **Secrets stay server-side.** `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `CRON_SECRET` and `RESEND_API_KEY` are read only by `Settings` in the API. The web build only sees `NEXT_PUBLIC_API_MODE`, `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_DEBUG_CLOCK`. Row-level security is enabled on every public table with no policies, so the anon key reads nothing.
-- **Cron endpoint.** `POST /internal/tick` has no user; outside mock mode it requires `Authorization: Bearer <CRON_SECRET>`.
+- **Cron endpoint.** `/internal/tick` accepts `GET` (Vercel Cron) and `POST` (the admin Matching Rounds screen). Outside mock mode it requires `Authorization: Bearer <CRON_SECRET>` or an admin session; other roles get `403`, no valid token gets `401` (`test_REQ_OUTCOME_tick_cron.py`).
 
 ### 5.3 Global control flow
 
 The system is event-driven at the tier boundary and procedure-driven inside each request. Every user action is one synchronous HTTP request and response; there are no background workers, queues or threads. Long steps also run inside a request: the matching run is executed inside `POST /admin/rounds/{round_id}/execute`, and e-mails are handed to Resend inside the request that created the notification.
 
-Time-based changes are driven by a daily timer. `api/vercel.json` registers a Vercel Cron job for `/internal/tick` at `0 16 * * *` (16:00 UTC, midnight in Singapore). `tick()` in `routers/matching.py` moves round statuses into their application or review window and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). The admin Matching Rounds screen (`web/app/(admin)/rounds/page.tsx`) also calls `tick()` when it opens. Most window logic does not depend on the cron at all, because guards compute the phase from dates on every request through `windows.phase()`.
+Time-based changes are driven by a daily timer. `api/vercel.json` registers a Vercel Cron job for `/internal/tick` at `0 16 * * *` (16:00 UTC, midnight in Singapore). Vercel Cron calls it with `GET` and `Authorization: Bearer <CRON_SECRET>`. `tick()` in `routers/matching.py` moves round statuses into their application or review window and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). The admin Matching Rounds screen (`web/app/(admin)/rounds/page.tsx`) also calls `tick()` with `POST` and the admin's session when it opens. Most window logic does not depend on the cron at all, because guards compute the phase from dates on every request through `windows.phase()`.
 
 ### 5.4 Boundary conditions
 
 - **Start-up and entry point.** Locally: `uv run fastapi dev app/main.py` and `npm run dev`. On Vercel: `api/api/index.py` imports `app.main.app`. `main.py` registers the routers and the two exception handlers. The store, storage service and web client are created lazily on the first request, not at import time.
 - **Mode selection.** `API_MODE` (mock or supabase) chooses the store and storage service. `NEXT_PUBLIC_API_MODE` (mock or live) chooses the web client; in web mock mode no API is needed at all. `EMAIL_MODE` (off, log or send) chooses e-mail behaviour. `DEBUG_CLOCK` enables the `/debug/clock` routes; when it is off they answer 404, so production cannot be time-travelled.
 - **The clock.** `Settings.now()` is the only source of "now". In mock mode it returns the fixed demo time (7 Sep 2026, 10:00 UTC, inside Round 2's Application Window), making demos and tests deterministic. In Supabase mode it returns the real UTC time, unless `DEBUG_CLOCK=true` and an override was set through `PUT /debug/clock`.
-- **E-mail failure.** `notify()` saves notifications first, then calls `email.send_for()`. If `EMAIL_MODE=send` but `RESEND_API_KEY` is empty, it logs an error and sends nothing. If a Resend batch call raises, the exception is caught and logged per batch of up to 100 e-mails, and the request still succeeds. The in-app notification already stands, so the user still sees it (`test_NFR_5_1_2_failed_send_keeps_notification`). There is no retry.
+- **E-mail failure.** `notify()` saves notifications first, then calls `email.send_for()` in `services/email.py`. That sends nothing when `EMAIL_MODE` is `off`, only logs when it is `log`, and logs a warning for any other value except `send`. With `send` but an empty `RESEND_API_KEY`, it logs an error and sends nothing. Recipients whose user record is missing are skipped. Messages go to Resend in batches of up to 100; if a batch call raises, the exception is caught and logged, the remaining batches still go, and the request still succeeds. The in-app notification already stands, so the user still sees it (`test_NFR_5_1_2_failed_send_keeps_notification`). There is no retry.
 - **Errors.** Every expected failure is an `ApiError` with `{code, message, field}`, and validation errors use the same shape. The web client turns these into `ApiError` objects; a 401 returns the user to sign-in.
 - **Restart.** The API is stateless between requests apart from the in-memory parts noted in 5.1, which return to the seed when a process restarts. The debug clock override is also per process.
 
@@ -162,19 +162,19 @@ Time-based changes are driven by a daily timer. `api/vercel.json` registers a Ve
 flowchart LR
   U["User browser"] -- HTTPS --> W["Vercel: ureca-match-web<br/>https://ureca-match-web.vercel.app<br/>Next.js, NEXT_PUBLIC_API_MODE=live"]
   U -- "HTTPS JSON" --> A["Vercel: ureca-match-api (Python)<br/>https://ureca-match-api.vercel.app<br/>API_MODE=supabase"]
-  C["Vercel Cron"] -- "/internal/tick daily" --> A
+  C["Vercel Cron"] -- "GET /internal/tick<br/>daily 16:00 UTC" --> A
   A --> S["Supabase, Singapore<br/>Postgres, Auth, Storage"]
-  A -. "EMAIL_MODE=log for now" .-> R["Resend"]
+  A -- "EMAIL_MODE=send" --> R["Resend"]
 ```
 
 | Part | Platform | Configuration |
 |---|---|---|
 | Web | Vercel project `ureca-match-web`, https://ureca-match-web.vercel.app | Framework preset Next.js; `NEXT_PUBLIC_API_MODE=live`; `NEXT_PUBLIC_API_URL` points at the API. |
-| API | Vercel project `ureca-match-api` (Python), https://ureca-match-api.vercel.app | `api/vercel.json` routes all paths to `api/index.py` and defines the cron. `API_MODE=supabase`. Supabase keys and `CRON_SECRET` are stored as Vercel secrets. |
+| API | Vercel project `ureca-match-api` (Python), https://ureca-match-api.vercel.app | `api/vercel.json` routes all paths to `api/index.py` and defines the cron: `GET /internal/tick` daily at 16:00 UTC. `API_MODE=supabase`. Supabase keys, `CRON_SECRET` and `RESEND_API_KEY` are stored as Vercel secrets. |
 | Data | Supabase, Singapore region | Schema from `supabase/schema.sql`, demo rows from `supabase/seed.sql`, auth users from `app.db.seed_auth`. |
-| E-mail | Resend | `EMAIL_MODE=log` for now: e-mails are logged, not sent, until a sender domain is verified. |
+| E-mail | Resend | `EMAIL_MODE=send`. Until a sender domain is verified, Resend only delivers mail from its test sender `onboarding@resend.dev` (the `EMAIL_FROM` default), and only to the Resend account owner. |
 
-Both projects are deployed with the Vercel CLI. The repository belongs to the course's GitHub organisation, and Vercel's free plan cannot deploy private organisation repositories through its Git integration. A GitHub Actions workflow that runs the Vercel CLI is planned, to restore automatic deploys from `main` and preview deploys per pull request; it is not in place yet.
+Both projects are deployed with the Vercel CLI from a clean temporary checkout of `main` (`git worktree`), so local files such as `api/.env` are never uploaded. The repository belongs to the course's GitHub organisation, and Vercel's free plan cannot deploy private organisation repositories through its Git integration. A GitHub Actions workflow that runs the Vercel CLI is planned, to restore automatic deploys from `main` and preview deploys per pull request; it is not in place yet.
 
 Continuous integration runs on every pull request and every push to `main` (`.github/workflows/ci.yml` at the repository root). The `api` job runs `ruff check`, `pytest`, and a contract check (`app.db.export`, then `git diff --exit-code` on `shared/openapi.json`). The `web` job runs `npm run gen` with a diff check on `lib/api/types.ts`, then `eslint` (`npm run lint`), `tsc --noEmit` (`npm run typecheck`) and `next build` (`npm run build`).
 
@@ -182,7 +182,7 @@ Continuous integration runs on every pull request and every push to `main` (`.gi
 
 | SRS NFR | Requirement (short) | How the architecture meets it | Evidence | Status |
 |---|---|---|---|---|
-| 5.1.2 | In-app notification within 1 minute; e-mail within 15 minutes | `notify()` stores the notification and calls `email.send_for()` in the same request, so both happen at once rather than on a schedule. One template per event in `TEMPLATES`. | `test_NFR_5_1_2_email_dispatched_on_notify`, `test_NFR_5_1_2_no_send_unless_mode_is_send`, `test_NFR_5_1_2_failed_send_keeps_notification`, `test_NFR_5_1_2_every_event_has_a_template` | In-app: met. E-mail: path built, production on `EMAIL_MODE=log` until a domain is verified. |
+| 5.1.2 | In-app notification within 1 minute; e-mail within 15 minutes | `notify()` stores the notification and calls `email.send_for()` in the same request, so both happen at once rather than on a schedule. One template per event in `TEMPLATES`. | `test_NFR_5_1_2_email_dispatched_on_notify`, `test_NFR_5_1_2_no_send_unless_mode_is_send`, `test_NFR_5_1_2_failed_send_keeps_notification`, `test_NFR_5_1_2_every_event_has_a_template` | In-app: met. E-mail: sending in production (`EMAIL_MODE=send`); reaches only the Resend account owner until a domain is verified. |
 | 5.1.4 | Matching completes within 10 minutes of the Review Window closing; read-only access stays available | `match()` is an in-memory, I/O-free algorithm run inside one request. Each request is independent, so other users can keep reading during a run. | `test_REQ_EXEC_algorithm.py`, `test_REQ_EXEC_flow.py` | Design supports it; execution time not yet measured. Matching is started by an admin, not automatically at window close. |
 | 5.2 | Rankings committed on submission; recover within 5 minutes; daily backups | `save_applications()` and `save_ranking()` write to Postgres before the response is returned. The API holds no session state, so a new serverless instance serves the next request. | `SupabaseStore` in `db/store.py` | Partly met: cycles, matches and audit are not yet persisted in Supabase mode. Backups rely on Supabase and are not configured in the repo. |
 | 5.3.1 | NTU domains only; 30-minute session; hashed passwords | Domain check in `register()`; token `exp` from `SESSION_MINUTES`; passwords handled by Supabase Auth, never stored by the API. | `test_REQ_REG_1_non_ntu_email_rejected`, `test_REQ_AUTH_2_inactive_account_cannot_act`; no test yet for token expiry | Met, except that the server token expires 30 minutes after sign-in rather than after 30 minutes of inactivity. |
@@ -193,8 +193,11 @@ Continuous integration runs on every pull request and every push to `main` (`.gi
 
 ## 8. Open items
 
-- `SupabaseStore` does not yet persist cycles, rounds, matches, audit entries or verification codes. In Supabase mode these live in process memory and return to the seed when an instance restarts.
-- The Vercel Cron job targets `/internal/tick`, but `tick()` only accepts `POST`. Vercel Cron calls a path with `GET`, so the daily job needs checking.
-- `web/app/(admin)/rounds/page.tsx` calls `tick()` with the admin's token. In Supabase mode the endpoint expects `CRON_SECRET`, so it answers 401, and the web client treats any 401 as an expired session.
-- `supabase/schema.sql` refers to a `policies.sql` for storage policies, which is not in the repo.
+- `SupabaseStore` does not yet persist cycles, rounds and matches (owner: slice D), audit entries or verification codes. In Supabase mode these live in process memory and return to the seed when an instance restarts, so whatever `tick()`, `execute()` or `publish()` changes is lost then.
+- The admin and supervisor dashboards (`admin_dashboard()`, `supervisor_dashboard()` in `routers/notifications.py`) count from the in-memory lists `store.users`, `store.students`, `store.listings`, `store.applications`, `store.proposals` and `store.matches`. In Supabase mode these are the seed, not the database. Owners: slice E, with slice D for matches.
+- The live cycle is the seeded AY26/27 Semester 1 cycle, which closed on 30 Sep 2026. Production uses the real clock, so every window on the live site is closed until an admin creates a new cycle, and that cycle is not persisted (first item).
+- Until a sender domain is verified in Resend, e-mail can only come from `onboarding@resend.dev`, which delivers only to the Resend account owner.
+- `supabase/policies.sql` (RLS and storage policies) is applied in Supabase; PR #27 pending merge. Until then `supabase/schema.sql` refers to a file that is not on `main`.
 - The planned GitHub Actions deploy workflow does not exist yet.
+- Fixed (`694a659`, PR #25): Vercel Cron calls `/internal/tick` with `GET`, but `tick()` only accepted `POST`. It now accepts `GET` with `Bearer <CRON_SECRET>`; the job runs daily at 16:00 UTC.
+- Fixed (`694a659`, PR #25): `web/app/(admin)/rounds/page.tsx` calls `tick()` with the admin's token, which got `401`, and the web client treated it as an expired session and signed the admin out. An admin session is now accepted.
