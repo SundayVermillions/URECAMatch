@@ -8,8 +8,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header
 
-from app.deps import AdminUser, SettingsDep, StoreDep, StudentUser, SupervisorUser
-from app.errors import ApiError, conflict, forbidden, invalid, not_found
+from app.deps import AdminUser, SettingsDep, StoreDep, StudentUser, SupervisorUser, current_user
+from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
     ApplicationStatus,
     AuditEntry,
@@ -22,6 +22,7 @@ from app.models import (
     NotificationEvent,
     Ok,
     ReassignRequest,
+    Role,
     RoundStatus,
     RoundSummary,
 )
@@ -293,12 +294,15 @@ def decline_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> 
 # ------------------------------------------------------------------ cron
 
 
+@router.get("/internal/tick", response_model=Ok, include_in_schema=False)  # Vercel Cron only sends GET
 @router.post("/internal/tick", response_model=Ok)
 def tick(store: StoreDep, settings: SettingsDep, authorization: Annotated[str | None, Header()] = None) -> Ok:
     """Called daily by Vercel Cron and whenever an admin opens Matching Rounds.
     Advances round statuses and times out unanswered offers (REQ-OUTCOME-3, 4)."""
+    # Cron sends `Bearer <CRON_SECRET>`. The admin page sends the admin's own session token.
     if settings.api_mode != "mock" and authorization != f"Bearer {settings.cron_secret}":
-        raise ApiError(401, "unauthenticated", "Cron secret missing.")
+        if current_user(store, settings, authorization=authorization).role != Role.admin:  # 401 if no valid session
+            raise forbidden("Only the scheduler or an admin can advance rounds.")
     now = settings.now()
     if store.cycle:
         for r in store.cycle.rounds:
