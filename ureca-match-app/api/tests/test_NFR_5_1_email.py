@@ -20,8 +20,13 @@ def sent(monkeypatch):
 def test_NFR_5_1_2_email_dispatched_on_notify(fresh_store, sent, monkeypatch):
     monkeypatch.setattr(get_settings(), "email_mode", "send")
     created = notify(
-        fresh_store, ["stu-1", "sup-1"], NotificationEvent.round_opened, "Round 2 open", "Apply by 14 Sep.",
-        get_settings().now(), link="/browse",
+        fresh_store,
+        ["stu-1", "sup-1"],
+        NotificationEvent.round_opened,
+        "Round 2 open",
+        "Apply by 14 Sep.",
+        get_settings().now(),
+        link="/browse",
     )
     assert len(created) == 2 and len(sent) == 1
     to = [m["to"][0] for m in sent[0]]

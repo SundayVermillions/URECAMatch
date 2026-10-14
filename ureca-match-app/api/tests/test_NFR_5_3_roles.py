@@ -20,19 +20,39 @@ ENDPOINTS = [(m.upper(), p) for p, ops in OPENAPI["paths"].items() for m in ops]
 #           /documents/{document_id}/view (owner or supervisor rule, see REQ-VRANK-3),
 #           /me/notifications; POST /me/notifications/{notification_id}/read; PUT, DELETE /debug/clock
 PUBLIC = {
-    ("POST", "/auth/register"), ("POST", "/auth/verify"), ("POST", "/auth/resend"), ("POST", "/auth/sign-in"),
-    ("GET", "/health"), ("POST", "/internal/tick"), ("GET", "/debug/clock"),
+    ("POST", "/auth/register"),
+    ("POST", "/auth/verify"),
+    ("POST", "/auth/resend"),
+    ("POST", "/auth/sign-in"),
+    ("GET", "/health"),
+    ("POST", "/internal/tick"),
+    ("GET", "/debug/clock"),
 }
 AUTH_ONLY = {
-    ("GET", "/me"), ("GET", "/cycle"), ("GET", "/listings"), ("GET", "/listings/{listing_id}"), ("GET", "/supervisors"),
-    ("GET", "/documents/{document_id}/view"), ("GET", "/me/notifications"),
-    ("POST", "/me/notifications/{notification_id}/read"), ("PUT", "/debug/clock"), ("DELETE", "/debug/clock"),
+    ("GET", "/me"),
+    ("GET", "/cycle"),
+    ("GET", "/listings"),
+    ("GET", "/listings/{listing_id}"),
+    ("GET", "/supervisors"),
+    ("GET", "/documents/{document_id}/view"),
+    ("GET", "/me/notifications"),
+    ("POST", "/me/notifications/{notification_id}/read"),
+    ("PUT", "/debug/clock"),
+    ("DELETE", "/debug/clock"),
 }
 STUDENT_ONLY = {
-    ("GET", "/me/profile"), ("PUT", "/me/profile"), ("POST", "/me/documents"),
-    ("POST", "/proposals"), ("GET", "/me/proposals"),
-    ("GET", "/me/applications"), ("POST", "/applications"), ("DELETE", "/applications/{application_id}"),
-    ("PUT", "/me/ranking"), ("GET", "/me/match"), ("POST", "/me/match/accept"), ("POST", "/me/match/decline"),
+    ("GET", "/me/profile"),
+    ("PUT", "/me/profile"),
+    ("POST", "/me/documents"),
+    ("POST", "/proposals"),
+    ("GET", "/me/proposals"),
+    ("GET", "/me/applications"),
+    ("POST", "/applications"),
+    ("DELETE", "/applications/{application_id}"),
+    ("PUT", "/me/ranking"),
+    ("GET", "/me/match"),
+    ("POST", "/me/match/accept"),
+    ("POST", "/me/match/decline"),
 }
 DEMO_USER = {"student": "stu-1", "supervisor": "sup-1", "admin": "adm-1"}
 
