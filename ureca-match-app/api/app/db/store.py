@@ -43,6 +43,7 @@ class Store(Protocol):
     applicant_rankings: dict[str, list[str]]  # f"{listing_id}:{round_id}" -> ordered application ids
     verification_codes: dict[str, tuple[str, datetime]]  # email -> (code, expiry)
     passwords: dict[str, str]  # email -> password (mock mode)
+    last_activity: dict[str, datetime] = {}  # user_id -> timestamp of last request (SRS 5.3.1)
 
     def user(self, user_id: str) -> User | None: ...
     def user_by_email(self, email: str) -> User | None: ...
@@ -91,6 +92,7 @@ class MockStore:
         }
         self.verification_codes: dict[str, tuple[str, datetime]] = {}
         self.passwords: dict[str, str] = {}
+        self.last_activity: dict[str, datetime] = {}
         self._counter = 1000
 
     def save_user(self, user: User) -> User:

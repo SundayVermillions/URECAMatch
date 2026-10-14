@@ -156,6 +156,7 @@ def sign_in(body: SignInRequest, store: StoreDep, settings: SettingsDep) -> Sess
 
     now = settings.now()
     user.last_login_at = now
+    store.last_activity[user.id] = now
     store.save_user(user)
 
     expires_at = now + timedelta(minutes=settings.session_minutes)
