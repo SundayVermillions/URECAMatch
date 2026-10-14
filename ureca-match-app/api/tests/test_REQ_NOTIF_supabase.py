@@ -5,8 +5,14 @@ from app.models import Notification, NotificationEvent
 from app.settings import get_settings
 
 ROW = {
-    "id": "ntf-9", "user_id": "stu-1", "event": "round_opened", "title": "t", "message": "m",
-    "created_at": "2026-09-07T10:00:00+00:00", "read": False, "link": None,
+    "id": "ntf-9",
+    "user_id": "stu-1",
+    "event": "round_opened",
+    "title": "t",
+    "message": "m",
+    "created_at": "2026-09-07T10:00:00+00:00",
+    "read": False,
+    "link": None,
 }
 
 
@@ -51,8 +57,9 @@ def test_REQ_NOTIF_1_supabase_reads_own_newest_first():
 
 def test_REQ_NOTIF_1_supabase_inserts_rows():
     s = store_with([])
-    n = Notification(id="ntf-9", user_id="stu-1", event=NotificationEvent.round_opened, title="t", message="m",
-                     created_at=get_settings().now())
+    n = Notification(
+        id="ntf-9", user_id="stu-1", event=NotificationEvent.round_opened, title="t", message="m", created_at=get_settings().now()
+    )
     s.save_notifications(n)
     inserts = [args[0] for name, args, _ in s.client.log if name == "insert"]
     assert inserts == [[n.model_dump(mode="json")]]
