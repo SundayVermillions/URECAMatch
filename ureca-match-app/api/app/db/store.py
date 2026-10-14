@@ -68,6 +68,7 @@ class Store(Protocol):
     def notifications_for(self, user_id: str) -> list[Notification]: ...  # slice E: any order; the router sorts
     def save_notifications(self, *notifications: Notification) -> None: ...  # slice E: insert. Only services/notify.py
     def mark_notification_read(self, notification_id: str, user_id: str) -> bool: ...  # slice E: False if not theirs
+    def unread_notification_count(self, user_id: str) -> int: ...  # slice E: the sidebar badge on GET /me
     def next_id(self, prefix: str) -> str: ...
 
 
@@ -215,6 +216,9 @@ class MockStore:
             return False
         n.read = True
         return True
+
+    def unread_notification_count(self, user_id: str) -> int:
+        return sum(1 for n in self.notifications if n.user_id == user_id and not n.read)
 
 
 class SupabaseStore(MockStore):
@@ -495,8 +499,18 @@ class SupabaseStore(MockStore):
         if not self.client:
             return super().mark_notification_read(notification_id, user_id)
         table = self.client.table("notifications")
+        # update() returns the matched rows (Prefer: return=representation), so 0 rows means not theirs.
         res = table.update({"read": True}).eq("id", notification_id).eq("user_id", user_id).execute()
         return bool(res.data)
+
+    def unread_notification_count(self, user_id: str) -> int:
+        if not self.client:
+            return super().unread_notification_count(user_id)
+        from postgrest.types import CountMethod
+
+        table = self.client.table("notifications")
+        res = table.select("id", count=CountMethod.exact, head=True).eq("user_id", user_id).eq("read", False).execute()
+        return res.count or 0
 
 
 _store: Store | None = None

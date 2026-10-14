@@ -192,7 +192,7 @@ def sign_in(body: SignInRequest, store: StoreDep, settings: SettingsDep) -> Sess
 
 @router.get("/me", response_model=Me)
 def me(user: CurrentUser, store: StoreDep, settings: SettingsDep) -> Me:
-    unread = sum(1 for n in store.notifications if n.user_id == user.id and not n.read)
+    unread = store.unread_notification_count(user.id)  # REQ-NOTIF-2
     return Me(
         user=user,
         student=store.student(user.id),
