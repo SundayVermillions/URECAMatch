@@ -7,6 +7,7 @@ project's JWT secret and the user row is loaded (SRS 5.3.2: every request is aut
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Annotated
 
 import jwt
@@ -28,19 +29,43 @@ def current_user(
     x_demo_user: Annotated[str | None, Header()] = None,
 ) -> User:
     user: User | None = None
+    is_session = False
+
     if settings.api_mode == "mock" and x_demo_user:
         user = store.user(x_demo_user)
     elif authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1]
-        try:
-            claims = jwt.decode(token, settings.supabase_jwt_secret, algorithms=["HS256"], audience="authenticated")
-        except jwt.PyJWTError as e:  # expired (REQ-AUTH-3) or tampered
-            raise ApiError(401, "session_expired", "Your session has expired. Sign in again.") from e
-        user = store.user(claims.get("sub", "")) or store.user_by_email(claims.get("email", ""))
+        is_session = True
+        if settings.api_mode == "mock":
+            user = store.user(token)
+        else:
+            try:
+                claims = jwt.decode(
+                    token,
+                    settings.supabase_jwt_secret,
+                    algorithms=["HS256"],
+                    audience="authenticated",
+                    options={"verify_exp": False},
+                )
+            except jwt.PyJWTError as e:
+                raise ApiError(401, "session_expired", "Your session has expired. Sign in again.") from e
+            user = store.user(claims.get("sub", "")) or store.user_by_email(claims.get("email", ""))
+
     if user is None:
         raise ApiError(401, "unauthenticated", "Sign in to continue.")
+
+    # SRS 5.3.1: Session expires after 30 minutes of inactivity (idle) for bearer sessions
+    if is_session:
+        now = settings.now()
+        last_active = store.last_activity.get(user.id)
+        if last_active is not None and (now - last_active) > timedelta(minutes=settings.session_minutes):
+            store.last_activity.pop(user.id, None)
+            raise ApiError(401, "session_expired", "Your session has expired due to inactivity. Sign in again.")
+        store.last_activity[user.id] = now
+
     if user.status != AccountStatus.active:
         raise ApiError(403, "account_inactive", "This account is not active. Contact the URECA office.")  # REQ-AUTH-2
+
     return user
 
 
