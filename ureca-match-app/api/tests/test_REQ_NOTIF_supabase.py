@@ -1,6 +1,7 @@
 """Slice E. SupabaseStore notification methods send the right queries (REQ-NOTIF-1, 2). No network: fake client."""
 
-from app.db.store import SupabaseStore
+from app.db import store as store_module
+from app.db.store import MockStore, SupabaseStore
 from app.models import Notification, NotificationEvent
 from app.settings import get_settings
 
@@ -28,7 +29,7 @@ class FakeQuery:
         return call
 
     def execute(self):
-        return type("Res", (), {"data": self.data})()
+        return type("Res", (), {"data": self.data, "count": len(self.data)})()
 
 
 class FakeClient:
@@ -71,3 +72,76 @@ def test_REQ_NOTIF_2_supabase_mark_read_scoped_to_owner():
     assert ("update", ({"read": True},), {}) in s.client.log
     assert ("eq", ("user_id", "stu-1"), {}) in s.client.log
     assert store_with([]).mark_notification_read("ntf-9", "stu-2") is False
+
+
+def test_REQ_NOTIF_2_supabase_unread_count_queries_table():
+    s = store_with([ROW, ROW])
+    assert s.unread_notification_count("stu-1") == 2
+    assert ("table", ("notifications",), {}) in s.client.log
+    assert ("select", ("id",), {"count": "exact", "head": True}) in s.client.log
+    assert ("eq", ("user_id", "stu-1"), {}) in s.client.log
+    assert ("eq", ("read", False), {}) in s.client.log
+
+
+class TableQuery:
+    """Just enough of PostgREST over in-memory rows: select/update with eq filters, count, head."""
+
+    def __init__(self, rows: list[dict]):
+        self.rows, self.filters, self.patch, self.head = rows, [], None, False
+
+    def select(self, *columns, count=None, head=None):
+        self.head = bool(head)
+        return self
+
+    def update(self, patch: dict):
+        self.patch = patch
+        return self
+
+    def eq(self, column, value):
+        self.filters.append((column, value))
+        return self
+
+    def ilike(self, column, value):
+        self.filters.append((column, value))
+        return self
+
+    def limit(self, n):
+        return self
+
+    def order(self, column, desc=False):
+        return self
+
+    def execute(self):
+        hits = [r for r in self.rows if all(r.get(c) == v for c, v in self.filters)]
+        for r in hits if self.patch else []:
+            r.update(self.patch)
+        return type("Res", (), {"data": [] if self.head else hits, "count": len(hits)})()
+
+
+class TableClient:
+    def __init__(self, tables: dict[str, list[dict]]):
+        self.tables = tables
+
+    def table(self, name):
+        return TableQuery(self.tables.setdefault(name, []))
+
+
+def test_REQ_NOTIF_2_me_unread_from_supabase_drops_after_mark_read(as_student):
+    seed = MockStore()
+    rows = [
+        {**ROW, "id": f"ntf-s{i}", "user_id": user, "read": read}
+        for i, (user, read) in enumerate([("stu-1", False), ("stu-1", False), ("stu-1", True), ("sup-1", False)])
+    ]
+    s = SupabaseStore.__new__(SupabaseStore)
+    MockStore.__init__(s)
+    s.notifications = []  # the in-memory seed must not be the source in live mode
+    s.client = TableClient({"users": [u.model_dump(mode="json") for u in seed.users], "notifications": rows})
+    store_module._store = s
+
+    assert as_student.get("/me").json()["unread_notifications"] == 2
+    assert as_student.post("/me/notifications/ntf-s0/read").status_code == 200
+    assert as_student.get("/me").json()["unread_notifications"] == 1
+    # PostgREST answers 200 with no rows for someone else's id; the router must still say 404.
+    assert as_student.post("/me/notifications/ntf-s3/read").status_code == 404
+    assert rows[3]["read"] is False
+    assert as_student.get("/me").json()["unread_notifications"] == 1
