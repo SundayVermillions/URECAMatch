@@ -126,7 +126,7 @@ Stage 3
 ## Slice E (Benjamin)
 
 Stage 0
-- [ ] Tools installed, tests pass locally, first PR merged
+- [x] Tools installed, tests pass locally, first PR merged
 
 Stage 1 (platform ready)
 - [ ] Supabase project created; schema and seed applied; buckets and Auth settings done; keys in the shared note
