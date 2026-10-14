@@ -70,7 +70,7 @@ Stage 1
 - [x] PROJ-1, PROJ-2: no publishing after close, drafts can be published, edit guard mirrored in mock, no blank titles; stronger PROJ-3 test; My projects, New and Edit redesigned
 - [x] REVPROP-1: `Proposal` carries the student's profile and attached documents; Proposals page and drawer redesigned
 - [x] REVPROP-3: accept only while the cycle is open
-- [ ] `round_id` rule for proposals accepted outside a round, agreed with D
+- [x] `round_id` rule for proposals accepted outside a round: use D's `windows.current_round()` so a match never has an empty round
 - [x] PROPOSE-1..3: interests required, word limits, own documents only, active supervisors only; propose page redesigned with searchable picker
 - [x] Close-listing confirmation; all B rows `mock`
 - [x] UI pass on Project detail (student view): hero band and balanced detail cards

@@ -1,4 +1,4 @@
-"""Slice B. Self-proposed project review rules.  REQ-REVPROP-3.
+"""Slice B. Self-proposed project review rules.  REQ-REVPROP-2, REQ-REVPROP-3.
 
 The seeded cycle runs 18 Aug to 30 Sep 2026. prp-2 is submitted to sup-1.
 """
@@ -66,3 +66,36 @@ def test_REQ_REVPROP_1_supervisor_sees_only_own_proposals(as_supervisor):
 
 def test_REQ_REVPROP_1_student_cannot_list_supervisor_proposals(as_student):
     assert as_student.get("/supervisor/proposals").status_code == 403
+
+
+# ---------------------------------------------------------------- REQ-REVPROP-2
+# An accepted proposal becomes a Match. Slice D's round summary and match list filter by
+# round_id, so the match must carry a real round. Rounds: rnd-1 25 Aug, rnd-2 5 Sep, rnd-3 16 Sep.
+
+
+def _accepted_match(as_supervisor, fresh_store):
+    r = as_supervisor.post("/supervisor/proposals/prp-2/accept", json={})
+    assert r.status_code == 200
+    return next(m for m in fresh_store.matches if m.student_id == "stu-9" and m.listing_title == r.json()["title"])
+
+
+def test_REQ_REVPROP_2_match_gets_current_round_in_application_window(as_supervisor, fresh_store):
+    """Default demo clock is 7 Sep, inside Round 2's application window."""
+    assert _accepted_match(as_supervisor, fresh_store).round_id == "rnd-2"
+
+
+def test_REQ_REVPROP_2_match_gets_current_round_in_review_window(as_supervisor, fresh_store, monkeypatch):
+    _set_now(monkeypatch, datetime(2026, 9, 11, 9, tzinfo=UTC))
+    assert _accepted_match(as_supervisor, fresh_store).round_id == "rnd-2"
+
+
+def test_REQ_REVPROP_2_match_before_first_round_falls_back_to_round_1(as_supervisor, fresh_store, monkeypatch):
+    """Cycle is open (opens 18 Aug) but Round 1 has not started, so phase() has no round."""
+    _set_now(monkeypatch, datetime(2026, 8, 20, 9, tzinfo=UTC))
+    assert _accepted_match(as_supervisor, fresh_store).round_id == "rnd-1"
+
+
+def test_REQ_REVPROP_2_accepted_match_listed_in_admin_round_matches(as_supervisor, as_admin, fresh_store):
+    _accepted_match(as_supervisor, fresh_store)
+    rows = as_admin.get("/admin/rounds/rnd-2/matches").json()
+    assert any(m["student_id"] == "stu-9" for m in rows)

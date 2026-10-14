@@ -272,7 +272,7 @@ export class MockClient implements ApiClient {
       const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, title: p.title, description: p.description, prerequisites: [], topic_tags: p.research_interests,
         available_slots: 1, filled_slots: 1, offering_faculty: this.db.supervisors.find((s) => s.user_id === u.id)?.faculty ?? "", research_location: "", cover_url: null, status: "closed", created_at: this.iso(), applicant_count: 0, applied: false, applied_rank: null };
       this.db.listings.push(l);
-      this.db.matches.push({ id: this.id("mt"), round_id: this.phase().round_id ?? "", student_id: p.student_id, student_name: p.student_name, listing_id: l.id, listing_title: l.title, supervisor_id: u.id, supervisor_name: u.name,
+      this.db.matches.push({ id: this.id("mt"), round_id: this.phase().round_id ?? this.activeCycle()?.rounds[0]?.id ?? "", student_id: p.student_id, student_name: p.student_name, listing_id: l.id, listing_title: l.title, supervisor_id: u.id, supervisor_name: u.name,
         status: "accepted", preference_rank: null, supervisor_decided_at: this.iso(), published_at: this.iso(), offer_expires_at: null, student_responded_at: this.iso(), original_listing_id: null, justification: null });
       for (const a of this.db.applications) if (a.student_id === p.student_id && a.status === "submitted") a.status = "withdrawn";
       const sp = this.student(p.student_id); if (sp) sp.eligible_for_matching = false;
