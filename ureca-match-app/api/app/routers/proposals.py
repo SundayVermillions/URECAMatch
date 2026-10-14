@@ -158,12 +158,17 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
     )
     store.save_listing(lst)
     phase = windows.phase(store.cycle, now)
+    # Slice D's matches are keyed by round. Before Round 1 opens there is no active round, so fall
+    # back to the next scheduled one rather than leaving round_id empty (a match with no round
+    # would be missing from every round summary and match list).
+    upcoming = windows.current_round(store.cycle, now) if store.cycle else None
+    round_id = phase.round_id or (upcoming.id if upcoming else "")
     # Slice D (matches) and slice C (applications) are still in memory in Supabase mode.
     # TODO(slice D/C): save through the store once those tables are migrated.
     store.matches.append(
         Match(
             id=store.next_id("mt"),
-            round_id=phase.round_id or "",
+            round_id=round_id,
             student_id=p.student_id,
             student_name=p.student_name,
             listing_id=lst.id,
