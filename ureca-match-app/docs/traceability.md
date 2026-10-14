@@ -58,7 +58,7 @@ Method: **Test** (pytest), **Live** (measured on production), **Inspect** (code,
 
 | NFR | Requirement | Owner | Method | Evidence | Result |
 |---|---|---|---|---|---|
-| 5.1.1 | Listings fetched within 5 s during an Application Window | E | Live | `GET /listings`, 10 runs: median 1.42 s, slowest 1.52 s (see Live measurements) | Met: well under 5 s; measured while no window was open, which does not change this query |
+| 5.1.1 | Listings fetched within 5 s during an Application Window | E | Live | `GET /listings`, 10 runs. Before (API in `iad1`): median 1.42 s, slowest 1.52 s. After (API in `sin1`, PR #30): median 0.14 s, slowest 0.17 s (see Live measurements) | Met: well under 5 s; measured while no window was open, which does not change this query |
 | 5.1.1 | Visual feedback within 2 s of an interaction | E | Inspect | Busy labels on sampled forms, e.g. "Sending…" on Propose, "Saving…" on Profile | Partly met: sampled forms only; nothing measures 2 s; `web/e2e/full-cycle.spec.ts` is skipped |
 | 5.1.1 | 5 MB document accepted and stored within 15 s, with progress shown | E (code: A) | Test, Inspect | `test_REQ_PROF_3_over_5mb_rejected`, `test_REQ_PROF_3_upload_pdf_stores_path`; `upload()` in `web/app/(student)/profile/page.tsx` | Partly met: 5 MB limit tested; upload time not measured (no writes on production); no progress or busy state shown |
 | 5.1.2 | In-app within 1 min; e-mail dispatched within 15 min | E | Test, Live | `test_NFR_5_1_2_email_dispatched_on_notify`, `test_NFR_5_1_2_no_send_unless_mode_is_send`, `test_NFR_5_1_2_failed_send_keeps_notification`, `test_NFR_5_1_2_every_event_has_a_template`, `test_REQ_NOTIF_email_sends_html_and_text`; Resend dashboard screenshot, <date> | Partly met: both happen in the same request as the change; only the Resend account owner receives mail until a sender domain is verified |
@@ -67,7 +67,7 @@ Method: **Test** (pytest), **Live** (measured on production), **Inspect** (code,
 | 5.1.4 | Matching completes within 10 min of the Review Window closing | E (code: D) | Test, Inspect | `test_REQ_EXEC_1_*`, `test_REQ_EXEC_2_execute_once_then_publish_after_approvals`, `test_REQ_EXEC_3_zero_capacity_listing_skipped`; `match()` in `services/matching/algorithm.py` | Partly met: the run is an in-memory algorithm inside one request; it starts when an admin triggers it, not automatically at window close; no timing test on a large input |
 | 5.1.4 | Read-only access stays available during a run | E (code: D) | Inspect | `execute()` runs inside one request; other requests are handled separately | Met: nothing locks reads |
 | 5.2 | Preference and ranking data committed on submission | none | Inspect, Test | `SupabaseStore.save_applications()`, `save_ranking()` write before the response; `test_REQ_SRANK_1_order_persisted` (mock store) | Met by inspection; no Supabase-mode test |
-| 5.2 | Services recover within 5 min after a crash | none | Live, Inspect | `GET /health` cold start 2.55 s (see Live measurements) | Partly met: the API is back in seconds, but cycles, rounds, matches and audit entries return to the seed |
+| 5.2 | Services recover within 5 min after a crash | none | Live, Inspect | `GET /health` first run after a deploy: 2.55 s in `iad1`, 0.61 s in `sin1` (see Live measurements) | Partly met: the API is back in seconds, but cycles, rounds, matches and audit entries return to the seed |
 | 5.2 | Daily backups, restorable within 4 h | none | Inspect | none | Not met (unverified): depends on the Supabase plan's backups; no restore tested |
 | 5.3.1 | NTU or approved e-mail domains only | E (code: A) | Test | `test_REQ_REG_1_non_ntu_email_rejected` | Met |
 | 5.3.1 | Session expires after 30 min of inactivity | E (code: A) | Test | `test_SRS_5_3_1_token_idle_session_expiry` | Met |
@@ -87,15 +87,18 @@ Method: **Test** (pytest), **Live** (measured on production), **Inspect** (code,
 
 ### Live measurements
 
-Production API https://ureca-match-api.vercel.app, 14 Oct 2026 14:53 to 14:55 UTC, from Singapore with `curl`. GET requests only. One sign-in as `stu-1` beforehand (`POST /auth/sign-in`, which updates `last_login_at`). 10 runs each, all `200`.
+Production API https://ureca-match-api.vercel.app, from Singapore with `curl`. GET requests only, after one sign-in as `stu-1` per run (`POST /auth/sign-in`, which updates `last_login_at`). 10 runs per endpoint, all `200`. Supabase is in Singapore.
 
-| Endpoint | First run | Median, runs 2 to 10 | Slowest, runs 2 to 10 |
-|---|---|---|---|
-| `GET /health` (no database) | 2.55 s (cold start) | 0.32 s | 0.40 s |
-| `GET /me` | 4.31 s | 3.31 s | 4.24 s |
-| `GET /listings` (11 listings) | 1.41 s | 1.42 s | 1.52 s |
+- **Before:** 14 Oct 2026, 14:53 to 14:55 UTC. API function in Vercel's default region `iad1` (Washington, US).
+- **After:** 14 Oct 2026, 15:38 UTC, right after deploying `b8f9102`. API function in `sin1` (Singapore), set by `"regions": ["sin1"]` in `api/vercel.json` (PR #30).
 
-The API function runs in Vercel's default region `iad1` (Washington, US) and Supabase is in Singapore. `GET /me` makes about 5 sequential Supabase queries and `GET /listings` about 2, so both work out to roughly 0.6 s per query. That suggests the distance between the two regions is the main cost; this has not been tested.
+| Endpoint | First run, before | First run, after | Median runs 2 to 10, before | Median runs 2 to 10, after | Slowest runs 2 to 10, before | Slowest runs 2 to 10, after |
+|---|---|---|---|---|---|---|
+| `GET /health` (no database) | 2.55 s (cold start) | 0.61 s (cold start) | 0.32 s | 0.09 s | 0.40 s | 0.37 s |
+| `GET /me` | 4.31 s | 0.36 s | 3.31 s | 0.24 s | 4.24 s | 0.33 s |
+| `GET /listings` (11 listings) | 1.41 s | 0.16 s | 1.42 s | 0.14 s | 1.52 s | 0.17 s |
+
+`GET /me` makes about 5 sequential Supabase queries and `GET /listings` about 2. In `iad1` each query cost roughly 0.6 s; moving the function next to the database cut the medians by about 10 times, which confirms the distance between regions was the main cost.
 
 ## Open gaps
 
@@ -107,7 +110,6 @@ The API function runs in Vercel's default region `iad1` (Washington, US) and Sup
 | No load test for 1000 sessions or the final-hour peak | 5.1.3 | E |
 | No uptime monitor on `/health` | 5.4.1 | E |
 | Document upload shows no progress or busy state; upload time not measured | 5.1.1, 5.4.2 | A |
-| `GET /me` takes about 3.3 s; API region `iad1` is far from the Singapore database | 5.1.1 | E |
 | Matching starts on an admin action, not at Review Window close; no timing test on a large input | 5.1.4 | D |
 | No test that CGPA and modules stay hidden from other students | 5.3.3 | C |
 | No written PDPA and NTU data-handling statement | 5.3.3 | E |
