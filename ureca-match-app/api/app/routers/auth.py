@@ -8,6 +8,7 @@ from datetime import timedelta
 import jwt
 from fastapi import APIRouter
 from pydantic import BaseModel, EmailStr
+from supabase import ClientOptions, create_client
 
 from app.deps import CurrentUser, SettingsDep, StoreDep
 from app.errors import ApiError, conflict, invalid
@@ -25,6 +26,7 @@ from app.models import (
     VerifyRequest,
 )
 from app.services import windows
+from app.settings import Settings
 
 router = APIRouter(tags=["auth"])
 
@@ -40,6 +42,17 @@ def _issue_verification_code(email: str, store: StoreDep, settings: SettingsDep)
     if settings.api_mode == "mock":
         print(f"[AUTH] Verification code for {email}: {code} (expires at {expires_at.isoformat()})")
     return code
+
+
+def _check_supabase_password(email: str, password: str, settings: Settings) -> None:
+    """REQ-AUTH-1. Checks the password on a throwaway client: sign_in_with_password swaps the client's
+    Authorization header to the user's token, which would make the shared store client fail RLS."""
+    auth_client = create_client(
+        settings.supabase_url,
+        settings.supabase_service_role_key,
+        options=ClientOptions(auto_refresh_token=False, persist_session=False),
+    )
+    auth_client.auth.sign_in_with_password({"email": email, "password": password})
 
 
 @router.post("/auth/register", response_model=Ok, status_code=201)
@@ -142,7 +155,7 @@ def sign_in(body: SignInRequest, store: StoreDep, settings: SettingsDep) -> Sess
 
     if settings.api_mode == "supabase" and hasattr(store, "client") and store.client:
         try:
-            store.client.auth.sign_in_with_password({"email": body.email, "password": body.password})
+            _check_supabase_password(body.email, body.password, settings)
         except Exception:
             raise ApiError(401, "bad_credentials", "E-mail or password is incorrect.") from None
     else:
