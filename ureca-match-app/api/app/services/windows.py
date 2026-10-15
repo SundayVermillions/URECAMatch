@@ -12,12 +12,17 @@ from app.models import Cycle, Phase, Round, Window
 
 
 def current_round(cycle: Cycle, now: datetime) -> Round | None:
-    """The round whose application or review window contains `now`, else the next scheduled one."""
+    """The round whose application or review window contains `now`. Between rounds, the latest round that has
+    started: its matching, results and offers are what is happening until the next round opens.
+    Before Round 1, the first round."""
     for r in cycle.rounds:
         if r.application_start <= now <= r.review_end:
             return r
+    started = [r for r in cycle.rounds if r.application_start <= now]
+    if started:
+        return max(started, key=lambda r: r.application_start)
     upcoming = [r for r in cycle.rounds if r.application_start > now]
-    return upcoming[0] if upcoming else (cycle.rounds[-1] if cycle.rounds else None)
+    return min(upcoming, key=lambda r: r.application_start) if upcoming else None
 
 
 def phase(cycle: Cycle | None, now: datetime) -> Phase:

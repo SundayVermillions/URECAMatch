@@ -131,6 +131,7 @@ def update_cycle(cycle_id: str, body: CycleUpdate, admin: AdminUser, store: Stor
         raise invalid("date_passed", "The opening date has passed and can no longer be changed.", "opening_date")
     if body.closing_date and c.closing_date <= now:
         raise invalid("date_passed", "The closing date has passed and can no longer be changed.", "closing_date")
+    _check_new_dates(store, c, body, now)
     closing_changed = body.closing_date is not None and body.closing_date != c.closing_date
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(c, k, v)
@@ -148,6 +149,40 @@ def update_cycle(cycle_id: str, body: CycleUpdate, admin: AdminUser, store: Stor
     return c
 
 
+def _check_new_dates(store, c: Cycle, body: CycleUpdate, now: datetime) -> None:
+    """Validate the cycle as it would be after the update, before anything changes (use case 1-1 E1, E2; REQ-ROUND-3)."""
+    opening = body.opening_date or c.opening_date
+    closing = body.closing_date or c.closing_date
+    pre_days = c.pre_application_days if body.pre_application_days is None else body.pre_application_days
+    for field, new in (("opening_date", body.opening_date), ("closing_date", body.closing_date)):
+        if new is not None and new <= now:
+            raise invalid("date_in_past", "Pick a date that has not passed yet.", field)
+    if not 0 <= pre_days <= 60:
+        raise invalid("bad_pre_application", "The pre-application window must be 0 to 60 days.", "pre_application_days")
+    if closing <= opening:
+        raise invalid("bad_dates", "Closing date must be after the opening date.", "closing_date")
+    clash = next((o for o in store.cycles if o.id != c.id and _overlaps(o, opening, closing)), None)
+    if clash is not None:
+        raise conflict("cycle_overlap", f"These dates overlap the {clash.academic_year} cycle. Cycles cannot overlap.")
+    if not c.rounds:
+        return
+    first = min(c.rounds, key=lambda r: r.application_start)
+    last = max(c.rounds, key=lambda r: r.review_end)
+    if first.application_start < opening + timedelta(days=pre_days):
+        raise invalid(
+            "outside_cycle",
+            f"Round {first.number} starts {first.application_start:%d %b}, before the pre-application window ends. "
+            "Change the rounds first.",
+        )
+    if last.review_end > closing:
+        raise invalid(
+            "outside_cycle",
+            f"Round {last.number} ends {last.review_end:%d %b}, after this closing date. "
+            "Pick a later date or shorten the rounds first.",
+            "closing_date",
+        )
+
+
 @router.put("/admin/cycles/{cycle_id}/rounds", response_model=Cycle)
 def set_rounds(cycle_id: str, body: RoundsUpdate, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Cycle:
     """Derive round dates from the configured window lengths (REQ-ROUND-1) and validate (REQ-ROUND-3)."""
@@ -155,6 +190,12 @@ def set_rounds(cycle_id: str, body: RoundsUpdate, admin: AdminUser, store: Store
     if c is None:
         raise not_found("Cycle")
     now = settings.now()
+    numbers = sorted(s.number for s in body.rounds)
+    if numbers != list(range(1, len(numbers) + 1)):
+        raise invalid("bad_rounds", "Number the rounds 1, 2, 3 in order, with no gaps or repeats.", "rounds")
+    dropped = [r for r in c.rounds if r.number not in numbers and r.application_start <= now]
+    if dropped:  # REQ-ROUND-2: a round that has started keeps its applications, so it cannot be removed
+        raise invalid("round_started", f"Round {dropped[0].number} has already started, so it cannot be removed.", "rounds")
     existing = {r.number: r for r in c.rounds}
     cursor = c.opening_date + timedelta(days=c.pre_application_days)
     rounds: list[Round] = []

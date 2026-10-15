@@ -187,6 +187,7 @@ def _seed_sql(d: dict) -> str:
                 "student_responded_at",
                 "original_listing_id",
                 "justification",
+                "supervisor_note",
             ],
             [m.model_dump() for m in d["matches"]],
         )

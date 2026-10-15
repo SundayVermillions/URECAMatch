@@ -161,6 +161,7 @@ create table match_results (
   student_responded_at  timestamptz,
   original_listing_id   text references project_listings(id),      -- REQ-ASSIGN-1
   justification         text,                                      -- REQ-ASSIGN-2
+  supervisor_note       text,                                      -- REQ-APPRV-2
   unique (round_id, student_id)
 );
 

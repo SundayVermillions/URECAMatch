@@ -197,3 +197,71 @@ def test_REQ_ROUND_3_round_past_cycle_close_rejected(as_admin):
     }
     r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)
     assert r.status_code == 422 and r.json()["code"] == "outside_cycle"
+
+
+# ---------------------------------------------------------------- regressions: date and round guards
+
+
+def test_REQ_ROUND_2_started_round_cannot_be_removed(as_admin, fresh_store):
+    # On 7 Sep Round 2 is open with applications; asking for one round used to delete it.
+    body = {"rounds": [{"number": 1, "application_days": 5, "review_days": 2}]}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)
+    assert r.status_code == 422 and r.json()["code"] == "round_started"
+    assert [x.id for x in fresh_store.cycle.rounds] == ["rnd-1", "rnd-2", "rnd-3"]
+
+
+def test_REQ_ROUND_2_unstarted_round_can_be_removed(as_admin):
+    spec = {"application_days": 5, "review_days": 2}
+    body = {"rounds": [{"number": 1, **spec}, {"number": 2, **spec}]}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)
+    assert r.status_code == 200 and [x["number"] for x in r.json()["rounds"]] == [1, 2]
+
+
+def test_REQ_ROUND_1_round_numbers_must_run_from_one(as_admin):
+    spec = {"application_days": 5, "review_days": 2}
+    body = {"rounds": [{"number": 1, **spec}, {"number": 3, **spec}]}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)
+    assert r.status_code == 422 and r.json()["code"] == "bad_rounds"
+
+
+def test_REQ_ROUND_3_closing_date_cannot_cut_into_a_round(as_admin, fresh_store):
+    before = fresh_store.cycle.closing_date
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"closing_date": "2026-09-08T09:00:00Z"})  # inside Round 2
+    assert r.status_code == 422 and r.json()["code"] == "outside_cycle"
+    assert fresh_store.cycle.closing_date == before  # nothing changed, nobody notified
+
+
+def test_REQ_CYCLE_2_update_rejects_closing_before_opening(as_admin, fresh_store):
+    from datetime import UTC, datetime
+
+    c = fresh_store.cycle
+    c.rounds, c.opening_date = [], datetime(2026, 10, 1, 9, tzinfo=UTC)  # an upcoming cycle, no rounds yet
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"closing_date": "2026-09-20T09:00:00Z"})
+    assert r.status_code == 422 and r.json()["code"] == "bad_dates"
+
+
+def test_REQ_CYCLE_2_update_rejects_a_date_in_the_past(as_admin, fresh_store):
+    fresh_store.cycle.rounds = []  # isolate the date check from the round check
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"closing_date": "2026-08-01T09:00:00Z"})
+    assert r.status_code == 422 and r.json()["code"] == "date_in_past"
+
+
+def test_REQ_CYCLE_2_update_rejects_overlap_with_another_cycle(as_admin, fresh_store):
+    fresh_store.cycle.closing_date = fresh_store.cycle.closing_date.replace(year=2027)  # pretend a long cycle
+    nxt = fresh_store.cycles[0].model_copy(update={"id": "cyc-next", "academic_year": "AY27/28", "status": "closed"})
+    nxt.opening_date, nxt.closing_date = nxt.opening_date.replace(year=2028), nxt.closing_date.replace(year=2028)
+    fresh_store.cycles.append(nxt)
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"closing_date": nxt.closing_date.isoformat()})
+    assert r.status_code == 409 and r.json()["code"] == "cycle_overlap"
+
+
+def test_REQ_CYCLE_1_phase_between_rounds_follows_the_round_just_run(as_student, as_admin, monkeypatch):
+    from datetime import UTC, datetime
+
+    from app.settings import get_settings
+
+    monkeypatch.setattr(get_settings(), "demo_now", datetime(2026, 9, 3, 10, tzinfo=UTC))  # gap after Round 1
+    phase = as_student.get("/me").json()["phase"]
+    assert phase["round_id"] == "rnd-1" and phase["window"] == "results"
+    assert phase["label"] == "Round 1 results published"
+    assert as_admin.get("/admin/dashboard").json()["applications_this_round"] == 0  # Round 1 has none open

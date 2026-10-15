@@ -4230,7 +4230,8 @@
       "offer_expires_at": "2026-09-10T09:00:00Z",
       "student_responded_at": "2026-09-01T10:00:00Z",
       "original_listing_id": null,
-      "justification": null
+      "justification": null,
+      "supervisor_note": null
     },
     {
       "id": "mt-2",
@@ -4248,7 +4249,8 @@
       "offer_expires_at": "2026-09-10T09:00:00Z",
       "student_responded_at": "2026-09-01T10:00:00Z",
       "original_listing_id": null,
-      "justification": null
+      "justification": null,
+      "supervisor_note": null
     },
     {
       "id": "mt-3",
@@ -4266,7 +4268,8 @@
       "offer_expires_at": "2026-09-10T09:00:00Z",
       "student_responded_at": "2026-09-01T10:00:00Z",
       "original_listing_id": null,
-      "justification": null
+      "justification": null,
+      "supervisor_note": null
     },
     {
       "id": "mt-4",
@@ -4284,7 +4287,8 @@
       "offer_expires_at": "2026-09-10T09:00:00Z",
       "student_responded_at": "2026-09-01T10:00:00Z",
       "original_listing_id": null,
-      "justification": null
+      "justification": null,
+      "supervisor_note": null
     },
     {
       "id": "mt-5",
@@ -4302,7 +4306,8 @@
       "offer_expires_at": "2026-09-10T09:00:00Z",
       "student_responded_at": "2026-09-01T10:00:00Z",
       "original_listing_id": null,
-      "justification": null
+      "justification": null,
+      "supervisor_note": null
     },
     {
       "id": "mt-6",
@@ -4320,7 +4325,8 @@
       "offer_expires_at": "2026-09-10T09:00:00Z",
       "student_responded_at": "2026-09-01T10:00:00Z",
       "original_listing_id": null,
-      "justification": null
+      "justification": null,
+      "supervisor_note": null
     }
   ],
   "proposals": [

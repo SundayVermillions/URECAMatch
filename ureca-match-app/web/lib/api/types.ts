@@ -1438,6 +1438,8 @@ export interface components {
             original_listing_id?: string | null;
             /** Justification */
             justification?: string | null;
+            /** Supervisor Note */
+            supervisor_note?: string | null;
         };
         /** MatchDecision */
         MatchDecision: {

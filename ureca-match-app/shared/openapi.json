@@ -5791,6 +5791,17 @@
               }
             ],
             "title": "Justification"
+          },
+          "supervisor_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supervisor Note"
           }
         },
         "type": "object",

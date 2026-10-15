@@ -21,6 +21,7 @@ export default function ReviewMatches() {
   const [confirmPublish, setConfirmPublish] = useState(false);
   const s = summary.data;
   const published = !!s?.round.published_at;
+  const executed = !!s?.round.executed_at; // REQ-PUB-1: nothing to publish before matching runs
 
   async function doReassign() {
     if (!reassign) return; setError(null);
@@ -38,13 +39,13 @@ export default function ReviewMatches() {
         right={s && (
           <div className="flex items-center gap-3.5">
             <div className="w-56"><div className="flex justify-between text-[12px] mb-1"><span className="text-muted font-semibold">Supervisor decisions</span><span className="font-bold tabular">{s.approvals_done} / {s.approvals_total}</span></div><Progress value={s.approvals_done} max={s.approvals_total} /></div>
-            {published ? <Status value="published" /> : <Button onClick={() => setConfirmPublish(true)}>Publish results</Button>}
+            {published ? <Status value="published" /> : <Button disabled={!executed} title={executed ? undefined : "Run matching for this round first"} onClick={() => setConfirmPublish(true)}>Publish results</Button>}
           </div>
         )} />
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
-      <div className="flex items-center gap-1.5 mb-4">
+      <div className="flex items-center gap-1.5 mb-4 flex-wrap">
         <span className="eyebrow">Status</span>
-        {[undefined, "proposed", "approved", "rejected", "reassigned", "published", "accepted", "declined"].map((v) => <Chip key={String(v)} active={status === v} onClick={() => setStatus(v as MatchStatus | undefined)}>{v ? v[0].toUpperCase() + v.slice(1) : "All"}</Chip>)}
+        {[undefined, "proposed", "approved", "rejected", "reassigned", "published", "accepted", "declined", "timed_out"].map((v) => <Chip key={String(v)} active={status === v} onClick={() => setStatus(v as MatchStatus | undefined)}>{v ? (v[0].toUpperCase() + v.slice(1)).replace("_", " ") : "All"}</Chip>)}
       </div>
       {matches.loading && !matches.data ? <Loading /> : !matches.data?.length ? <Empty title="No matches" note={status ? "Nothing with this status." : "Run matching first."} /> : (
         <div className="bg-surface border border-border rounded-card overflow-hidden">
@@ -57,6 +58,7 @@ export default function ReviewMatches() {
                   <div className="text-[13.5px] font-semibold">{m.student_name}{m.preference_rank ? <span className="text-faint font-normal"> · preference {m.preference_rank}</span> : null}</div>
                   <div className="text-[12.5px] text-muted truncate">→ <strong className="text-text">{m.listing_title}</strong> · {m.supervisor_name}</div>
                   {m.original_listing_id && <div className="text-[11.5px] text-warn-ink mt-0.5">Reassigned · {m.justification}</div>}
+                  {m.status === "rejected" && <div className="text-[11.5px] text-bad-ink mt-0.5">Rejected by {m.supervisor_name}{m.supervisor_note ? ` · "${m.supervisor_note}"` : " · no reason given"}</div>}
                 </div>
                 <span className="w-40"><Status value={m.status} /></span>
                 <span className="w-24 flex justify-end">{!published && <Button size="sm" variant="secondary" onClick={() => setReassign(m)}>Reassign</Button>}</span>

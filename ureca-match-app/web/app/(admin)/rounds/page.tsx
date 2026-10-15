@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Card, Field, Input, Loading, Modal, Pill, RankBadge, Select, Spinner, Stat, Status, Stepper, fmtDate } from "@/components/ui";
+import { Banner, Button, Card, Field, Input, Loading, Modal, RankBadge, Select, Spinner, Stat, Status, Stepper, fmtDate } from "@/components/ui";
 import { getClient } from "@/lib/api/client";
 import { ApiError, type Cycle, type Round, type RoundSummary } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
@@ -111,7 +111,7 @@ export default function Rounds() {
                   <div className="grid grid-cols-4 gap-3 mb-4">
                     <Stat label="Matched" value={summary.matched} />
                     <Stat label="Unmatched" value={summary.unmatched} />
-                    <Stat label="Excluded" value={summary.excluded} note="declined or timed out earlier" />
+                    <Stat label="Excluded" value={summary.excluded} note="placed, declined or timed out earlier" />
                     <Stat label="Avg. preference" value={summary.avg_preference ?? "–"} />
                   </div>
                   {current.published_at ? (
@@ -184,7 +184,7 @@ function CreateCycle({ onCreated, onCancel }: { onCreated: () => void; onCancel?
       <div className="flex flex-col gap-4 max-w-[560px]">
         <div>
           <h2>Create an application cycle</h2>
-          <p className="text-[13px] text-muted mt-1">No cycle is active. Set the term and dates to open a new one; add rounds afterwards in Cycle settings. <Pill tone="accent">REQ-CYCLE-1</Pill></p>
+          <p className="text-[13px] text-muted mt-1">No cycle is active. Set the term and dates to open a new one; add rounds afterwards in Cycle settings.</p>
         </div>
         {error && <Banner tone="bad">{error.message}</Banner>}
         <Field label="Academic year"><Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="AY26/27 Semester 1" /></Field>
@@ -269,14 +269,20 @@ function CycleSettings({ open, onClose, onSaved }: { open: boolean; onClose: () 
   const overflow = ends.find((e) => e.revEnd > closesMs);
   const lastEnd = ends.length ? ends[ends.length - 1].revEnd : NaN;
   const requiredClose = Number.isNaN(lastEnd) ? "" : toDateInput(new Date(lastEnd).toISOString());
-  const valid = !!cycle && closes !== "" && !overflow;
+  // REQ-ROUND-2: a round that has started cannot be removed, so the count cannot drop below it
+  const minRounds = Math.max(1, ...(cycle?.rounds ?? []).filter((r) => r.status !== "scheduled").map((r) => r.number));
+  const valid = !!cycle && closes !== "" && !overflow && count >= minRounds;
 
   async function save() {
     if (!cycle || !valid) return;
     setError(null); setBusy(true);
     try {
-      if (toDateInput(cycle.closing_date) !== closes) await call((api) => api.updateCycle(cycle.id, { closing_date: atNine(closes) }));
-      await call((api) => api.setRounds(cycle.id, { rounds: Array.from({ length: count }, (_, i) => ({ number: i + 1, application_days: applyDays, review_days: reviewDays })), rollover_unmatched: true }));
+      // The API checks each change against the other's current value, so the order matters: a later closing
+      // date must be saved before longer rounds, and shorter rounds before an earlier closing date.
+      const newClose = atNine(closes);
+      const saveClose = toDateInput(cycle.closing_date) !== closes ? () => call((api) => api.updateCycle(cycle.id, { closing_date: newClose })) : async () => undefined;
+      const saveRounds = () => call((api) => api.setRounds(cycle.id, { rounds: Array.from({ length: count }, (_, i) => ({ number: i + 1, application_days: applyDays, review_days: reviewDays })), rollover_unmatched: true }));
+      if (Date.parse(newClose) < Date.parse(cycle.closing_date)) { await saveRounds(); await saveClose(); } else { await saveClose(); await saveRounds(); }
       onSaved();
     } catch (e) { setError(e as ApiError); } finally { setBusy(false); }
   }
@@ -296,9 +302,9 @@ function CycleSettings({ open, onClose, onSaved }: { open: boolean; onClose: () 
         <div className="grid grid-cols-3 gap-3">
           <div><div className="text-[12.5px] font-semibold mb-1.5">Application window</div><Stepper value={applyDays} onChange={setApplyDays} min={1} max={14} format={(v) => `${v} days`} /></div>
           <div><div className="text-[12.5px] font-semibold mb-1.5">Review window</div><Stepper value={reviewDays} onChange={setReviewDays} min={1} max={7} format={(v) => `${v} day${v === 1 ? "" : "s"}`} /></div>
-          <div><div className="text-[12.5px] font-semibold mb-1.5">Rounds</div><Stepper value={count} onChange={setCount} min={1} max={3} /></div>
+          <div><div className="text-[12.5px] font-semibold mb-1.5">Rounds</div><Stepper value={count} onChange={setCount} min={minRounds} max={3} /></div>
         </div>
-        <div className="text-[12px] text-faint">Rounds that have already started are kept. Later rounds are re-derived from these lengths with a 4-day gap, and the last must end before the cycle closes. <Pill tone="accent">REQ-ROUND-1..3</Pill></div>
+        <div className="text-[12px] text-faint">Rounds that have already started are kept and cannot be removed. Later rounds are re-derived from these lengths with a 4-day gap, and the last must end before the cycle closes.</div>
       </div>
     </Modal>
   );

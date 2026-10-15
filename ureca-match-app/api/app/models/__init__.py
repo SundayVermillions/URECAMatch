@@ -449,6 +449,7 @@ class Match(BaseModel):
     student_responded_at: datetime | None = None
     original_listing_id: str | None = None
     justification: str | None = None
+    supervisor_note: str | None = None  # the supervisor's reason, kept for admin review (REQ-APPRV-2)
 
 
 class RoundSummary(BaseModel):

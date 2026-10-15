@@ -86,3 +86,76 @@ def test_REQ_ASSIGN_3_cannot_assign_already_assigned_student(as_admin):
         json={"student_id": "stu-33", "listing_id": "lst-2", "justification": "Attempt a second placement"},
     )
     assert resp.status_code == 409 and resp.json()["code"] == "already_assigned"
+
+
+# ---------------------------------------------------------------- regressions: assignment guards
+
+
+def _assign(as_admin, student, listing, round_id="rnd-2"):
+    return as_admin.post(
+        f"/admin/rounds/{round_id}/assign",
+        json={"student_id": student, "listing_id": listing, "justification": "Exceptional circumstances"},
+    )
+
+
+def test_REQ_ASSIGN_1_unknown_student_rejected_not_500(as_admin):
+    r = _assign(as_admin, "nobody", "lst-2")
+    assert r.status_code == 422 and r.json()["code"] == "unknown_student"
+
+
+def test_REQ_ASSIGN_1_only_students_can_be_assigned(as_admin):
+    r = _assign(as_admin, "sup-2", "lst-2")
+    assert r.status_code == 422 and r.json()["code"] == "unknown_student"
+
+
+def test_REQ_ASSIGN_1_closed_listing_rejected(as_admin):
+    r = _assign(as_admin, "stu-2", "lst-9")  # closed in the seed
+    assert r.status_code == 422 and r.json()["code"] == "listing_unavailable"
+
+
+def test_REQ_ASSIGN_1_assign_counts_slots_already_held(as_admin):
+    # lst-4 has 2 slots and 1 filled: one assignment takes the last slot, the next must be refused.
+    assert _assign(as_admin, "stu-2", "lst-4").status_code == 201
+    r = _assign(as_admin, "stu-3", "lst-4")
+    assert r.status_code == 422 and r.json()["code"] == "no_slot"
+
+
+def test_REQ_ASSIGN_1_reassign_cannot_overfill_a_project(as_admin, monkeypatch, fresh_store):
+    matches = _execute_r2(as_admin, monkeypatch)
+    target = next(lst for lst in fresh_store.listings if lst.id == "lst-4")
+    movers = [m for m in matches if m["listing_id"] != target.id][:2]
+    assert len(movers) == 2
+    body = {"listing_id": target.id, "justification": "Exceptional circumstances"}
+    assert as_admin.post(f"/admin/matches/{movers[0]['id']}/reassign", json=body).status_code == 200
+    r = as_admin.post(f"/admin/matches/{movers[1]['id']}/reassign", json=body)
+    assert r.status_code == 422 and r.json()["code"] == "no_slot"
+
+
+def test_REQ_ASSIGN_1_assignment_into_a_published_round_is_offered_at_once(as_admin, client_for):
+    # Round 1 is published in the seed, so no later publish step would ever release this match.
+    r = _assign(as_admin, "stu-2", "lst-2", round_id="rnd-1")
+    assert r.status_code == 201 and r.json()["status"] == "published"
+    assert r.json()["offer_expires_at"].startswith("2026-09-10")  # Round 2's review window opens (REQ-OUTCOME-3)
+    student = client_for("stu-2")
+    assert student.get("/me/match").json()["id"] == r.json()["id"]
+    assert any(n["event"] == "offer_received" for n in student.get("/me/notifications").json())
+
+
+def test_REQ_ASSIGN_3_assigned_student_is_not_matched_again(as_admin, monkeypatch, fresh_store):
+    assert _assign(as_admin, "stu-1", "lst-2").status_code == 201
+    # Rank stu-1 first on a project they applied to, so only the rule can keep them out of the run.
+    own = next(a for a in fresh_store.applications_for(student_id="stu-1", round_id="rnd-2") if a.listing_id != "lst-2")
+    fresh_store.applicant_rankings.setdefault(f"{own.listing_id}:rnd-2", []).insert(0, own.id)
+    _execute_r2(as_admin, monkeypatch)
+    assert [m.status.value for m in fresh_store.matches if m.student_id == "stu-1"] == ["reassigned"]
+
+
+def test_REQ_APPRV_2_rejection_reason_kept_and_admin_told(as_admin, monkeypatch, client_for, fresh_store):
+    m = _execute_r2(as_admin, monkeypatch)[0]
+    before = len(fresh_store.notifications_for("adm-1"))
+    r = client_for(m["supervisor_id"]).post(f"/supervisor/matches/{m['id']}/reject", json={"note": "Not a fit for the lab"})
+    assert r.status_code == 200 and r.json()["supervisor_note"] == "Not a fit for the lab"
+    told = fresh_store.notifications_for("adm-1")[before:]
+    assert [n.event.value for n in told] == ["match_rejected"] and "Not a fit for the lab" in told[0].message
+    summary = as_admin.get("/admin/rounds/rnd-2/summary").json()
+    assert summary["approvals_done"] == 1  # a rejection counts as a decision
