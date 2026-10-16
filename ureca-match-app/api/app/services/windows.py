@@ -6,9 +6,18 @@ cannot drift between them. Owner: slice D. Consumers: every slice.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from app.models import Cycle, Phase, Round, Window
+
+SINGAPORE = timezone(timedelta(hours=8), "SGT")  # NTU's time zone (no daylight saving); users read every deadline in it
+
+
+def when(moment: datetime) -> str:
+    """A date and time as users read it, in Singapore time and labelled so: "10 Sep, 5:00 pm SGT".
+    Windows end one second before the hour (16:59:59), so a :59 second is shown as the hour it closes at."""
+    t = (moment + timedelta(seconds=1) if moment.second == 59 else moment).astimezone(SINGAPORE)
+    return f"{t.day} {t:%b}, {t.hour % 12 or 12}:{t:%M} {'am' if t.hour < 12 else 'pm'} SGT"
 
 
 def current_round(cycle: Cycle, now: datetime) -> Round | None:
@@ -54,7 +63,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_number=None,
             window=Window.pre_application,
             window_ends_at=ends,
-            label=f"Applications open {ends:%d %b}",
+            label=f"Applications open {when(ends)}",
         )
     if r.application_start <= now <= r.application_end:
         return Phase(
@@ -63,7 +72,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_number=r.number,
             window=Window.application,
             window_ends_at=r.application_end,
-            label=f"Round {r.number} closes {r.application_end:%d %b}",
+            label=f"Round {r.number} closes {when(r.application_end)}",
         )
     if r.review_start <= now <= r.review_end:
         return Phase(
@@ -72,7 +81,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_number=r.number,
             window=Window.review,
             window_ends_at=r.review_end,
-            label=f"Round {r.number} rankings due {r.review_end:%d %b}",
+            label=f"Round {r.number} rankings due {when(r.review_end)}",
         )
     if r.published_at is None:
         return Phase(

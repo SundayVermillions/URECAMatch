@@ -487,6 +487,7 @@ class AuditEntry(BaseModel):
     timestamp: datetime
     affected_records: list[str] = []
     note: str | None = None
+    affected_labels: list[str] = []  # readable names for affected_records, added when the log is read; not stored
 
 
 # ---------------------------------------------------------------- notifications and dashboards

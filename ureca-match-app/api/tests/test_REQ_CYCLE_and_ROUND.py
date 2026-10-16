@@ -354,3 +354,8 @@ def test_REQ_ROUND_1_derived_round_starts_on_the_hour(as_admin):
     r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json={"rounds": [{"number": n, **spec} for n in (1, 2, 3)]})
     third = next(x for x in r.json()["rounds"] if x["number"] == 3)
     assert third["application_start"].startswith("2026-09-16T09:00:00")  # 4 days after Round 2's review window
+
+
+def test_REQ_ROUND_1_deadlines_read_in_singapore_time(as_student):
+    # Round 2's application window ends 10 Sep 08:59:59 UTC, which students know as 5:00 pm in Singapore.
+    assert as_student.get("/me").json()["phase"]["label"] == "Round 2 closes 10 Sep, 5:00 pm SGT"

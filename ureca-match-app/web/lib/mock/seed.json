@@ -4428,7 +4428,7 @@
       "user_id": "stu-1",
       "event": "round_opened",
       "title": "Round 2 is open",
-      "message": "Apply and rank your projects before 9 Sep.",
+      "message": "Apply and rank your projects by 10 Sep, 5:00 pm SGT.",
       "created_at": "2026-09-05T08:00:00Z",
       "read": true,
       "link": "/browse"
@@ -4437,8 +4437,8 @@
       "id": "ntf-2",
       "user_id": "stu-1",
       "event": "cycle_changed",
-      "title": "Round 2 closes in 3 days",
-      "message": "Applications and rankings close on 9 Sep at 23:59.",
+      "title": "Round 2 closes in 4 days",
+      "message": "Applications close on 10 Sep at 5:00 pm SGT. Set your preference order in My applications before then.",
       "created_at": "2026-09-06T09:00:00Z",
       "read": false,
       "link": "/my-applications"
@@ -4448,7 +4448,7 @@
       "user_id": "stu-33",
       "event": "offer_received",
       "title": "You have a match offer",
-      "message": "Deep Learning for Early Detection of Diabetic Retinopathy. Respond by 10 Sep.",
+      "message": "Deep Learning for Early Detection of Diabetic Retinopathy. Respond by 10 Sep, 5:00 pm SGT.",
       "created_at": "2026-08-31T17:00:00Z",
       "read": false,
       "link": "/my-applications"
@@ -4468,7 +4468,7 @@
       "user_id": "sup-1",
       "event": "round_opened",
       "title": "Round 2 review window opens 10 Sep",
-      "message": "Rank your applicants between 10 and 11 Sep.",
+      "message": "Rankings are due 12 Sep, 5:00 pm SGT. You can start ranking applicants now.",
       "created_at": "2026-09-05T08:00:00Z",
       "read": false,
       "link": "/projects"
@@ -4494,7 +4494,8 @@
       "affected_records": [
         "rnd-1"
       ],
-      "note": "Round 1 matching, 3.1 s"
+      "note": "Round 1 matching, 3.1 s",
+      "affected_labels": []
     },
     {
       "id": "aud-2",
@@ -4505,7 +4506,8 @@
       "affected_records": [
         "mt-4"
       ],
-      "note": "Supervisor rejected; reassigned to second preference"
+      "note": "Supervisor rejected; reassigned to second preference",
+      "affected_labels": []
     },
     {
       "id": "aud-3",
@@ -4516,7 +4518,8 @@
       "affected_records": [
         "rnd-1"
       ],
-      "note": null
+      "note": null,
+      "affected_labels": []
     },
     {
       "id": "aud-4",
@@ -4527,7 +4530,8 @@
       "affected_records": [
         "stu-40"
       ],
-      "note": "Withdrew from programme"
+      "note": "Withdrew from programme",
+      "affected_labels": []
     }
   ],
   "applicant_rankings": {

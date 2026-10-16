@@ -3823,6 +3823,7 @@
           "matching"
         ],
         "summary": "Audit Log",
+        "description": "REQ-AUDIT-1, newest first. Entries are never changed (REQ-AUDIT-2); readable names for the records they\naffect are added to the copies sent out.",
         "operationId": "audit_log_admin_audit_get",
         "parameters": [
           {
@@ -5314,6 +5315,14 @@
               }
             ],
             "title": "Note"
+          },
+          "affected_labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Affected Labels",
+            "default": []
           }
         },
         "type": "object",

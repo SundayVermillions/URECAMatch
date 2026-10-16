@@ -92,3 +92,13 @@ def test_REQ_AUDIT_2_audit_log_table_is_append_only():
     schema = SCHEMA.read_text()
     assert "before update or delete on audit_log" in schema
     assert "append-only" in schema
+
+
+def test_REQ_AUDIT_1_audit_shows_names_not_only_ids(as_admin, fresh_store):
+    entries = as_admin.get("/admin/audit").json()
+    by_record = {e["affected_records"][0]: e["affected_labels"][0] for e in entries if e["affected_records"]}
+    assert by_record["stu-40"] == fresh_store.user("stu-40").name
+    m = next(x for x in fresh_store.matches if x.id == "mt-4")
+    assert by_record["mt-4"] == f"{m.student_name} → {m.listing_title}"
+    assert by_record["rnd-1"] == f"Round 1, {fresh_store.cycle.academic_year}"
+    assert all(not e.affected_labels for e in fresh_store.audit)  # the stored entries themselves are unchanged

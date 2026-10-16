@@ -16,6 +16,13 @@ export const DEMO_NOW = new Date("2026-09-07T10:00:00Z");
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const sleep = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "short" });
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** Mirror of windows.when(): "10 Sep, 5:00 pm SGT" in Singapore time; a window ending at :59 seconds shows the hour it closes at. */
+const when = (iso: string) => {
+  let ms = Date.parse(iso); if (new Date(ms).getUTCSeconds() === 59) ms += 1000;
+  const t = new Date(ms + 8 * 3_600_000), h = t.getUTCHours();
+  return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}, ${h % 12 || 12}:${String(t.getUTCMinutes()).padStart(2, "0")} ${h < 12 ? "am" : "pm"} SGT`;
+};
 
 export class MockClient implements ApiClient {
   db: Seed = clone(seedJson as unknown as Seed);
@@ -58,15 +65,15 @@ export class MockClient implements ApiClient {
       return { cycle_id: c.id, round_id: null, round_number: null, window: "closed", window_ends_at: null, label: "The application cycle has closed" };
     if (c.rounds.length === 0 || t < Date.parse(c.rounds[0].application_start)) {
       const ends = c.rounds.length ? c.rounds[0].application_start : c.closing_date;
-      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: ends, label: `Applications open ${fmt(ends)}` };
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: ends, label: `Applications open ${when(ends)}` };
     }
     // Between rounds, the latest round that has started (its results and offers are what is happening).
     const started = c.rounds.filter((r) => Date.parse(r.application_start) <= t).sort((x, y) => Date.parse(y.application_start) - Date.parse(x.application_start));
     const r = c.rounds.find((r) => t >= Date.parse(r.application_start) && t <= Date.parse(r.review_end)) ?? started[0];
     if (t >= Date.parse(r.application_start) && t <= Date.parse(r.application_end))
-      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "application", window_ends_at: r.application_end, label: `Round ${r.number} closes ${fmt(r.application_end)}` };
+      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "application", window_ends_at: r.application_end, label: `Round ${r.number} closes ${when(r.application_end)}` };
     if (t >= Date.parse(r.review_start) && t <= Date.parse(r.review_end))
-      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "review", window_ends_at: r.review_end, label: `Round ${r.number} rankings due ${fmt(r.review_end)}` };
+      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "review", window_ends_at: r.review_end, label: `Round ${r.number} rankings due ${when(r.review_end)}` };
     if (!r.published_at)
       return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "awaiting_results", window_ends_at: null, label: `Round ${r.number} results pending` };
     const nxt = c.rounds.find((x) => x.number === r.number + 1);
@@ -84,7 +91,7 @@ export class MockClient implements ApiClient {
     for (const uid of userIds) this.db.notifications.push({ id: this.id("ntf"), user_id: uid, event, title, message, created_at: this.iso(), read: false, link: link ?? null });
   }
   private audit(actor: M.User, operation: M.AuditOperation, affected: string[], note?: string) {
-    this.db.audit.push({ id: this.id("aud"), operation, actor_id: actor.id, actor_name: actor.name, timestamp: this.iso(), affected_records: affected, note: note ?? null });
+    this.db.audit.push({ id: this.id("aud"), operation, actor_id: actor.id, actor_name: actor.name, timestamp: this.iso(), affected_records: affected, note: note ?? null, affected_labels: [] });
   }
 
   // ---- slice A
@@ -425,7 +432,7 @@ export class MockClient implements ApiClient {
       if (Date.parse(first.application_start) < opening + pre * day) throw new M.ApiError(422, "outside_cycle", `Round ${first.number} starts ${fmt(first.application_start)}, before the pre-application window ends. Change the rounds first.`);
       if (Date.parse(last.review_end) > closing) throw new M.ApiError(422, "outside_cycle", `Round ${last.number} ends ${fmt(last.review_end)}, after this closing date. Pick a later date or shorten the rounds first.`, "closing_date");
     }
-    const changes = [closing !== Date.parse(c.closing_date) ? `The cycle now closes on ${fmt(new Date(closing).toISOString())}.` : "", shift && rounds.length ? `Round 1 now opens ${fmt(rounds[0].application_start)}.` : ""].filter(Boolean);
+    const changes = [closing !== Date.parse(c.closing_date) ? `The cycle now closes on ${when(new Date(closing).toISOString())}.` : "", shift && rounds.length ? `Round 1 now opens ${when(rounds[0].application_start)}.` : ""].filter(Boolean);
     Object.assign(c, { opening_date: new Date(opening).toISOString(), closing_date: new Date(closing).toISOString(), pre_application_days: pre, rounds });
     if (changes.length) this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle dates changed", changes.join(" "));
     this.audit(a, "cycle_updated", [c.id]); return c;
@@ -488,14 +495,14 @@ export class MockClient implements ApiClient {
   private offerNow(m: M.Match, deadline: string | null) {
     if (!deadline) return;
     m.status = "published"; m.published_at = this.iso(); m.offer_expires_at = deadline;
-    this.notify([m.student_id], "offer_received", "You have a match offer", `Respond by ${fmt(deadline)}.`, "/my-applications");
+    this.notify([m.student_id], "offer_received", "You have a match offer", `Respond by ${when(deadline)}.`, "/my-applications");
   }
   private expireOffers() {
     for (const m of this.db.matches) if (m.status === "published" && m.offer_expires_at && this.now.getTime() > Date.parse(m.offer_expires_at)) { m.status = "timed_out"; this.markIneligible(m.student_id); }
   }
   async execute(roundId: string) {
     const a = this.need("admin"); const r = this.round(roundId);
-    if (this.now.getTime() <= Date.parse(r.review_end)) throw new M.ApiError(409, "review_open", `Matching can run after the review window closes on ${fmt(r.review_end)}.`);
+    if (this.now.getTime() <= Date.parse(r.review_end)) throw new M.ApiError(409, "review_open", `Matching can run after the review window closes on ${when(r.review_end)}.`);
     if (r.executed_at) throw new M.ApiError(409, "already_executed", "Matching has already been run for this round.");
     this.expireOffers();
     const apps = this.db.applications.filter((x) => x.round_id === roundId && x.status === "submitted");
@@ -611,7 +618,7 @@ export class MockClient implements ApiClient {
     for (const x of apps) x.status = offered.get(x.student_id) === x.listing_id ? "matched" : "unmatched";
     r.published_at = this.iso(); r.status = "published";
     this.audit(a, "results_published", [roundId]);
-    this.notify(ms.filter((m) => m.status === "published").map((m) => m.student_id), "offer_received", "You have a match offer", `Respond by ${fmt(expires)}.`, "/my-applications");
+    this.notify(ms.filter((m) => m.status === "published").map((m) => m.student_id), "offer_received", "You have a match offer", `Respond by ${when(expires)}.`, "/my-applications");
     // REQ-PUB-2: unmatched students (told they can retry only if they still may) and supervisors with matches
     const ruledOut = this.ruledOut();
     const canRetry = unmatched.filter((s) => !ruledOut.has(s) && this.student(s)?.eligible_for_matching !== false);
@@ -621,11 +628,20 @@ export class MockClient implements ApiClient {
     this.notify(unmatched.filter((s) => !canRetry.includes(s)), "results_published", `Round ${r.number} results are out`, `You were not matched to a project in Round ${r.number}.`, "/my-applications");
     for (const sup of [...new Set(ms.map((m) => m.supervisor_id))].sort()) {
       const n = ms.filter((m) => m.supervisor_id === sup && m.status === "published").length;
-      this.notify([sup], "results_published", `Round ${r.number} results are out`, n ? `${n === 1 ? "1 student on your listings was" : `${n} students on your listings were`} offered a place. They have until ${fmt(expires)} to respond.` : `No students on your listings were offered a place in Round ${r.number}.`, "/approvals");
+      this.notify([sup], "results_published", `Round ${r.number} results are out`, n ? `${n === 1 ? "1 student on your listings was" : `${n} students on your listings were`} offered a place. They have until ${when(expires)} to respond.` : `No students on your listings were offered a place in Round ${r.number}.`, "/approvals");
     }
     return this.summary(roundId);
   }
-  async auditLog() { this.need("admin"); return [...this.db.audit].sort((a, b) => b.timestamp.localeCompare(a.timestamp)); }
+  async auditLog() {
+    // mirror of audit_log and _describe: readable names for the affected records, entries themselves unchanged
+    this.need("admin");
+    const describe = (id: string) => {
+      const m = this.db.matches.find((x) => x.id === id); if (m) return `${m.student_name} → ${m.listing_title}`;
+      for (const c of this.db.cycles) { if (c.id === id) return c.academic_year; const r = c.rounds.find((x) => x.id === id); if (r) return `Round ${r.number}, ${c.academic_year}`; }
+      return this.db.users.find((x) => x.id === id)?.name ?? this.db.listings.find((x) => x.id === id)?.title ?? id;
+    };
+    return [...this.db.audit].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map((e) => ({ ...e, affected_labels: e.affected_records.map(describe) }));
+  }
   async supervisorMatches() { const u = this.need("supervisor"); return this.db.matches.filter((m) => m.supervisor_id === u.id); }
   async decideMatch(id: string, approve: boolean, note?: string) {
     const u = this.need("supervisor"); const m = this.db.matches.find((m) => m.id === id);

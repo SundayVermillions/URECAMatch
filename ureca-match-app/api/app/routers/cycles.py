@@ -22,6 +22,7 @@ from app.models import (
 )
 from app.services.audit import audit
 from app.services.notify import notify
+from app.services.windows import when
 
 router = APIRouter(tags=["admin: cycle"])
 
@@ -145,9 +146,9 @@ def update_cycle(cycle_id: str, body: CycleUpdate, admin: AdminUser, store: Stor
     _check_new_dates(store, c, body, opening, closing, pre_days, rounds, now)
     changes = []
     if closing != c.closing_date:  # REQ-CYCLE-3
-        changes.append(f"The cycle now closes on {closing:%d %b %Y}.")
+        changes.append(f"The cycle now closes on {when(closing)}.")
     if shift and rounds:  # use case 1-2: affected users hear about moved rounds too
-        changes.append(f"Round 1 now opens {rounds[0].application_start:%d %b %Y}.")
+        changes.append(f"Round 1 now opens {when(rounds[0].application_start)}.")
     c.opening_date, c.closing_date, c.pre_application_days, c.rounds = opening, closing, pre_days, rounds
     if changes:
         affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]

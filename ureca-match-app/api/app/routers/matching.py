@@ -33,6 +33,7 @@ from app.models import (
 from app.services.audit import audit
 from app.services.matching.algorithm import ListingPrefs, StudentPrefs, match
 from app.services.notify import notify
+from app.services.windows import when
 
 router = APIRouter(tags=["matching"])
 
@@ -70,7 +71,7 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
     r = _round(store, round_id)
     now = settings.now()
     if now <= r.review_end:  # REQ-EXEC-1
-        raise conflict("review_open", f"Matching can run after the review window closes on {r.review_end:%d %b}.")
+        raise conflict("review_open", f"Matching can run after the review window closes on {when(r.review_end)}.")
     if r.executed_at is not None:  # REQ-EXEC-2
         raise conflict("already_executed", "Matching has already been run for this round.")
     _expire_offers(store, now)  # do not wait for the daily cron: a lapsed offer frees its slot for this run
@@ -224,7 +225,7 @@ def _offer_now(store, m: Match, deadline, now) -> None:
         [m.student_id],
         NotificationEvent.offer_received,
         "You have a match offer",
-        f"Respond by {deadline:%d %b}.",
+        f"Respond by {when(deadline)}.",
         now,
         "/my-applications",
     )
@@ -376,7 +377,7 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
         [m.student_id for m in ms if m.status == MatchStatus.published],
         NotificationEvent.offer_received,
         "You have a match offer",
-        f"Respond by {expires:%d %b}.",
+        f"Respond by {when(expires)}.",
         now,
         "/my-applications",
     )  # REQ-PUB-2
@@ -411,7 +412,7 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
             [sup_id],
             NotificationEvent.results_published,
             f"Round {r.number} results are out",
-            f"{students} offered a place. They have until {expires:%d %b} to respond."
+            f"{students} offered a place. They have until {when(expires)} to respond."
             if n_offered
             else f"No students on your listings were offered a place in Round {r.number}.",
             now,
@@ -456,9 +457,28 @@ def _roll_over(store, apps, students: list[str], nxt, now) -> set[str]:
 
 @router.get("/admin/audit", response_model=list[AuditEntry])
 def audit_log(admin: AdminUser, store: StoreDep, operation: AuditOperation | None = None) -> list[AuditEntry]:
-    return sorted(
+    """REQ-AUDIT-1, newest first. Entries are never changed (REQ-AUDIT-2); readable names for the records they
+    affect are added to the copies sent out."""
+    entries = sorted(
         (e for e in store.audit if operation is None or e.operation == operation), key=lambda e: e.timestamp, reverse=True
     )
+    return [e.model_copy(update={"affected_labels": [_describe(store, rid) for rid in e.affected_records]}) for e in entries]
+
+
+def _describe(store, record_id: str) -> str:
+    """What an admin reads for a record id: "student → project" for a match, a round, a cycle, a person or a project."""
+    if (m := next((m for m in store.matches if m.id == record_id), None)) is not None:
+        return f"{m.student_name} → {m.listing_title}"
+    for c in store.cycles:
+        if c.id == record_id:
+            return c.academic_year
+        if (r := next((r for r in c.rounds if r.id == record_id), None)) is not None:
+            return f"Round {r.number}, {c.academic_year}"
+    if (u := store.user(record_id)) is not None:
+        return u.name
+    if (lst := store.listing(record_id)) is not None:
+        return lst.title
+    return record_id  # removed since (an unassigned match): the note says what it was
 
 
 # ------------------------------------------------------------------ supervisor

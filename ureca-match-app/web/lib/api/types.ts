@@ -801,7 +801,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Audit Log */
+        /**
+         * Audit Log
+         * @description REQ-AUDIT-1, newest first. Entries are never changed (REQ-AUDIT-2); readable names for the records they
+         *     affect are added to the copies sent out.
+         */
         get: operations["audit_log_admin_audit_get"];
         put?: never;
         post?: never;
@@ -1227,6 +1231,11 @@ export interface components {
             affected_records: string[];
             /** Note */
             note?: string | null;
+            /**
+             * Affected Labels
+             * @default []
+             */
+            affected_labels: string[];
         };
         /**
          * AuditOperation
