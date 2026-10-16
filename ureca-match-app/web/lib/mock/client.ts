@@ -16,6 +16,13 @@ export const DEMO_NOW = new Date("2026-09-07T10:00:00Z");
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const sleep = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "short" });
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** Mirror of windows.when(): "10 Sep, 5:00 pm SGT" in Singapore time; a window ending at :59 seconds shows the hour it closes at. */
+const when = (iso: string) => {
+  let ms = Date.parse(iso); if (new Date(ms).getUTCSeconds() === 59) ms += 1000;
+  const t = new Date(ms + 8 * 3_600_000), h = t.getUTCHours();
+  return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}, ${h % 12 || 12}:${String(t.getUTCMinutes()).padStart(2, "0")} ${h < 12 ? "am" : "pm"} SGT`;
+};
 
 export class MockClient implements ApiClient {
   db: Seed = clone(seedJson as unknown as Seed);
@@ -58,14 +65,15 @@ export class MockClient implements ApiClient {
       return { cycle_id: c.id, round_id: null, round_number: null, window: "closed", window_ends_at: null, label: "The application cycle has closed" };
     if (c.rounds.length === 0 || t < Date.parse(c.rounds[0].application_start)) {
       const ends = c.rounds.length ? c.rounds[0].application_start : c.closing_date;
-      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: ends, label: `Applications open ${fmt(ends)}` };
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: ends, label: `Applications open ${when(ends)}` };
     }
-    const r = c.rounds.find((r) => t >= Date.parse(r.application_start) && t <= Date.parse(r.review_end))
-      ?? c.rounds.find((r) => Date.parse(r.application_start) > t) ?? c.rounds[c.rounds.length - 1];
+    // Between rounds, the latest round that has started (its results and offers are what is happening).
+    const started = c.rounds.filter((r) => Date.parse(r.application_start) <= t).sort((x, y) => Date.parse(y.application_start) - Date.parse(x.application_start));
+    const r = c.rounds.find((r) => t >= Date.parse(r.application_start) && t <= Date.parse(r.review_end)) ?? started[0];
     if (t >= Date.parse(r.application_start) && t <= Date.parse(r.application_end))
-      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "application", window_ends_at: r.application_end, label: `Round ${r.number} closes ${fmt(r.application_end)}` };
+      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "application", window_ends_at: r.application_end, label: `Round ${r.number} closes ${when(r.application_end)}` };
     if (t >= Date.parse(r.review_start) && t <= Date.parse(r.review_end))
-      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "review", window_ends_at: r.review_end, label: `Round ${r.number} rankings due ${fmt(r.review_end)}` };
+      return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "review", window_ends_at: r.review_end, label: `Round ${r.number} rankings due ${when(r.review_end)}` };
     if (!r.published_at)
       return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "awaiting_results", window_ends_at: null, label: `Round ${r.number} results pending` };
     const nxt = c.rounds.find((x) => x.number === r.number + 1);
@@ -83,7 +91,7 @@ export class MockClient implements ApiClient {
     for (const uid of userIds) this.db.notifications.push({ id: this.id("ntf"), user_id: uid, event, title, message, created_at: this.iso(), read: false, link: link ?? null });
   }
   private audit(actor: M.User, operation: M.AuditOperation, affected: string[], note?: string) {
-    this.db.audit.push({ id: this.id("aud"), operation, actor_id: actor.id, actor_name: actor.name, timestamp: this.iso(), affected_records: affected, note: note ?? null });
+    this.db.audit.push({ id: this.id("aud"), operation, actor_id: actor.id, actor_name: actor.name, timestamp: this.iso(), affected_records: affected, note: note ?? null, affected_labels: [] });
   }
 
   // ---- slice A
@@ -377,7 +385,7 @@ export class MockClient implements ApiClient {
     if (Date.parse(b.closing_date) <= Date.parse(b.opening_date)) throw new M.ApiError(422, "bad_dates", "Closing date must be after the opening date.");
     const clash = this.db.cycles.find((c) => Date.parse(c.opening_date) <= Date.parse(b.closing_date) && Date.parse(b.opening_date) <= Date.parse(c.closing_date));
     if (clash) throw new M.ApiError(409, "cycle_overlap", `These dates overlap the ${clash.academic_year} cycle. Cycles cannot overlap.`);
-    const c: M.Cycle = { id: this.id("cyc"), academic_year: b.academic_year, opening_date: b.opening_date, closing_date: b.closing_date, pre_application_days: b.pre_application_days ?? 7, status: "draft", rounds: [] };
+    const c: M.Cycle = { id: this.id("cyc"), academic_year: b.academic_year, opening_date: b.opening_date, closing_date: b.closing_date, pre_application_days: b.pre_application_days ?? 7, status: "draft", rounds: [], rollover_unmatched: true };
     this.db.cycles.push(c); this.audit(a, "cycle_updated", [c.id], "created"); return c;
   }
   async closeCycle(id: string) {
@@ -401,41 +409,111 @@ export class MockClient implements ApiClient {
   async updateCycle(id: string, b: M.CycleUpdate) {
     const a = this.need("admin"); const c = this.cycleById(id);
     if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
-    const closingChanged = !!b.closing_date && b.closing_date !== c.closing_date;
-    Object.assign(c, Object.fromEntries(Object.entries(b).filter(([, v]) => v != null)));
-    if (closingChanged) this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle dates changed", `The cycle now closes on ${fmt(c.closing_date)}.`);
+    const t = this.now.getTime(), day = 86_400_000;
+    if (b.opening_date && Date.parse(c.opening_date) <= t) throw new M.ApiError(422, "date_passed", "The opening date has passed and can no longer be changed.", "opening_date");
+    if (b.closing_date && Date.parse(c.closing_date) <= t) throw new M.ApiError(422, "date_passed", "The closing date has passed and can no longer be changed.", "closing_date");
+    // mirror of update_cycle and _check_new_dates in routers/cycles.py
+    const opening = Date.parse(b.opening_date ?? c.opening_date), closing = Date.parse(b.closing_date ?? c.closing_date), pre = b.pre_application_days ?? c.pre_application_days;
+    const started = (r: M.Round) => Date.parse(r.application_start) <= t;
+    if (pre !== c.pre_application_days && c.rounds.some(started)) throw new M.ApiError(422, "date_passed", "Round 1 has started, so the pre-application window can no longer change.", "pre_application_days");
+    // rounds that have not started move with the opening date and pre-application window, keeping their spacing
+    const shift = opening + pre * day - (Date.parse(c.opening_date) + c.pre_application_days * day);
+    const move = (iso: string) => new Date(Date.parse(iso) + shift).toISOString();
+    const rounds = c.rounds.map((r) => (started(r) || !shift ? r : { ...r, application_start: move(r.application_start), application_end: move(r.application_end), review_start: move(r.review_start), review_end: move(r.review_end) }));
+    for (const [field, v] of [["opening_date", b.opening_date], ["closing_date", b.closing_date]] as const)
+      if (v && Date.parse(v) <= t) throw new M.ApiError(422, "date_in_past", "Pick a date that has not passed yet.", field);
+    if (pre < 0 || pre > 60) throw new M.ApiError(422, "bad_pre_application", "The pre-application window must be 0 to 60 days.", "pre_application_days");
+    if (closing <= opening) throw new M.ApiError(422, "bad_dates", "Closing date must be after the opening date.", "closing_date");
+    const clash = this.db.cycles.find((o) => o.id !== c.id && Date.parse(o.opening_date) <= closing && opening <= Date.parse(o.closing_date));
+    if (clash) throw new M.ApiError(409, "cycle_overlap", `These dates overlap the ${clash.academic_year} cycle. Cycles cannot overlap.`);
+    if (rounds.length) {
+      const first = [...rounds].sort((x, y) => Date.parse(x.application_start) - Date.parse(y.application_start))[0];
+      const last = [...rounds].sort((x, y) => Date.parse(y.review_end) - Date.parse(x.review_end))[0];
+      if (Date.parse(first.application_start) < opening + pre * day) throw new M.ApiError(422, "outside_cycle", `Round ${first.number} starts ${fmt(first.application_start)}, before the pre-application window ends. Change the rounds first.`);
+      if (Date.parse(last.review_end) > closing) throw new M.ApiError(422, "outside_cycle", `Round ${last.number} ends ${fmt(last.review_end)}, after this closing date. Pick a later date or shorten the rounds first.`, "closing_date");
+    }
+    const changes = [closing !== Date.parse(c.closing_date) ? `The cycle now closes on ${when(new Date(closing).toISOString())}.` : "", shift && rounds.length ? `Round 1 now opens ${when(rounds[0].application_start)}.` : ""].filter(Boolean);
+    Object.assign(c, { opening_date: new Date(opening).toISOString(), closing_date: new Date(closing).toISOString(), pre_application_days: pre, rounds });
+    if (changes.length) this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle dates changed", changes.join(" "));
     this.audit(a, "cycle_updated", [c.id]); return c;
   }
   async setRounds(cycleId: string, b: M.RoundsUpdate) {
-    const a = this.need("admin"); const c = this.cycleById(cycleId); const day = 86_400_000;
+    const a = this.need("admin"); const c = this.cycleById(cycleId); const day = 86_400_000, gap = 4 * day;
     if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
-    let cursor = Date.parse(c.opening_date) + c.pre_application_days * day;
+    const numbers = b.rounds.map((s) => s.number).sort((x, y) => x - y);
+    if (numbers.some((n, i) => n !== i + 1)) throw new M.ApiError(422, "bad_rounds", "Number the rounds 1, 2, 3 in order, with no gaps or repeats.", "rounds");
+    const dropped = c.rounds.find((r) => !numbers.includes(r.number) && Date.parse(r.application_start) <= this.now.getTime());
+    if (dropped) throw new M.ApiError(422, "round_started", `Round ${dropped.number} has already started, so it cannot be removed.`, "rounds"); // REQ-ROUND-2
+    // mirror of set_rounds: optional start dates (use case 1-2), otherwise 4 days after the previous round
+    const earliest = Date.parse(c.opening_date) + c.pre_application_days * day;
+    let cursor = earliest; let prev: M.Round | null = null;
     const rounds: M.Round[] = [];
     for (const spec of [...b.rounds].sort((x, y) => x.number - y.number)) {
       const old = c.rounds.find((r) => r.number === spec.number);
-      if (old && Date.parse(old.application_start) <= this.now.getTime()) { rounds.push(old); cursor = Date.parse(old.review_end) + 4 * day; continue; }
-      const appStart = cursor, appEnd = appStart + spec.application_days * day - 1000, revStart = appStart + spec.application_days * day, revEnd = revStart + spec.review_days * day - 1000;
+      if (old && Date.parse(old.application_start) <= this.now.getTime()) { rounds.push(old); cursor = Date.parse(old.review_end) + 1000 + gap; prev = old; continue; }
+      let appStart = cursor;
+      if (spec.start_date) {
+        appStart = Date.parse(spec.start_date);
+        if (appStart <= this.now.getTime()) throw new M.ApiError(422, "date_in_past", `Round ${spec.number} would start in the past. Pick a later start date.`, "rounds");
+      }
+      if (appStart < earliest) throw new M.ApiError(422, "outside_cycle", `Round ${spec.number} would start before the pre-application window ends on ${fmt(new Date(earliest).toISOString())}.`);
+      if (prev && appStart <= Date.parse(prev.review_end)) throw new M.ApiError(422, "rounds_overlap", `Round ${spec.number} would start before Round ${prev.number} ends on ${fmt(prev.review_end)}.`, "rounds");
+      const appEnd = appStart + spec.application_days * day - 1000, revStart = appStart + spec.application_days * day, revEnd = revStart + spec.review_days * day - 1000;
       if (revEnd > Date.parse(c.closing_date)) throw new M.ApiError(422, "outside_cycle", `Round ${spec.number} would end after the cycle closes on ${fmt(c.closing_date)}.`);
-      rounds.push({ id: old?.id ?? this.id("rnd"), cycle_id: c.id, number: spec.number, application_start: new Date(appStart).toISOString(), application_end: new Date(appEnd).toISOString(),
-        review_start: new Date(revStart).toISOString(), review_end: new Date(revEnd).toISOString(), status: "scheduled", executed_at: null, published_at: null, eligible_students: 0, open_slots: 0, reopened_slots: 0 });
-      cursor = revEnd + 4 * day;
+      prev = { id: old?.id ?? this.id("rnd"), cycle_id: c.id, number: spec.number, application_start: new Date(appStart).toISOString(), application_end: new Date(appEnd).toISOString(),
+        review_start: new Date(revStart).toISOString(), review_end: new Date(revEnd).toISOString(), status: "scheduled", executed_at: null, published_at: null, eligible_students: 0, open_slots: 0, reopened_slots: 0 };
+      rounds.push(prev);
+      cursor = revEnd + 1000 + gap;
     }
-    c.rounds = rounds; this.audit(a, "cycle_updated", [c.id], "rounds configured"); return c;
+    c.rounds = rounds; c.rollover_unmatched = b.rollover_unmatched ?? true; this.audit(a, "cycle_updated", [c.id], "rounds configured"); return c;
   }
   private round(id: string) { const r = (this.activeCycle()?.rounds ?? []).find((r) => r.id === id); if (!r) throw new M.ApiError(404, "not_found", "Round was not found."); return r; }
+  // mirror of HOLDS_SLOT, _open_slots and _ruled_out in routers/matching.py
+  private openSlots(l: M.Listing) {
+    const held = this.db.matches.filter((m) => m.listing_id === l.id && ["proposed", "approved", "reassigned", "published"].includes(m.status)).length;
+    return Math.max(l.available_slots - l.filled_slots - held, 0);
+  }
+  private ruledOut(before?: M.Round) {
+    const rounds = new Set((this.activeCycle()?.rounds ?? []).filter((x) => !before || x.number < before.number).map((x) => x.id));
+    return new Set(this.db.matches.filter((m) => rounds.has(m.round_id) && m.status !== "rejected").map((m) => m.student_id));
+  }
+  private assignableListing(id: string) {
+    const l = this.db.listings.find((l) => l.id === id);
+    if (!l || l.status !== "published") throw new M.ApiError(422, "listing_unavailable", "Choose a published project.", "listing_id");
+    if (this.openSlots(l) === 0) throw new M.ApiError(422, "no_slot", "That project has no open slot.", "listing_id");
+    return l;
+  }
+  private markIneligible(studentId: string) { const sp = this.student(studentId); if (sp) sp.eligible_for_matching = false; }
+  // mirror of _offer_deadline, _late_offer_deadline, _offer_now and _expire_offers in routers/matching.py
+  private offerDeadline(r: M.Round) { const c = this.activeCycle()!; return c.rounds.find((x) => x.number === r.number + 1)?.review_start ?? c.closing_date; }
+  private lateOfferDeadline(r: M.Round) {
+    if (!r.published_at) return null;
+    const d = [this.offerDeadline(r), this.activeCycle()!.closing_date].find((x) => Date.parse(x) > this.now.getTime());
+    if (!d) throw new M.ApiError(409, "cycle_closed", "The cycle has closed, so no new offers can be made.");
+    return d;
+  }
+  private offerNow(m: M.Match, deadline: string | null) {
+    if (!deadline) return;
+    m.status = "published"; m.published_at = this.iso(); m.offer_expires_at = deadline;
+    this.notify([m.student_id], "offer_received", "You have a match offer", `Respond by ${when(deadline)}.`, "/my-applications");
+  }
+  private expireOffers() {
+    for (const m of this.db.matches) if (m.status === "published" && m.offer_expires_at && this.now.getTime() > Date.parse(m.offer_expires_at)) { m.status = "timed_out"; this.markIneligible(m.student_id); }
+  }
   async execute(roundId: string) {
     const a = this.need("admin"); const r = this.round(roundId);
-    if (this.now.getTime() <= Date.parse(r.review_end)) throw new M.ApiError(409, "review_open", `Matching can run after the review window closes on ${fmt(r.review_end)}.`);
+    if (this.now.getTime() <= Date.parse(r.review_end)) throw new M.ApiError(409, "review_open", `Matching can run after the review window closes on ${when(r.review_end)}.`);
     if (r.executed_at) throw new M.ApiError(409, "already_executed", "Matching has already been run for this round.");
+    this.expireOffers();
     const apps = this.db.applications.filter((x) => x.round_id === roundId && x.status === "submitted");
     // student-proposing deferred acceptance (mirror of services/matching/algorithm.py)
-    const prefs = new Map<string, string[]>();
-    for (const x of apps) { const sp = this.student(x.student_id); if (sp && !sp.eligible_for_matching) continue; prefs.set(x.student_id, [...(prefs.get(x.student_id) ?? []), x.listing_id]); }
+    const prefs = new Map<string, string[]>(); const ruledOut = this.ruledOut();
+    for (const x of apps) { const sp = this.student(x.student_id); if (ruledOut.has(x.student_id) || (sp && !sp.eligible_for_matching)) continue; prefs.set(x.student_id, [...(prefs.get(x.student_id) ?? []), x.listing_id]); }
     for (const [sid, lids] of prefs) prefs.set(sid, lids.sort((p, q) => (apps.find((x) => x.student_id === sid && x.listing_id === p)!.preference_rank ?? 99) - (apps.find((x) => x.student_id === sid && x.listing_id === q)!.preference_rank ?? 99)));
     const rankOf = new Map<string, Map<string, number>>(), cap = new Map<string, number>(), held = new Map<string, string[]>();
     for (const l of this.db.listings.filter((l) => l.status === "published")) {
       const ranked = (this.db.applicant_rankings[`${l.id}:${roundId}`] ?? []).map((aid) => apps.find((x) => x.id === aid)?.student_id).filter(Boolean) as string[];
-      rankOf.set(l.id, new Map(ranked.map((s, i) => [s, i]))); cap.set(l.id, Math.max(l.available_slots - l.filled_slots, 0)); held.set(l.id, []);
+      rankOf.set(l.id, new Map(ranked.map((s, i) => [s, i]))); cap.set(l.id, this.openSlots(l)); held.set(l.id, []);
     }
     const next = new Map<string, number>(); const free = [...prefs.keys()];
     while (free.length) {
@@ -453,16 +531,19 @@ export class MockClient implements ApiClient {
     }
     r.executed_at = this.iso(); r.status = "awaiting_publication";
     this.audit(a, "matching_executed", [roundId], `${[...held.values()].flat().length} matched`);
+    this.notify([...new Set(this.db.matches.filter((m) => m.round_id === roundId && m.status === "proposed").map((m) => m.supervisor_id))].sort(),
+      "matches_proposed", "Proposed matches ready for approval", `Round ${r.number} matches await your decision.`, "/approvals");
     return this.summary(roundId);
   }
   async summary(roundId: string): Promise<M.RoundSummary> {
     this.need("admin"); const r = this.round(roundId);
     const ms = this.db.matches.filter((m) => m.round_id === roundId);
-    const applied = new Set(this.db.applications.filter((a) => a.round_id === roundId && a.status === "submitted").map((a) => a.student_id));
-    const excluded = [...applied].filter((sid) => this.student(sid)?.eligible_for_matching === false).length;
+    const applied = new Set(this.db.applications.filter((a) => a.round_id === roundId && ["submitted", "matched", "unmatched"].includes(a.status)).map((a) => a.student_id));
+    const placed = new Set(ms.filter((m) => m.status !== "rejected").map((m) => m.student_id)); const earlier = this.ruledOut(r);
+    const excluded = [...applied].filter((sid) => !placed.has(sid) && (earlier.has(sid) || this.student(sid)?.eligible_for_matching === false));
     const prefs = ms.map((m) => m.preference_rank).filter((p): p is number => !!p);
-    const decided = ms.filter((m) => m.status !== "proposed" && m.status !== "rejected").length;
-    return { round: r, matched: ms.length, unmatched: Math.max(applied.size - excluded - ms.length, 0), excluded, avg_preference: prefs.length ? Math.round((prefs.reduce((s, p) => s + p, 0) / prefs.length) * 100) / 100 : null, approvals_done: decided, approvals_total: ms.length };
+    const decided = ms.filter((m) => m.status !== "proposed").length; // a rejection is a decision too
+    return { round: r, matched: ms.length, unmatched: [...applied].filter((sid) => !placed.has(sid) && !excluded.includes(sid)).length, excluded: excluded.length, avg_preference: prefs.length ? Math.round((prefs.reduce((s, p) => s + p, 0) / prefs.length) * 100) / 100 : null, approvals_done: decided, approvals_total: ms.length };
   }
   async matches(roundId: string, status?: M.MatchStatus) { this.need("admin"); return this.db.matches.filter((m) => m.round_id === roundId && (!status || m.status === status)); }
   async reassign(id: string, b: M.ReassignRequest) {
@@ -470,43 +551,109 @@ export class MockClient implements ApiClient {
     if (!m) throw new M.ApiError(404, "not_found", "Match was not found.");
     if (["published", "accepted", "declined", "timed_out"].includes(m.status)) throw new M.ApiError(409, "already_published", "Published matches cannot be reassigned.");
     if (b.justification.length < 10) throw new M.ApiError(422, "invalid", "Give a justification of at least 10 characters.", "justification");
-    const l = this.listingOr404(b.listing_id);
-    if (l.filled_slots >= l.available_slots) throw new M.ApiError(422, "no_slot", "That project has no open slot.", "listing_id");
+    const r = this.round(m.round_id); this.expireOffers();
+    const l = this.assignableListing(b.listing_id);
+    if (l.id === m.listing_id) throw new M.ApiError(422, "same_project", "The student is already matched to this project. Choose a different one.", "listing_id");
+    const deadline = this.lateOfferDeadline(r);
     m.original_listing_id = m.original_listing_id ?? m.listing_id;
     Object.assign(m, { listing_id: l.id, listing_title: l.title, supervisor_id: l.supervisor_id, supervisor_name: l.supervisor_name, status: "reassigned", justification: b.justification });
-    this.audit(a, "manual_reassignment", [m.id], b.justification); return m;
+    this.audit(a, "manual_reassignment", [m.id], b.justification); this.offerNow(m, deadline); return m;
   }
   async manualAssign(roundId: string, b: M.ManualAssignRequest) {
-    const a = this.need("admin"); this.round(roundId);
+    const a = this.need("admin"); const r = this.round(roundId); this.expireOffers();
+    const student = this.db.users.find((u) => u.id === b.student_id);
+    if (!student || student.role !== "student") throw new M.ApiError(422, "unknown_student", "Choose a student account.", "student_id");
     if (this.db.matches.some((m) => m.student_id === b.student_id && !["rejected", "declined", "timed_out"].includes(m.status))) throw new M.ApiError(409, "already_assigned", "This student already has a project. Unassign it first.");
-    const l = this.listingOr404(b.listing_id);
-    const m: M.Match = { id: this.id("mt"), round_id: roundId, student_id: b.student_id, student_name: this.db.users.find((u) => u.id === b.student_id)?.name ?? b.student_id, listing_id: l.id, listing_title: l.title, supervisor_id: l.supervisor_id, supervisor_name: l.supervisor_name,
-      status: "reassigned", preference_rank: null, supervisor_decided_at: null, published_at: null, offer_expires_at: null, student_responded_at: null, original_listing_id: null, justification: b.justification };
-    this.db.matches.push(m); this.audit(a, "manual_reassignment", [m.id], b.justification); return m;
+    const l = this.assignableListing(b.listing_id); const deadline = this.lateOfferDeadline(r);
+    const own = this.db.applications.find((x) => x.student_id === b.student_id && x.round_id === roundId && x.listing_id === l.id);
+    const placement = { listing_id: l.id, listing_title: l.title, supervisor_id: l.supervisor_id, supervisor_name: l.supervisor_name, status: "reassigned" as const, justification: b.justification, preference_rank: own?.preference_rank ?? null };
+    // one row per student per round (match_results unique key), so an earlier rejected or declined row is reused
+    let m = this.db.matches.find((x) => x.round_id === roundId && x.student_id === b.student_id);
+    if (m) Object.assign(m, { ...placement, original_listing_id: m.original_listing_id ?? m.listing_id, supervisor_decided_at: null, published_at: null, offer_expires_at: null, student_responded_at: null });
+    else { m = { id: this.id("mt"), round_id: roundId, student_id: b.student_id, student_name: student.name, ...placement, supervisor_decided_at: null, published_at: null, offer_expires_at: null, student_responded_at: null, original_listing_id: null }; this.db.matches.push(m); }
+    this.audit(a, "manual_reassignment", [m.id], b.justification); this.offerNow(m, deadline); return m;
+  }
+  async unassign(matchId: string, note: string) {
+    // mirror of unassign in routers/matching.py (REQ-ASSIGN-3, use case 1-6 E1)
+    const a = this.need("admin"); const m = this.db.matches.find((x) => x.id === matchId);
+    if (!m) throw new M.ApiError(404, "not_found", "Match was not found.");
+    const reason = note.trim();
+    if (reason.length < 10) throw new M.ApiError(422, "justification_required", "Give a reason of at least 10 characters.", "note");
+    if (["rejected", "declined", "timed_out"].includes(m.status)) throw new M.ApiError(409, "not_assigned", "This match no longer places the student, so there is nothing to unassign.");
+    const was = m.status;
+    if (was === "accepted") { const l = this.db.listings.find((x) => x.id === m.listing_id); if (l && l.filled_slots > 0) l.filled_slots -= 1; }
+    if (was === "published" || was === "accepted") {
+      for (const x of this.db.applications) if (x.student_id === m.student_id && x.round_id === m.round_id && x.listing_id === m.listing_id && x.status === "matched") x.status = "unmatched";
+    }
+    this.db.matches = this.db.matches.filter((x) => x.id !== m.id);
+    if (was === "accepted" && !this.ruledOut().has(m.student_id)) { const sp = this.student(m.student_id); if (sp) sp.eligible_for_matching = true; }
+    this.audit(a, "manual_reassignment", [m.id, m.student_id], `Unassigned from ${m.listing_title}: ${reason}`);
+    if (was === "published" || was === "accepted") this.notify([m.student_id], "match_rejected", "Your project placement was withdrawn", `The URECA office removed your match to ${m.listing_title}. Reason: ${reason}`, "/my-applications");
+    this.notify([m.supervisor_id], "match_rejected", "A match on your project was removed", `The URECA office removed ${m.student_name} from ${m.listing_title}.`, "/approvals");
+  }
+  async unmatched(roundId: string): Promise<M.UserListItem[]> {
+    // mirror of unmatched_students: the summary's unmatched set (REQ-REV-1)
+    this.need("admin"); const r = this.round(roundId);
+    const ms = this.db.matches.filter((m) => m.round_id === roundId);
+    const applied = new Set(this.db.applications.filter((x) => x.round_id === roundId && ["submitted", "matched", "unmatched"].includes(x.status)).map((x) => x.student_id));
+    const placed = new Set(ms.filter((m) => m.status !== "rejected").map((m) => m.student_id)); const earlier = this.ruledOut(r);
+    return [...applied].filter((sid) => !placed.has(sid) && !earlier.has(sid) && this.student(sid)?.eligible_for_matching !== false)
+      .map((sid) => ({ user: this.db.users.find((u) => u.id === sid)!, school: this.student(sid)?.school ?? null })).filter((x) => x.user).sort((x, y) => x.user.name.localeCompare(y.user.name));
   }
   async publish(roundId: string) {
-    const a = this.need("admin"); const r = this.round(roundId); const ms = this.db.matches.filter((m) => m.round_id === roundId);
+    const a = this.need("admin"); const r = this.round(roundId);
+    if (!r.executed_at) throw new M.ApiError(409, "not_executed", `Run matching for Round ${r.number} before publishing its results.`); // REQ-PUB-1
+    if (r.published_at) throw new M.ApiError(409, "already_published", `Round ${r.number} results are already published.`);
+    const ms = this.db.matches.filter((m) => m.round_id === roundId);
     if (ms.some((m) => m.status === "proposed")) throw new M.ApiError(409, "approvals_pending", "Some matches are still awaiting supervisor approval.");
     const c = this.activeCycle()!; const nxt = c.rounds.find((x) => x.number === r.number + 1);
     const expires = nxt ? nxt.review_start : c.closing_date;
+    const offered = new Map<string, string>();
     for (const m of ms) if (m.status === "approved" || m.status === "reassigned") {
-      m.status = "published"; m.published_at = this.iso(); m.offer_expires_at = expires;
-      for (const x of this.db.applications) if (x.student_id === m.student_id && x.round_id === roundId) x.status = x.listing_id === m.listing_id ? "matched" : "unmatched";
+      m.status = "published"; m.published_at = this.iso(); m.offer_expires_at = expires; offered.set(m.student_id, m.listing_id);
     }
+    // every application still under review in this round gets its outcome, offer or not
+    const apps = this.db.applications.filter((x) => x.round_id === roundId && x.status === "submitted");
+    const unmatched = [...new Set(apps.filter((x) => !offered.has(x.student_id)).map((x) => x.student_id))].sort();
+    for (const x of apps) x.status = offered.get(x.student_id) === x.listing_id ? "matched" : "unmatched";
     r.published_at = this.iso(); r.status = "published";
     this.audit(a, "results_published", [roundId]);
-    this.notify(ms.filter((m) => m.status === "published").map((m) => m.student_id), "offer_received", "You have a match offer", `Respond by ${fmt(expires)}.`, "/my-applications");
+    this.notify(ms.filter((m) => m.status === "published").map((m) => m.student_id), "offer_received", "You have a match offer", `Respond by ${when(expires)}.`, "/my-applications");
+    // REQ-PUB-2: unmatched students (told they can retry only if they still may) and supervisors with matches
+    const ruledOut = this.ruledOut();
+    const canRetry = unmatched.filter((s) => !ruledOut.has(s) && this.student(s)?.eligible_for_matching !== false);
+    const carried = nxt && c.rollover_unmatched ? this.rollOver(apps, canRetry, nxt) : new Set<string>();
+    this.notify(canRetry.filter((s) => carried.has(s)), "results_published", `Round ${r.number} results are out`, `You were not matched to a project in Round ${r.number}. Your applications carry over to Round ${nxt?.number}, where you can reorder or withdraw them.`, "/my-applications");
+    this.notify(canRetry.filter((s) => !carried.has(s)), "results_published", `Round ${r.number} results are out`, `You were not matched to a project in Round ${r.number}.${nxt ? ` You can apply again in Round ${nxt.number}.` : ""}`, "/my-applications");
+    this.notify(unmatched.filter((s) => !canRetry.includes(s)), "results_published", `Round ${r.number} results are out`, `You were not matched to a project in Round ${r.number}.`, "/my-applications");
+    for (const sup of [...new Set(ms.map((m) => m.supervisor_id))].sort()) {
+      const n = ms.filter((m) => m.supervisor_id === sup && m.status === "published").length;
+      this.notify([sup], "results_published", `Round ${r.number} results are out`, n ? `${n === 1 ? "1 student on your listings was" : `${n} students on your listings were`} offered a place. They have until ${when(expires)} to respond.` : `No students on your listings were offered a place in Round ${r.number}.`, "/approvals");
+    }
     return this.summary(roundId);
   }
-  async auditLog() { this.need("admin"); return [...this.db.audit].sort((a, b) => b.timestamp.localeCompare(a.timestamp)); }
+  async auditLog() {
+    // mirror of audit_log and _describe: readable names for the affected records, entries themselves unchanged
+    this.need("admin");
+    const describe = (id: string) => {
+      const m = this.db.matches.find((x) => x.id === id); if (m) return `${m.student_name} → ${m.listing_title}`;
+      for (const c of this.db.cycles) { if (c.id === id) return c.academic_year; const r = c.rounds.find((x) => x.id === id); if (r) return `Round ${r.number}, ${c.academic_year}`; }
+      return this.db.users.find((x) => x.id === id)?.name ?? this.db.listings.find((x) => x.id === id)?.title ?? id;
+    };
+    return [...this.db.audit].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map((e) => ({ ...e, affected_labels: e.affected_records.map(describe) }));
+  }
   async supervisorMatches() { const u = this.need("supervisor"); return this.db.matches.filter((m) => m.supervisor_id === u.id); }
-  async decideMatch(id: string, approve: boolean) {
+  async decideMatch(id: string, approve: boolean, note?: string) {
     const u = this.need("supervisor"); const m = this.db.matches.find((m) => m.id === id);
     if (!m || m.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Match was not found.");
     const r = this.round(m.round_id);
     if (!r.executed_at) throw new M.ApiError(409, "not_executed", "Matching has not been run for this round yet.");
     if (r.published_at) throw new M.ApiError(409, "already_published", "Results are published; this match can no longer be changed.");
-    m.status = approve ? "approved" : "rejected"; m.supervisor_decided_at = this.iso(); return m;
+    m.status = approve ? "approved" : "rejected"; m.supervisor_decided_at = this.iso(); m.supervisor_note = note?.trim() || null;
+    if (!approve) // REQ-APPRV-2: recorded for admin review
+      this.notify(this.db.users.filter((x) => x.role === "admin" && x.status === "active").map((x) => x.id), "match_rejected", "A supervisor rejected a match",
+        `${u.name} rejected ${m.student_name} for ${m.listing_title}.${m.supervisor_note ? ` Reason: "${m.supervisor_note}"` : ""}`, `/rounds/${m.round_id}/matches`);
+    return m;
   }
   async myMatch() {
     const u = this.need("student");
@@ -517,12 +664,51 @@ export class MockClient implements ApiClient {
     const u = this.need("student"); const m = await this.myMatch();
     if (!m || m.status !== "published") throw new M.ApiError(409, "no_offer", "There is no open offer to respond to.");
     m.status = accept ? "accepted" : "declined"; m.student_responded_at = this.iso();
-    if (accept) { const l = this.db.listings.find((l) => l.id === m.listing_id); if (l) l.filled_slots += 1; }
-    else { const sp = this.student(u.id); if (sp) sp.eligible_for_matching = false; }
+    this.markIneligible(u.id); // REQ-OUTCOME-1 (placed) and REQ-OUTCOME-2 (declined)
+    if (accept) {
+      const l = this.db.listings.find((l) => l.id === m.listing_id); if (l) l.filled_slots += 1;
+      // use case 2-5: accepting closes the student's other open applications
+      for (const x of this.db.applications) if (x.student_id === u.id && x.status === "submitted") { x.status = "withdrawn"; x.preference_rank = null; }
+    }
     return m;
   }
   async tick() {
-    for (const m of this.db.matches) if (m.status === "published" && m.offer_expires_at && this.now.getTime() > Date.parse(m.offer_expires_at)) { m.status = "timed_out"; const sp = this.student(m.student_id); if (sp) sp.eligible_for_matching = false; }
+    // mirror of tick: advance round statuses, then time out lapsed offers (REQ-OUTCOME-3, 4)
+    const t = this.now.getTime();
+    for (const r of this.activeCycle()?.rounds ?? []) {
+      if (r.published_at) continue;
+      if (t >= Date.parse(r.application_start) && t <= Date.parse(r.application_end)) r.status = "application_window";
+      else if (t >= Date.parse(r.review_start) && t <= Date.parse(r.review_end)) r.status = "review_window";
+    }
+    this.expireOffers();
+  }
+  private rollOver(apps: M.Application[], students: string[], nxt: M.Round) {
+    // mirror of _roll_over (REQ-EXEC-3)
+    const already = this.db.applications.filter((x) => x.round_id === nxt.id && x.status === "submitted");
+    const carried = new Set<string>();
+    for (const sid of students) {
+      let rank = already.filter((x) => x.student_id === sid).length;
+      for (const x of apps.filter((y) => y.student_id === sid).sort((p, q) => (p.preference_rank ?? 99) - (q.preference_rank ?? 99))) {
+        const l = this.db.listings.find((y) => y.id === x.listing_id);
+        if (!l || l.status !== "published" || l.filled_slots >= l.available_slots || already.some((y) => y.student_id === sid && y.listing_id === x.listing_id)) continue;
+        this.db.applications.push({ ...x, id: this.id("app"), round_id: nxt.id, status: "submitted", preference_rank: ++rank, submitted_at: this.iso() });
+        carried.add(sid);
+      }
+    }
+    return carried;
+  }
+  async matchStudent(matchId: string): Promise<M.Applicant> {
+    // mirror of match_student (use case 3-3)
+    const u = this.need("supervisor"); const m = this.db.matches.find((x) => x.id === matchId);
+    if (!m) throw new M.ApiError(404, "not_found", "Match was not found.");
+    if (m.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
+    const su = this.db.users.find((x) => x.id === m.student_id), sp = this.student(m.student_id);
+    if (!su || !sp) throw new M.ApiError(404, "not_found", "Student was not found.");
+    const own = this.db.applications.find((x) => x.student_id === m.student_id && x.round_id === m.round_id && x.listing_id === m.listing_id);
+    const l = this.db.listings.find((x) => x.id === m.listing_id); const ranking = this.db.applicant_rankings[`${m.listing_id}:${m.round_id}`] ?? [];
+    return { application_id: own?.id ?? "", student: { id: su.id, name: su.name, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
+      statement: own?.statement ?? "", submitted_at: own?.submitted_at ?? m.published_at ?? su.created_at, documents: sp.documents.filter((d) => own?.document_ids.includes(d.id)),
+      meets_prerequisites: (l?.prerequisites ?? []).every((p) => sp.completed_modules.includes(p)), recommended: false, rank: own && ranking.includes(own.id) ? ranking.indexOf(own.id) + 1 : null };
   }
 
   // ---- debug clock (mirror of routers/debug.py; the mock has no env flag, the UI hides the widget instead)

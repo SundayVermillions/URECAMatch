@@ -26,7 +26,11 @@ export default function Audit() {
             <div key={e.id} className="grid grid-cols-[170px_180px_1fr_160px] gap-3 items-center px-4 py-2.5 border-b border-border last:border-b-0 text-[12.5px]">
               <span className="font-mono text-[12px] text-muted">{fmtDateTime(e.timestamp)}</span>
               <Pill tone={e.operation === "manual_reassignment" ? "warn" : e.operation === "user_deactivated" ? "bad" : "accent"}>{LABEL[e.operation]}</Pill>
-              <span><span className="font-mono text-[11.5px] text-faint mr-2">{e.affected_records.join(", ")}</span>{e.note}</span>
+              <span>
+                {/* Names to read; the record ids stay available on hover for tracing. */}
+                <span className="font-medium mr-2" title={e.affected_records.join(", ")}>{(e.affected_labels?.length ? e.affected_labels : e.affected_records).join(", ")}</span>
+                {e.note && <span className="text-muted">{e.note}</span>}
+              </span>
               <span className="font-semibold">{e.actor_name}</span>
             </div>
           ))}

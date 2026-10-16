@@ -638,7 +638,9 @@ export interface paths {
         get?: never;
         /**
          * Set Rounds
-         * @description Derive round dates from the configured window lengths (REQ-ROUND-1) and validate (REQ-ROUND-3).
+         * @description Build the rounds from their window lengths and optional start dates (REQ-ROUND-1, use case 1-2), and reject
+         *     rounds that overlap or fall outside the cycle (REQ-ROUND-3). A round without a start date opens 4 days after
+         *     the previous one ends; Round 1 opens when the pre-application window ends.
          */
         put: operations["set_rounds_admin_cycles__cycle_id__rounds_put"];
         post?: never;
@@ -674,6 +676,27 @@ export interface paths {
         };
         /** Summary */
         get: operations["summary_admin_rounds__round_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/rounds/{round_id}/unmatched": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unmatched Students
+         * @description REQ-REV-1 "Unmatched": students who applied in this round and hold no match, so an admin can assign them
+         *     (REQ-ASSIGN-1). The same set as the summary's unmatched count.
+         */
+        get: operations["unmatched_students_admin_rounds__round_id__unmatched_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -733,6 +756,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/matches/{match_id}/unassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unassign
+         * @description REQ-ASSIGN-3, use case 1-6 E1: take a student off a project so they can be assigned elsewhere.
+         *     The match is removed; the audit entry keeps who did it, when, and why (REQ-AUDIT-1).
+         */
+        post: operations["unassign_admin_matches__match_id__unassign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/rounds/{round_id}/publish": {
         parameters: {
             query?: never;
@@ -757,7 +801,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Audit Log */
+        /**
+         * Audit Log
+         * @description REQ-AUDIT-1, newest first. Entries are never changed (REQ-AUDIT-2); readable names for the records they
+         *     affect are added to the copies sent out.
+         */
         get: operations["audit_log_admin_audit_get"];
         put?: never;
         post?: never;
@@ -776,6 +824,27 @@ export interface paths {
         };
         /** Supervisor Matches */
         get: operations["supervisor_matches_supervisor_matches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supervisor/matches/{match_id}/student": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Match Student
+         * @description Use case 3-3 step 3: the profile and application of the student proposed for the supervisor's project.
+         *     `application_id` is empty when the URECA office assigned the student without an application.
+         */
+        get: operations["match_student_supervisor_matches__match_id__student_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1162,6 +1231,11 @@ export interface components {
             affected_records: string[];
             /** Note */
             note?: string | null;
+            /**
+             * Affected Labels
+             * @default []
+             */
+            affected_labels: string[];
         };
         /**
          * AuditOperation
@@ -1228,6 +1302,11 @@ export interface components {
              * @default []
              */
             rounds: components["schemas"]["Round"][];
+            /**
+             * Rollover Unmatched
+             * @default true
+             */
+            rollover_unmatched: boolean;
         };
         /** CycleCreate */
         CycleCreate: {
@@ -1438,6 +1517,8 @@ export interface components {
             original_listing_id?: string | null;
             /** Justification */
             justification?: string | null;
+            /** Supervisor Note */
+            supervisor_note?: string | null;
         };
         /** MatchDecision */
         MatchDecision: {
@@ -1692,6 +1773,8 @@ export interface components {
             application_days: number;
             /** Review Days */
             review_days: number;
+            /** Start Date */
+            start_date?: string | null;
         };
         /**
          * RoundStatus
@@ -3429,6 +3512,40 @@ export interface operations {
             };
         };
     };
+    unmatched_students_admin_rounds__round_id__unmatched_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                round_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserListItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     matches_admin_rounds__round_id__matches_get: {
         parameters: {
             query?: {
@@ -3541,6 +3658,44 @@ export interface operations {
             };
         };
     };
+    unassign_admin_matches__match_id__unassign_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     publish_admin_rounds__round_id__publish_post: {
         parameters: {
             query?: never;
@@ -3628,6 +3783,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Match"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_student_supervisor_matches__match_id__student_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Applicant"];
                 };
             };
             /** @description Validation Error */

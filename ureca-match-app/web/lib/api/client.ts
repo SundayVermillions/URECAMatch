@@ -53,10 +53,13 @@ export interface ApiClient {
   matches(roundId: string, status?: M.MatchStatus): Promise<M.Match[]>;
   reassign(matchId: string, body: M.ReassignRequest): Promise<M.Match>;
   manualAssign(roundId: string, body: M.ManualAssignRequest): Promise<M.Match>;
+  unassign(matchId: string, note: string): Promise<void>;
+  unmatched(roundId: string): Promise<M.UserListItem[]>;
   publish(roundId: string): Promise<M.RoundSummary>;
   auditLog(): Promise<M.AuditEntry[]>;
   supervisorMatches(): Promise<M.Match[]>;
   decideMatch(id: string, approve: boolean, note?: string): Promise<M.Match>;
+  matchStudent(matchId: string): Promise<M.Applicant>;
   myMatch(): Promise<M.Match | null>;
   respondToOffer(accept: boolean): Promise<M.Match>;
   tick(): Promise<void>;

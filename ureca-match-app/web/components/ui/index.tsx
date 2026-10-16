@@ -49,7 +49,7 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   reassigned: { label: "Reassigned", tone: "warn" }, published: { label: "Offer sent", tone: "accent" }, timed_out: { label: "Timed out", tone: "bad" },
   active: { label: "Active", tone: "good" }, inactive: { label: "Inactive", tone: "neutral" }, pending_verification: { label: "Unverified", tone: "warn" },
   scheduled: { label: "Scheduled", tone: "neutral" }, application_window: { label: "Applications open", tone: "accent" }, review_window: { label: "Review window", tone: "accent" },
-  awaiting_publication: { label: "Awaiting publication", tone: "warn" }, completed: { label: "Completed", tone: "good" },
+  awaiting_publication: { label: "Awaiting publication", tone: "warn" }, ready_for_matching: { label: "Ready for matching", tone: "warn" }, completed: { label: "Completed", tone: "good" },
   draft: { label: "Draft", tone: "neutral" }, closed: { label: "Closed", tone: "neutral" },
 };
 /** `kind` disambiguates words shared by several entities: "published" is "Offer sent" for a match but "Published" for a round or listing. */

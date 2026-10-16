@@ -251,6 +251,7 @@ class Cycle(BaseModel):
     pre_application_days: int
     status: CycleStatus
     rounds: list[Round] = []
+    rollover_unmatched: bool = True  # REQ-EXEC-3: unmatched students' applications carry into the next round
 
 
 class CycleCreate(BaseModel):
@@ -270,6 +271,7 @@ class RoundSpec(BaseModel):
     number: int = Field(ge=1, le=3)
     application_days: int = Field(ge=1, le=14)
     review_days: int = Field(ge=1, le=7)
+    start_date: datetime | None = None  # use case 1-2: the admin picks the start; empty means 4 days after the last round
 
 
 class RoundsUpdate(BaseModel):
@@ -449,6 +451,7 @@ class Match(BaseModel):
     student_responded_at: datetime | None = None
     original_listing_id: str | None = None
     justification: str | None = None
+    supervisor_note: str | None = None  # the supervisor's reason, kept for admin review (REQ-APPRV-2)
 
 
 class RoundSummary(BaseModel):
@@ -484,6 +487,7 @@ class AuditEntry(BaseModel):
     timestamp: datetime
     affected_records: list[str] = []
     note: str | None = None
+    affected_labels: list[str] = []  # readable names for affected_records, added when the log is read; not stored
 
 
 # ---------------------------------------------------------------- notifications and dashboards

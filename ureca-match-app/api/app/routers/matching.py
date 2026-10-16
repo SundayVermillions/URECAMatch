@@ -11,6 +11,9 @@ from fastapi import APIRouter, Header
 from app.deps import AdminUser, SettingsDep, StoreDep, StudentUser, SupervisorUser, current_user
 from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
+    AccountStatus,
+    Applicant,
+    ApplicantStudent,
     ApplicationStatus,
     AuditEntry,
     AuditOperation,
@@ -25,10 +28,12 @@ from app.models import (
     Role,
     RoundStatus,
     RoundSummary,
+    UserListItem,
 )
 from app.services.audit import audit
 from app.services.matching.algorithm import ListingPrefs, StudentPrefs, match
 from app.services.notify import notify
+from app.services.windows import when
 
 router = APIRouter(tags=["matching"])
 
@@ -40,6 +45,24 @@ def _round(store, round_id: str):
     return r
 
 
+# A match in one of these states holds a slot until the student accepts (then it is in filled_slots) or it ends.
+HOLDS_SLOT = (MatchStatus.proposed, MatchStatus.approved, MatchStatus.reassigned, MatchStatus.published)
+
+
+def _open_slots(store, lst) -> int:
+    """Slots nobody holds: accepted students are counted in filled_slots, pending matches and open offers hold one each."""
+    held = sum(1 for m in store.matches if m.listing_id == lst.id and m.status in HOLDS_SLOT)
+    return max(lst.available_slots - lst.filled_slots - held, 0)
+
+
+def _ruled_out(store, before=None) -> set[str]:
+    """Students this cycle's matching must skip: anyone with a match in the cycle that is not a supervisor rejection,
+    i.e. placed, holding an offer, or declined or timed out (REQ-OUTCOME-2, 4). With `before` (a round), only
+    matches from earlier rounds count, for that round's summary."""
+    rounds = {x.id for x in (store.cycle.rounds if store.cycle else []) if before is None or x.number < before.number}
+    return {m.student_id for m in store.matches if m.round_id in rounds and m.status != MatchStatus.rejected}
+
+
 # ------------------------------------------------------------------ admin
 
 
@@ -48,25 +71,28 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
     r = _round(store, round_id)
     now = settings.now()
     if now <= r.review_end:  # REQ-EXEC-1
-        raise conflict("review_open", f"Matching can run after the review window closes on {r.review_end:%d %b}.")
+        raise conflict("review_open", f"Matching can run after the review window closes on {when(r.review_end)}.")
     if r.executed_at is not None:  # REQ-EXEC-2
         raise conflict("already_executed", "Matching has already been run for this round.")
-    apps = [a for a in store.applications if a.round_id == round_id and a.status == ApplicationStatus.submitted]
+    _expire_offers(store, now)  # do not wait for the daily cron: a lapsed offer frees its slot for this run
+    apps = [a for a in store.applications_for(round_id=round_id) if a.status == ApplicationStatus.submitted]
+    ruled_out = _ruled_out(store)
     students: dict[str, list[tuple[int, str]]] = {}
     for a in apps:
+        if a.student_id in ruled_out:
+            continue  # already placed, holding an offer, or declined / timed out this cycle
         sp = store.student(a.student_id)
         if sp and not sp.eligible_for_matching:
             continue  # excluded: declined or timed out earlier (REQ-OUTCOME-2, 4)
         students.setdefault(a.student_id, []).append((a.preference_rank or 99, a.listing_id))
     s_prefs = [StudentPrefs(sid, [lid for _, lid in sorted(v)]) for sid, v in students.items()]
     l_prefs = []
-    for lst in store.listings:
+    app_by_id = {a.id: a for a in apps}
+    for lst in store.all_listings():
         if lst.status != ListingStatus.published:
             continue
-        ranked_apps = store.applicant_rankings.get(f"{lst.id}:{round_id}", [])
-        app_by_id = {a.id: a for a in apps}
-        ranked_students = [app_by_id[aid].student_id for aid in ranked_apps if aid in app_by_id]
-        l_prefs.append(ListingPrefs(lst.id, max(lst.available_slots - lst.filled_slots, 0), ranked_students))
+        ranked_students = [app_by_id[aid].student_id for aid in store.ranking(lst.id, round_id) if aid in app_by_id]
+        l_prefs.append(ListingPrefs(lst.id, _open_slots(store, lst), ranked_students))
     result = match(s_prefs, l_prefs)
     for sid, lid in result.pairs.items():
         lst = store.listing(lid)
@@ -89,7 +115,7 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
     audit(store, admin, AuditOperation.matching_executed, [round_id], now, f"{len(result.pairs)} matched")  # REQ-AUDIT-1
     notify(
         store,
-        sorted({m.supervisor_id for m in store.matches if m.round_id == round_id}),
+        sorted({m.supervisor_id for m in store.matches if m.round_id == round_id and m.status == MatchStatus.proposed}),
         NotificationEvent.matches_proposed,
         "Proposed matches ready for approval",
         f"Round {r.number} matches await your decision.",
@@ -103,31 +129,48 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
 def summary(round_id: str, admin: AdminUser, store: StoreDep) -> RoundSummary:
     r = _round(store, round_id)
     ms = [m for m in store.matches if m.round_id == round_id]
-    applied = {a.student_id for a in store.applications if a.round_id == round_id and a.status == ApplicationStatus.submitted}
-    excluded = sum(1 for sid in applied if (sp := store.student(sid)) and not sp.eligible_for_matching)
+    applied, placed, excluded = _round_sets(store, r, ms)
     prefs = [m.preference_rank for m in ms if m.preference_rank]
-    decided = [
-        m
-        for m in ms
-        if m.status
-        in (
-            MatchStatus.approved,
-            MatchStatus.reassigned,
-            MatchStatus.published,
-            MatchStatus.accepted,
-            MatchStatus.declined,
-            MatchStatus.timed_out,
-        )
-    ]
+    decided = [m for m in ms if m.status != MatchStatus.proposed]  # a rejection is a decision too (REQ-APPRV-2)
     return RoundSummary(
         round=r,
         matched=len(ms),
-        unmatched=max(len(applied) - excluded - len(ms), 0),
-        excluded=excluded,
+        unmatched=len(applied - placed - excluded),
+        excluded=len(excluded),
         avg_preference=round(sum(prefs) / len(prefs), 2) if prefs else None,
         approvals_done=len(decided),
         approvals_total=len(ms),
     )
+
+
+def _round_sets(store, r, ms) -> tuple[set[str], set[str], set[str]]:
+    """Students who applied in the round, those it placed (any match but a rejection), and those excluded because an
+    earlier round placed them or they declined or timed out. Applications already decided by publish still count."""
+    applied = {
+        a.student_id
+        for a in store.applications_for(round_id=r.id)
+        if a.status in (ApplicationStatus.submitted, ApplicationStatus.matched, ApplicationStatus.unmatched)
+    }
+    placed = {m.student_id for m in ms if m.status != MatchStatus.rejected}
+    earlier = _ruled_out(store, before=r)
+    excluded = {
+        sid for sid in applied - placed if sid in earlier or ((sp := store.student(sid)) and not sp.eligible_for_matching)
+    }
+    return applied, placed, excluded
+
+
+@router.get("/admin/rounds/{round_id}/unmatched", response_model=list[UserListItem])
+def unmatched_students(round_id: str, admin: AdminUser, store: StoreDep) -> list[UserListItem]:
+    """REQ-REV-1 "Unmatched": students who applied in this round and hold no match, so an admin can assign them
+    (REQ-ASSIGN-1). The same set as the summary's unmatched count."""
+    r = _round(store, round_id)
+    applied, placed, excluded = _round_sets(store, r, [m for m in store.matches if m.round_id == round_id])
+    out = []
+    for sid in applied - placed - excluded:
+        if (u := store.user(sid)) is not None:
+            sp = store.student(sid)
+            out.append(UserListItem(user=u, school=sp.school if sp else None))
+    return sorted(out, key=lambda x: x.user.name)
 
 
 @router.get("/admin/rounds/{round_id}/matches", response_model=list[Match])
@@ -142,59 +185,191 @@ def reassign(match_id: str, body: ReassignRequest, admin: AdminUser, store: Stor
         raise not_found("Match")
     if m.status in (MatchStatus.published, MatchStatus.accepted, MatchStatus.declined, MatchStatus.timed_out):
         raise conflict("already_published", "Published matches cannot be reassigned.")
-    lst = store.listing(body.listing_id)
-    if lst is None or lst.filled_slots >= lst.available_slots:
-        raise invalid("no_slot", "That project has no open slot.", "listing_id")
+    r, now = _round(store, m.round_id), settings.now()
+    _expire_offers(store, now)  # a lapsed offer must not hold the slot
+    lst = _assignable_listing(store, body.listing_id)
+    if lst.id == m.listing_id:
+        raise invalid("same_project", "The student is already matched to this project. Choose a different one.", "listing_id")
+    deadline = _late_offer_deadline(store, r, now)
     m.original_listing_id = m.original_listing_id or m.listing_id
     m.listing_id, m.listing_title, m.supervisor_id, m.supervisor_name = lst.id, lst.title, lst.supervisor_id, lst.supervisor_name
     m.status, m.justification = MatchStatus.reassigned, body.justification  # REQ-ASSIGN-1, 2
-    audit(store, admin, AuditOperation.manual_reassignment, [m.id], settings.now(), body.justification)
+    audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
+    _offer_now(store, m, deadline, now)
     return m
+
+
+def _offer_deadline(store, r):
+    """REQ-OUTCOME-3: an offer lapses when the next round's review window starts, or when the cycle closes."""
+    nxt = next((x for x in store.cycle.rounds if x.number == r.number + 1), None)
+    return nxt.review_start if nxt else store.cycle.closing_date
+
+
+def _late_offer_deadline(store, r, now):
+    """For an admin assignment in a round that is already published: there is no later publish step, so the match
+    becomes an offer straight away. Returns its deadline, or None if the round is not published yet."""
+    if r.published_at is None:
+        return None
+    for deadline in (_offer_deadline(store, r), store.cycle.closing_date):
+        if deadline > now:
+            return deadline
+    raise conflict("cycle_closed", "The cycle has closed, so no new offers can be made.")
+
+
+def _offer_now(store, m: Match, deadline, now) -> None:
+    if deadline is None:
+        return  # published with the rest of the round
+    m.status, m.published_at, m.offer_expires_at = MatchStatus.published, now, deadline
+    notify(
+        store,
+        [m.student_id],
+        NotificationEvent.offer_received,
+        "You have a match offer",
+        f"Respond by {when(deadline)}.",
+        now,
+        "/my-applications",
+    )
+
+
+def _expire_offers(store, now) -> None:
+    """REQ-OUTCOME-3, 4: offers past their deadline time out. Run by the cron and before anything that counts slots."""
+    for m in store.matches:
+        if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at:
+            m.status = MatchStatus.timed_out
+            _mark_ineligible(store, m.student_id)
+
+
+def _assignable_listing(store, listing_id: str):
+    """A published project with a slot nobody holds (use case 1-4: reassignment must never over-allocate)."""
+    lst = store.listing(listing_id)
+    if lst is None or lst.status != ListingStatus.published:
+        raise invalid("listing_unavailable", "Choose a published project.", "listing_id")
+    if _open_slots(store, lst) == 0:
+        raise invalid("no_slot", "That project has no open slot.", "listing_id")
+    return lst
 
 
 @router.post("/admin/rounds/{round_id}/assign", response_model=Match, status_code=201)
 def manual_assign(round_id: str, body: ManualAssignRequest, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Match:
-    _round(store, round_id)
+    r, now = _round(store, round_id), settings.now()
+    _expire_offers(store, now)  # a lapsed offer must not hold the slot or count as the student's project
+    student = store.user(body.student_id)
+    if student is None or student.role != Role.student:
+        raise invalid("unknown_student", "Choose a student account.", "student_id")
     if any(
         m.student_id == body.student_id and m.status not in (MatchStatus.rejected, MatchStatus.declined, MatchStatus.timed_out)
         for m in store.matches
     ):  # REQ-ASSIGN-3
         raise conflict("already_assigned", "This student already has a project. Unassign it first.")
-    lst = store.listing(body.listing_id)
-    if lst is None:
-        raise not_found("Project")
-    m = Match(
-        id=store.next_id("mt"),
-        round_id=round_id,
-        student_id=body.student_id,
-        student_name=store.user(body.student_id).name,
-        listing_id=lst.id,
-        listing_title=lst.title,
-        supervisor_id=lst.supervisor_id,
-        supervisor_name=lst.supervisor_name,
-        status=MatchStatus.reassigned,
-        justification=body.justification,
-    )
-    store.matches.append(m)
-    audit(store, admin, AuditOperation.manual_reassignment, [m.id], settings.now(), body.justification)
+    lst = _assignable_listing(store, body.listing_id)
+    deadline = _late_offer_deadline(store, r, now)
+    own = next((a for a in store.applications_for(student_id=body.student_id, round_id=round_id) if a.listing_id == lst.id), None)
+    placement = {
+        "listing_id": lst.id,
+        "listing_title": lst.title,
+        "supervisor_id": lst.supervisor_id,
+        "supervisor_name": lst.supervisor_name,
+        "status": MatchStatus.reassigned,
+        "justification": body.justification,
+        "preference_rank": own.preference_rank if own else None,
+    }
+    # match_results keeps one row per student per round, so an earlier rejected or declined row is reused.
+    m = next((m for m in store.matches if m.round_id == round_id and m.student_id == body.student_id), None)
+    if m is not None:
+        m.original_listing_id = m.original_listing_id or m.listing_id
+        for k, v in placement.items():
+            setattr(m, k, v)
+        m.supervisor_decided_at = m.published_at = m.offer_expires_at = m.student_responded_at = None
+    else:
+        m = Match(id=store.next_id("mt"), round_id=round_id, student_id=body.student_id, student_name=student.name, **placement)
+        store.matches.append(m)
+    audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
+    _offer_now(store, m, deadline, now)
     return m
+
+
+@router.post("/admin/matches/{match_id}/unassign", response_model=Ok)
+def unassign(match_id: str, body: MatchDecision, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Ok:
+    """REQ-ASSIGN-3, use case 1-6 E1: take a student off a project so they can be assigned elsewhere.
+    The match is removed; the audit entry keeps who did it, when, and why (REQ-AUDIT-1)."""
+    m = next((m for m in store.matches if m.id == match_id), None)
+    if m is None:
+        raise not_found("Match")
+    reason = (body.note or "").strip()
+    if len(reason) < 10:
+        raise invalid("justification_required", "Give a reason of at least 10 characters.", "note")
+    if m.status in (MatchStatus.rejected, MatchStatus.declined, MatchStatus.timed_out):
+        raise conflict("not_assigned", "This match no longer places the student, so there is nothing to unassign.")
+    now, was = settings.now(), m.status
+    if was == MatchStatus.accepted:  # the student was registered: free the slot
+        lst = store.listing(m.listing_id)
+        if lst and lst.filled_slots > 0:
+            lst.filled_slots -= 1
+            store.save_listing(lst)
+    if was in (MatchStatus.published, MatchStatus.accepted):  # publish marked the offered application "matched"
+        won = [
+            a
+            for a in store.applications_for(student_id=m.student_id, round_id=m.round_id)
+            if a.listing_id == m.listing_id and a.status == ApplicationStatus.matched
+        ]
+        for a in won:
+            a.status = ApplicationStatus.unmatched
+        store.save_applications(*won)
+    store.matches.remove(m)
+    if was == MatchStatus.accepted and m.student_id not in _ruled_out(store):  # back in the pool
+        sp = store.student(m.student_id)
+        if sp and not sp.eligible_for_matching:
+            sp.eligible_for_matching = True
+            store.save_student(sp)
+    note = f"Unassigned from {m.listing_title}: {reason}"
+    audit(store, admin, AuditOperation.manual_reassignment, [m.id, m.student_id], now, note)
+    if was in (MatchStatus.published, MatchStatus.accepted):
+        notify(
+            store,
+            [m.student_id],
+            NotificationEvent.match_rejected,
+            "Your project placement was withdrawn",
+            f"The URECA office removed your match to {m.listing_title}. Reason: {reason}",
+            now,
+            "/my-applications",
+        )
+    notify(
+        store,
+        [m.supervisor_id],
+        NotificationEvent.match_rejected,
+        "A match on your project was removed",
+        f"The URECA office removed {m.student_name} from {m.listing_title}.",
+        now,
+        "/approvals",
+    )
+    return Ok()
 
 
 @router.post("/admin/rounds/{round_id}/publish", response_model=RoundSummary)
 def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> RoundSummary:
     r = _round(store, round_id)
+    if r.executed_at is None:  # REQ-PUB-1: there is nothing approved to publish before matching runs
+        raise conflict("not_executed", f"Run matching for Round {r.number} before publishing its results.")
+    if r.published_at is not None:  # publish once, or every student and supervisor is notified again
+        raise conflict("already_published", f"Round {r.number} results are already published.")
     ms = [m for m in store.matches if m.round_id == round_id]
     if any(m.status == MatchStatus.proposed for m in ms):  # REQ-PUB-1
         raise conflict("approvals_pending", "Some matches are still awaiting supervisor approval.")
     now = settings.now()
     nxt = next((x for x in store.cycle.rounds if x.number == r.number + 1), None)
-    expires = nxt.review_start if nxt else store.cycle.closing_date  # REQ-OUTCOME-3 deadline
+    expires = _offer_deadline(store, r)  # REQ-OUTCOME-3
+    offered: dict[str, str] = {}  # student id -> listing id
     for m in ms:
         if m.status in (MatchStatus.approved, MatchStatus.reassigned):
             m.status, m.published_at, m.offer_expires_at = MatchStatus.published, now, expires
-            for a in store.applications:
-                if a.student_id == m.student_id and a.round_id == round_id:
-                    a.status = ApplicationStatus.matched if a.listing_id == m.listing_id else ApplicationStatus.unmatched
+            offered[m.student_id] = m.listing_id
+    # Every application still under review in this round gets its outcome, offer or not, so none carries
+    # into the next round as if it were still live.
+    apps = [a for a in store.applications_for(round_id=round_id) if a.status == ApplicationStatus.submitted]
+    unmatched = sorted({a.student_id for a in apps if a.student_id not in offered})
+    for a in apps:
+        a.status = ApplicationStatus.matched if offered.get(a.student_id) == a.listing_id else ApplicationStatus.unmatched
+    store.save_applications(*apps)
     r.published_at, r.status = now, RoundStatus.published
     audit(store, admin, AuditOperation.results_published, [round_id], now)
     notify(
@@ -202,34 +377,43 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
         [m.student_id for m in ms if m.status == MatchStatus.published],
         NotificationEvent.offer_received,
         "You have a match offer",
-        f"Respond by {expires:%d %b}.",
+        f"Respond by {when(expires)}.",
         now,
         "/my-applications",
     )  # REQ-PUB-2
     # REQ-PUB-2 "all affected users": students who applied and got no offer, and supervisors with matches.
-    unmatched = sorted(
-        {a.student_id for a in store.applications if a.round_id == round_id and a.status == ApplicationStatus.submitted}
-    )
-    next_step = f" You can apply again in Round {nxt.number}." if nxt else ""
-    notify(
-        store,
-        unmatched,
-        NotificationEvent.results_published,
-        f"Round {r.number} results are out",
-        f"You were not matched to a project in Round {r.number}.{next_step}",
-        now,
-        "/my-applications",
-    )
+    # Only students who may still take part are told they can apply again (REQ-OUTCOME-2, 4).
+    ruled_out = _ruled_out(store)
+    can_retry = [s for s in unmatched if s not in ruled_out and ((sp := store.student(s)) is None or sp.eligible_for_matching)]
+    carried = _roll_over(store, apps, can_retry, nxt, now) if nxt and store.cycle.rollover_unmatched else set()
+    later = f"Round {nxt.number}" if nxt else ""
+    for group, next_step in (
+        (
+            [s for s in can_retry if s in carried],
+            f" Your applications carry over to {later}, where you can reorder or withdraw them.",
+        ),
+        ([s for s in can_retry if s not in carried], f" You can apply again in {later}." if nxt else ""),
+        ([s for s in unmatched if s not in can_retry], ""),
+    ):
+        notify(
+            store,
+            group,
+            NotificationEvent.results_published,
+            f"Round {r.number} results are out",
+            f"You were not matched to a project in Round {r.number}.{next_step}",
+            now,
+            "/my-applications",
+        )
     for sup_id in sorted({m.supervisor_id for m in ms}):
-        offered = sum(1 for m in ms if m.supervisor_id == sup_id and m.status == MatchStatus.published)
-        students = "1 student on your listings was" if offered == 1 else f"{offered} students on your listings were"
+        n_offered = sum(1 for m in ms if m.supervisor_id == sup_id and m.status == MatchStatus.published)
+        students = "1 student on your listings was" if n_offered == 1 else f"{n_offered} students on your listings were"
         notify(
             store,
             [sup_id],
             NotificationEvent.results_published,
             f"Round {r.number} results are out",
-            f"{students} offered a place. They have until {expires:%d %b} to respond."
-            if offered
+            f"{students} offered a place. They have until {when(expires)} to respond."
+            if n_offered
             else f"No students on your listings were offered a place in Round {r.number}.",
             now,
             "/approvals",
@@ -237,11 +421,64 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
     return summary(round_id, admin, store)
 
 
+def _roll_over(store, apps, students: list[str], nxt, now) -> set[str]:
+    """REQ-EXEC-3: copy each unmatched, eligible student's applications into the next round in their order, skipping
+    projects that are no longer published, that are fully allocated (as apply() refuses them), or that the student
+    already applied to there. Open projects and slots freed by declines carry over on their own.
+    Returns the students whose applications were carried."""
+    already = {
+        (a.student_id, a.listing_id): a
+        for a in store.applications_for(round_id=nxt.id)
+        if a.status == ApplicationStatus.submitted
+    }
+    copies = []
+    for sid in students:
+        rank = sum(1 for s, _ in already if s == sid)
+        for a in sorted((a for a in apps if a.student_id == sid), key=lambda a: a.preference_rank or 99):
+            lst = store.listing(a.listing_id)
+            full = lst is not None and lst.filled_slots >= lst.available_slots
+            if lst is None or lst.status != ListingStatus.published or full or (sid, a.listing_id) in already:
+                continue
+            rank += 1
+            copies.append(
+                a.model_copy(
+                    update={
+                        "id": store.next_id("app"),
+                        "round_id": nxt.id,
+                        "status": ApplicationStatus.submitted,
+                        "preference_rank": rank,
+                        "submitted_at": now,
+                    }
+                )
+            )
+    store.save_applications(*copies)
+    return {a.student_id for a in copies}
+
+
 @router.get("/admin/audit", response_model=list[AuditEntry])
 def audit_log(admin: AdminUser, store: StoreDep, operation: AuditOperation | None = None) -> list[AuditEntry]:
-    return sorted(
+    """REQ-AUDIT-1, newest first. Entries are never changed (REQ-AUDIT-2); readable names for the records they
+    affect are added to the copies sent out."""
+    entries = sorted(
         (e for e in store.audit if operation is None or e.operation == operation), key=lambda e: e.timestamp, reverse=True
     )
+    return [e.model_copy(update={"affected_labels": [_describe(store, rid) for rid in e.affected_records]}) for e in entries]
+
+
+def _describe(store, record_id: str) -> str:
+    """What an admin reads for a record id: "student → project" for a match, a round, a cycle, a person or a project."""
+    if (m := next((m for m in store.matches if m.id == record_id), None)) is not None:
+        return f"{m.student_name} → {m.listing_title}"
+    for c in store.cycles:
+        if c.id == record_id:
+            return c.academic_year
+        if (r := next((r for r in c.rounds if r.id == record_id), None)) is not None:
+            return f"Round {r.number}, {c.academic_year}"
+    if (u := store.user(record_id)) is not None:
+        return u.name
+    if (lst := store.listing(record_id)) is not None:
+        return lst.title
+    return record_id  # removed since (an unassigned match): the note says what it was
 
 
 # ------------------------------------------------------------------ supervisor
@@ -250,6 +487,41 @@ def audit_log(admin: AdminUser, store: StoreDep, operation: AuditOperation | Non
 @router.get("/supervisor/matches", response_model=list[Match])
 def supervisor_matches(user: SupervisorUser, store: StoreDep) -> list[Match]:
     return [m for m in store.matches if m.supervisor_id == user.id]
+
+
+@router.get("/supervisor/matches/{match_id}/student", response_model=Applicant)
+def match_student(match_id: str, user: SupervisorUser, store: StoreDep) -> Applicant:
+    """Use case 3-3 step 3: the profile and application of the student proposed for the supervisor's project.
+    `application_id` is empty when the URECA office assigned the student without an application."""
+    m = next((m for m in store.matches if m.id == match_id), None)
+    if m is None:
+        raise not_found("Match")
+    if m.supervisor_id != user.id:
+        raise forbidden()
+    u, sp = store.user(m.student_id), store.student(m.student_id)
+    if u is None or sp is None:
+        raise not_found("Student")
+    mine = store.applications_for(student_id=m.student_id, round_id=m.round_id)
+    own = next((a for a in mine if a.listing_id == m.listing_id), None)
+    lst = store.listing(m.listing_id)
+    ranking = store.ranking(m.listing_id, m.round_id)
+    return Applicant(
+        application_id=own.id if own else "",
+        student=ApplicantStudent(
+            id=u.id,
+            name=u.name,
+            school=sp.school,
+            year_of_study=sp.year_of_study,
+            cgpa=sp.cgpa,
+            completed_modules=sp.completed_modules,
+            research_interests=sp.research_interests,
+        ),
+        statement=own.statement if own else "",
+        submitted_at=own.submitted_at if own else (m.published_at or u.created_at),
+        documents=[d for d in sp.documents if own and d.id in own.document_ids],
+        meets_prerequisites=all(p in sp.completed_modules for p in lst.prerequisites) if lst else True,
+        rank=ranking.index(own.id) + 1 if own and own.id in ranking else None,
+    )
 
 
 def _decide(match_id: str, user, store, settings, approve: bool, note: str | None) -> Match:
@@ -263,8 +535,21 @@ def _decide(match_id: str, user, store, settings, approve: bool, note: str | Non
         raise conflict("not_executed", "Matching has not been run for this round yet.")
     if r.published_at is not None:  # REQ-APPRV-3
         raise conflict("already_published", "Results are published; this match can no longer be changed.")
+    now = settings.now()
     m.status = MatchStatus.approved if approve else MatchStatus.rejected  # REQ-APPRV-2: rejection frees the slot
-    m.supervisor_decided_at = settings.now()
+    m.supervisor_decided_at = now
+    m.supervisor_note = (note or "").strip() or None
+    if not approve:  # REQ-APPRV-2: recorded for admin review, and admins are told so they can reassign
+        reason = f' Reason: "{m.supervisor_note}"' if m.supervisor_note else ""
+        notify(
+            store,
+            [u.id for u in store.users if u.role == Role.admin and u.status == AccountStatus.active],
+            NotificationEvent.match_rejected,
+            "A supervisor rejected a match",
+            f"{user.name} rejected {m.student_name} for {m.listing_title}.{reason}",
+            now,
+            f"/rounds/{m.round_id}/matches",
+        )
     return m
 
 
@@ -298,13 +583,25 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     if m is None or m.status != MatchStatus.published:
         raise conflict("no_offer", "There is no open offer to respond to.")
     m.status, m.student_responded_at = MatchStatus.accepted, settings.now()  # REQ-OUTCOME-1
+    # In Supabase mode the store returns copies, so every change below is saved explicitly.
     lst = store.listing(m.listing_id)
     if lst:
         lst.filled_slots += 1
-    sp = store.student(user.id)
-    if sp:
-        sp.eligible_for_matching = False  # placed: exclude from later rounds (REQ-OUTCOME-1)
+        store.save_listing(lst)
+    _mark_ineligible(store, user.id)  # placed: exclude from later rounds (REQ-OUTCOME-1)
+    # Use case 2-5: accepting closes the student's other open applications.
+    others = [a for a in store.applications_for(student_id=user.id) if a.status == ApplicationStatus.submitted]
+    for a in others:
+        a.status, a.preference_rank = ApplicationStatus.withdrawn, None
+    store.save_applications(*others)
     return m
+
+
+def _mark_ineligible(store, student_id: str) -> None:
+    sp = store.student(student_id)
+    if sp and sp.eligible_for_matching:
+        sp.eligible_for_matching = False
+        store.save_student(sp)
 
 
 @router.post("/me/match/decline", response_model=Match)
@@ -313,9 +610,7 @@ def decline_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> 
     if m is None or m.status != MatchStatus.published:
         raise conflict("no_offer", "There is no open offer to respond to.")
     m.status, m.student_responded_at = MatchStatus.declined, settings.now()  # REQ-OUTCOME-2
-    sp = store.student(user.id)
-    if sp:
-        sp.eligible_for_matching = False
+    _mark_ineligible(store, user.id)
     return m
 
 
@@ -340,10 +635,5 @@ def tick(store: StoreDep, settings: SettingsDep, authorization: Annotated[str | 
                 r.status = RoundStatus.application_window
             elif r.review_start <= now <= r.review_end:
                 r.status = RoundStatus.review_window
-    for m in store.matches:
-        if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at:
-            m.status = MatchStatus.timed_out
-            sp = store.student(m.student_id)
-            if sp:
-                sp.eligible_for_matching = False
+    _expire_offers(store, now)
     return Ok()

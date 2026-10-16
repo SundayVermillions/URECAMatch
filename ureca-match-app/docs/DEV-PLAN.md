@@ -108,11 +108,11 @@ Stage 0
 - [ ] Tools installed, tests pass locally, first PR merged
 
 Stage 1
-- [ ] Rounds take explicit start dates; overlap and outside-cycle tests
-- [ ] CYCLE-1..3 tests; OUTCOME-1 withdraws others and marks ineligible
-- [ ] EXEC-3 rollover implemented with Ian's review; unassign endpoint; manual assign slot check
-- [ ] APPRV, PUB, REV, OUTCOME-3..4, AUDIT-1 tests; cron entry and tick on page load
-- [ ] Rounds, matches, approvals, audit screens complete; offer card on my-applications; all D rows `mock`
+- [x] Rounds take explicit start dates; overlap and outside-cycle tests
+- [x] CYCLE-1..3 tests; OUTCOME-1 withdraws others and marks ineligible
+- [ ] EXEC-3 rollover implemented with Ian's review; unassign endpoint; manual assign slot check (built and tested; waiting for Ian's review of the rollover)
+- [x] APPRV, PUB, REV, OUTCOME-3..4, AUDIT-1 tests; cron entry and tick on page load
+- [x] Rounds, matches, approvals, audit screens complete; offer card on my-applications; all D rows `mock`
 
 Stage 2
 - [ ] `SupabaseStore` cycle, round, match and audit methods implemented

@@ -10,7 +10,7 @@ import { homeFor, setSession } from "@/lib/session";
 
 const DEMO = [
   { id: "stu-1", label: "Student · Wei Ling Tan" },
-  { id: "stu-33", label: "Student with an offer · Kavya Nair" },
+  { id: "stu-33", label: "Student with an accepted offer · Divya Nair" },
   { id: "sup-1", label: "Supervisor · Prof. Marcus Chua" },
   { id: "adm-1", label: "Admin · Jonathan Teo" },
 ];
