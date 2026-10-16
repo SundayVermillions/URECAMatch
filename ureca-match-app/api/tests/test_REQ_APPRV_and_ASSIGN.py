@@ -159,3 +159,77 @@ def test_REQ_APPRV_2_rejection_reason_kept_and_admin_told(as_admin, monkeypatch,
     assert [n.event.value for n in told] == ["match_rejected"] and "Not a fit for the lab" in told[0].message
     summary = as_admin.get("/admin/rounds/rnd-2/summary").json()
     assert summary["approvals_done"] == 1  # a rejection counts as a decision
+
+
+# ---------------------------------------------------------------- REQ-REV-1 unmatched view, unassign, use case 3-3
+
+
+def test_REQ_REV_1_unmatched_list_matches_the_summary(as_admin, monkeypatch):
+    _execute_r2(as_admin, monkeypatch)
+    unmatched = as_admin.get("/admin/rounds/rnd-2/unmatched").json()
+    summary = as_admin.get("/admin/rounds/rnd-2/summary").json()
+    assert len(unmatched) == summary["unmatched"] > 0
+    matched = {m["student_id"] for m in as_admin.get("/admin/rounds/rnd-2/matches").json()}
+    assert not {u["user"]["id"] for u in unmatched} & matched
+
+
+def test_REQ_ASSIGN_3_unassign_needs_a_reason(as_admin, monkeypatch):
+    m = _execute_r2(as_admin, monkeypatch)[0]
+    r = as_admin.post(f"/admin/matches/{m['id']}/unassign", json={"note": "short"})
+    assert r.status_code == 422 and r.json()["code"] == "justification_required"
+
+
+def test_REQ_ASSIGN_3_unassign_then_assign_elsewhere(as_admin, monkeypatch, fresh_store):
+    m = _execute_r2(as_admin, monkeypatch)[0]
+    r = as_admin.post(f"/admin/matches/{m['id']}/unassign", json={"note": "Student asked to change project"})
+    assert r.status_code == 200
+    assert all(x.id != m["id"] for x in fresh_store.matches)
+    audit = as_admin.get("/admin/audit", params={"operation": "manual_reassignment"}).json()[0]
+    assert m["id"] in audit["affected_records"] and "Student asked to change project" in audit["note"]
+    assert _assign(as_admin, m["student_id"], "lst-2").status_code == 201  # no longer "already assigned"
+
+
+def test_REQ_ASSIGN_3_unassigning_an_accepted_student_frees_the_slot(as_admin, client_for, monkeypatch, fresh_store):
+    lst = fresh_store.listing("lst-1")
+    filled = lst.filled_slots
+    assert fresh_store.student("stu-33").eligible_for_matching
+    fresh_store.student("stu-33").eligible_for_matching = False  # what accepting sets
+    r = as_admin.post("/admin/matches/mt-1/unassign", json={"note": "Student left the university"})  # mt-1 is accepted
+    assert r.status_code == 200
+    assert lst.filled_slots == filled - 1
+    assert fresh_store.student("stu-33").eligible_for_matching is True  # back in the pool
+    assert any(n.event.value == "match_rejected" for n in fresh_store.notifications_for("stu-33"))
+
+
+def test_REQ_ASSIGN_3_declined_match_cannot_be_unassigned(as_admin):
+    r = as_admin.post("/admin/matches/mt-6/unassign", json={"note": "Nothing to take back here"})  # mt-6 was declined
+    assert r.status_code == 409 and r.json()["code"] == "not_assigned"
+
+
+def test_REQ_ASSIGN_1_assign_reuses_a_rejected_row_in_the_round(as_admin, monkeypatch, client_for, fresh_store):
+    m = _execute_r2(as_admin, monkeypatch)[0]
+    client_for(m["supervisor_id"]).post(f"/supervisor/matches/{m['id']}/reject", json={})
+    target = next(x.id for x in fresh_store.listings if x.status.value == "published" and x.id not in (m["listing_id"], "lst-1"))
+    r = _assign(as_admin, m["student_id"], target)
+    assert r.status_code == 201 and r.json()["id"] == m["id"] and r.json()["original_listing_id"] == m["listing_id"]
+    assert len([x for x in fresh_store.matches if x.round_id == "rnd-2" and x.student_id == m["student_id"]]) == 1
+
+
+def test_REQ_APPRV_supervisor_sees_the_student_behind_a_match(as_admin, monkeypatch, client_for):
+    m = _execute_r2(as_admin, monkeypatch)[0]
+    r = client_for(m["supervisor_id"]).get(f"/supervisor/matches/{m['id']}/student")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["student"]["id"] == m["student_id"] and body["application_id"] and len(body["statement"]) >= 50
+    other = "sup-2" if m["supervisor_id"] != "sup-2" else "sup-1"
+    assert client_for(other).get(f"/supervisor/matches/{m['id']}/student").status_code == 403
+
+
+def test_REQ_ASSIGN_3_unassigning_an_offer_resets_its_application(as_admin, monkeypatch, client_for, fresh_store):
+    for m in _execute_r2(as_admin, monkeypatch):
+        client_for(m["supervisor_id"]).post(f"/supervisor/matches/{m['id']}/approve", json={})
+    assert as_admin.post("/admin/rounds/rnd-2/publish").status_code == 200
+    m = next(x for x in fresh_store.matches if x.round_id == "rnd-2" and x.status.value == "published")
+    assert as_admin.post(f"/admin/matches/{m.id}/unassign", json={"note": "Placed through another scheme"}).status_code == 200
+    app = next(a for a in fresh_store.applications_for(student_id=m.student_id, round_id="rnd-2") if a.listing_id == m.listing_id)
+    assert app.status.value == "unmatched"  # no longer "matched" to a project they do not hold

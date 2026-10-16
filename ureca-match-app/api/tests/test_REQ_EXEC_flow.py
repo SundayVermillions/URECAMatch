@@ -86,3 +86,50 @@ def test_REQ_OUTCOME_2_declined_or_placed_students_are_not_matched_again(as_admi
     _set_now(monkeypatch, datetime(2026, 9, 12, 9, tzinfo=UTC))
     assert as_admin.post("/admin/rounds/rnd-2/execute").status_code == 200
     assert not [m for m in fresh_store.matches if m.round_id == "rnd-2" and m.student_id in ("stu-33", "stu-38")]
+
+
+# ---------------------------------------------------------------- REQ-EXEC-3 rollover of unmatched students
+
+
+def _publish_round_2(as_admin, client_for, monkeypatch):
+    _set_now(monkeypatch, datetime(2026, 9, 12, 9, tzinfo=UTC))
+    as_admin.post("/admin/rounds/rnd-2/execute")
+    for m in as_admin.get("/admin/rounds/rnd-2/matches").json():
+        client_for(m["supervisor_id"]).post(f"/supervisor/matches/{m['id']}/approve", json={})
+    assert as_admin.post("/admin/rounds/rnd-2/publish").status_code == 200
+
+
+def test_REQ_EXEC_3_unmatched_applications_carry_into_the_next_round(as_admin, client_for, monkeypatch, fresh_store):
+    _publish_round_2(as_admin, client_for, monkeypatch)
+    loser = next(a.student_id for a in fresh_store.applications if a.round_id == "rnd-2" and a.status.value == "unmatched")
+    old = sorted(
+        (a for a in fresh_store.applications_for(student_id=loser, round_id="rnd-2")), key=lambda a: a.preference_rank or 99
+    )
+    new = sorted(fresh_store.applications_for(student_id=loser, round_id="rnd-3"), key=lambda a: a.preference_rank)
+    assert [a.listing_id for a in new] == [a.listing_id for a in old]  # same projects, same order
+    assert [a.preference_rank for a in new] == list(range(1, len(new) + 1))
+    assert all(a.status.value == "submitted" for a in new)
+    note = fresh_store.notifications_for(loser)[-1]
+    assert "carry over to Round 3" in note.message
+
+
+def test_REQ_EXEC_3_rollover_off_leaves_students_to_apply_again(as_admin, client_for, monkeypatch, fresh_store):
+    fresh_store.cycle.rollover_unmatched = False
+    _publish_round_2(as_admin, client_for, monkeypatch)
+    assert not fresh_store.applications_for(round_id="rnd-3")
+    loser = next(a.student_id for a in fresh_store.applications if a.round_id == "rnd-2" and a.status.value == "unmatched")
+    assert fresh_store.notifications_for(loser)[-1].message.endswith("You can apply again in Round 3.")
+
+
+def test_REQ_EXEC_3_placed_and_excluded_students_do_not_roll_over(as_admin, client_for, monkeypatch, fresh_store):
+    _publish_round_2(as_admin, client_for, monkeypatch)
+    offered = {m.student_id for m in fresh_store.matches if m.round_id == "rnd-2"}
+    rolled = {a.student_id for a in fresh_store.applications_for(round_id="rnd-3")}
+    assert rolled and not rolled & offered
+
+
+def test_REQ_EXEC_3_rollover_skips_projects_that_are_full(as_admin, client_for, monkeypatch, fresh_store):
+    full = fresh_store.listing("lst-2")
+    full.filled_slots = full.available_slots  # as apply() would say: "All slots on this project are filled"
+    _publish_round_2(as_admin, client_for, monkeypatch)
+    assert all(a.listing_id != "lst-2" for a in fresh_store.applications_for(round_id="rnd-3"))

@@ -1,20 +1,29 @@
 "use client";
-/** ReviewMatchingResults (4.4), PublishResults (4.5), ManualAssignStudent (4.6). Screen: MatchingAwaitPublishPage. */
+/** ReviewMatchingResults (4.4), PublishResults (4.5), ManualAssignStudent (4.6). Screen: MatchingAwaitPublishPage.
+ *  Status chips filter the matches (REQ-REV-1); "Unmatched" lists the round's applicants without a match, each with
+ *  Manual assign (REQ-ASSIGN-1). Unassign takes a student off a project so they can be placed again (REQ-ASSIGN-3). */
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { Avatar, Banner, Button, Chip, Empty, Field, Loading, Modal, Progress, Select, Status, Textarea } from "@/components/ui";
-import { ApiError, type Match, type MatchStatus } from "@/lib/api/models";
+import { ApiError, type Match, type MatchStatus, type UserListItem } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
+
+const STATUSES: MatchStatus[] = ["proposed", "approved", "rejected", "reassigned", "published", "accepted", "declined", "timed_out"];
+const label = (v: string) => (v[0].toUpperCase() + v.slice(1)).replace("_", " ");
+const PLACES: MatchStatus[] = ["proposed", "approved", "reassigned", "published", "accepted"]; // a match that holds the student
 
 export default function ReviewMatches() {
   const { id } = useParams<{ id: string }>();
   const call = useCall();
-  const [status, setStatus] = useState<MatchStatus | undefined>();
+  const [status, setStatus] = useState<MatchStatus | "unmatched" | undefined>();
   const summary = useApi((api) => api.summary(id), [id]);
-  const matches = useApi((api) => api.matches(id, status), [id, status]);
+  const matches = useApi((api) => api.matches(id, status === "unmatched" ? undefined : status), [id, status]);
+  const unmatched = useApi((api) => api.unmatched(id), [id]);
   const listings = useApi((api) => api.browse(), []);
   const [reassign, setReassign] = useState<Match | null>(null);
+  const [assign, setAssign] = useState<UserListItem | null>(null);
+  const [unassign, setUnassign] = useState<Match | null>(null);
   const [target, setTarget] = useState("");
   const [why, setWhy] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
@@ -23,33 +32,62 @@ export default function ReviewMatches() {
   const published = !!s?.round.published_at;
   const executed = !!s?.round.executed_at; // REQ-PUB-1: nothing to publish before matching runs
 
-  async function doReassign() {
-    if (!reassign) return; setError(null);
-    try { await call((api) => api.reassign(reassign.id, { listing_id: target, justification: why })); setReassign(null); setWhy(""); setTarget(""); matches.reload(); summary.reload(); }
-    catch (e) { setError(e as ApiError); }
+  const reloadAll = () => { matches.reload(); summary.reload(); unmatched.reload(); listings.reload(); };
+  const closeModals = () => { setReassign(null); setAssign(null); setUnassign(null); setWhy(""); setTarget(""); setError(null); };
+  async function run(fn: () => Promise<unknown>) {
+    setError(null);
+    try { await fn(); closeModals(); reloadAll(); } catch (e) { setError(e as ApiError); }
   }
+  const doReassign = () => reassign && run(() => call((api) => api.reassign(reassign.id, { listing_id: target, justification: why })));
+  const doAssign = () => assign && run(() => call((api) => api.manualAssign(id, { student_id: assign.user.id, listing_id: target, justification: why })));
+  const doUnassign = () => unassign && run(() => call((api) => api.unassign(unassign.id, why)));
   async function publish() {
     setError(null);
-    try { summary.setData(await call((api) => api.publish(id))); matches.reload(); } catch (e) { setError(e as ApiError); } finally { setConfirmPublish(false); }
+    try { summary.setData(await call((api) => api.publish(id))); matches.reload(); unmatched.reload(); } catch (e) { setError(e as ApiError); } finally { setConfirmPublish(false); }
   }
+  // The API also counts slots held by pending matches and open offers; this list is a first filter.
+  const projectOptions = (exclude?: string) => (listings.data ?? []).filter((l) => l.id !== exclude && l.filled_slots < l.available_slots)
+    .map((l) => <option key={l.id} value={l.id}>{l.title} · {l.available_slots - l.filled_slots} open</option>);
+  const modalError = error && <Banner tone="bad">{error.message}</Banner>;
+  const whyField = (hint: string) => (
+    <Field label="Justification" hint={hint} error={error?.field === "justification" || error?.field === "note" ? error.message : null}>
+      <Textarea id="why" rows={3} value={why} onChange={(e) => setWhy(e.target.value)} />
+    </Field>
+  );
 
   return (
     <>
-      <PageHeader title={`Round ${s?.round.number ?? ""} matches`} back={{ href: "/rounds", label: "Back to matching rounds" }} description={s ? `${s.matched} proposed · reassign any match before publishing` : ""}
+      <PageHeader title={`Round ${s?.round.number ?? ""} matches`} back={{ href: "/rounds", label: "Back to matching rounds" }} description={s ? (published ? `${s.matched} matches · results published; unassign or assign students here if needed` : `${s.matched} proposed · reassign any match before publishing`) : ""}
         right={s && (
           <div className="flex items-center gap-3.5">
             <div className="w-56"><div className="flex justify-between text-[12px] mb-1"><span className="text-muted font-semibold">Supervisor decisions</span><span className="font-bold tabular">{s.approvals_done} / {s.approvals_total}</span></div><Progress value={s.approvals_done} max={s.approvals_total} /></div>
-            {published ? <Status value="published" /> : <Button disabled={!executed} title={executed ? undefined : "Run matching for this round first"} onClick={() => setConfirmPublish(true)}>Publish results</Button>}
+            {published ? <Status value="published" kind="round" /> : <Button disabled={!executed} title={executed ? undefined : "Run matching for this round first"} onClick={() => setConfirmPublish(true)}>Publish results</Button>}
           </div>
         )} />
-      {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
+      {error && !reassign && !assign && !unassign && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
       <div className="flex items-center gap-1.5 mb-4 flex-wrap">
         <span className="eyebrow">Status</span>
-        {[undefined, "proposed", "approved", "rejected", "reassigned", "published", "accepted", "declined", "timed_out"].map((v) => <Chip key={String(v)} active={status === v} onClick={() => setStatus(v as MatchStatus | undefined)}>{v ? (v[0].toUpperCase() + v.slice(1)).replace("_", " ") : "All"}</Chip>)}
+        <Chip active={status === undefined} onClick={() => setStatus(undefined)}>All</Chip>
+        {STATUSES.map((v) => <Chip key={v} active={status === v} onClick={() => setStatus(v)}>{label(v)}</Chip>)}
+        <Chip active={status === "unmatched"} onClick={() => setStatus("unmatched")}>Unmatched{unmatched.data ? ` (${unmatched.data.length})` : ""}</Chip>
       </div>
-      {matches.loading && !matches.data ? <Loading /> : !matches.data?.length ? <Empty title="No matches" note={status ? "Nothing with this status." : "Run matching first."} /> : (
+
+      {status === "unmatched" ? (
+        unmatched.loading && !unmatched.data ? <Loading /> : !unmatched.data?.length ? <Empty title="No unmatched students" note="Everyone who applied in this round has a match, or was excluded after declining or timing out earlier." /> : (
+          <div className="bg-surface border border-border rounded-card overflow-hidden">
+            <div className="flex items-center gap-3.5 px-4 py-2.5 border-b border-border eyebrow"><span className="flex-1">Applied, no match</span><span className="w-32" /></div>
+            {unmatched.data.map((u) => (
+              <div key={u.user.id} className="flex items-center gap-3.5 px-4 py-3 border-b border-border last:border-b-0">
+                <Avatar name={u.user.name} size={32} />
+                <div className="flex-1 min-w-0"><div className="text-[13.5px] font-semibold">{u.user.name}</div><div className="text-[12.5px] text-muted truncate">{[u.school, u.user.email].filter(Boolean).join(" · ")}</div></div>
+                <span className="w-32 flex justify-end"><Button size="sm" variant="secondary" onClick={() => { closeModals(); setAssign(u); }}>Manual assign</Button></span>
+              </div>
+            ))}
+          </div>
+        )
+      ) : matches.loading && !matches.data ? <Loading /> : !matches.data?.length ? <Empty title="No matches" note={status ? "Nothing with this status." : "Run matching first."} /> : (
         <div className="bg-surface border border-border rounded-card overflow-hidden">
-          <div className="flex items-center gap-3.5 px-4 py-2.5 border-b border-border eyebrow"><span className="flex-1">Student → project</span><span className="w-40">Status</span><span className="w-24" /></div>
+          <div className="flex items-center gap-3.5 px-4 py-2.5 border-b border-border eyebrow"><span className="flex-1">Student → project</span><span className="w-32">Status</span><span className="w-44" /></div>
           {matches.data.map((m) => (
             <div key={m.id} className="border-b border-border last:border-b-0">
               <div className="flex items-center gap-3.5 px-4 py-3">
@@ -60,22 +98,41 @@ export default function ReviewMatches() {
                   {m.original_listing_id && <div className="text-[11.5px] text-warn-ink mt-0.5">Reassigned · {m.justification}</div>}
                   {m.status === "rejected" && <div className="text-[11.5px] text-bad-ink mt-0.5">Rejected by {m.supervisor_name}{m.supervisor_note ? ` · "${m.supervisor_note}"` : " · no reason given"}</div>}
                 </div>
-                <span className="w-40"><Status value={m.status} /></span>
-                <span className="w-24 flex justify-end">{!published && <Button size="sm" variant="secondary" onClick={() => setReassign(m)}>Reassign</Button>}</span>
+                <span className="w-32"><Status value={m.status} /></span>
+                <span className="w-44 flex justify-end gap-2">
+                  {!["published", "accepted", "declined", "timed_out"].includes(m.status) && <Button size="sm" variant="secondary" onClick={() => { closeModals(); setReassign(m); }}>Reassign</Button>}
+                  {PLACES.includes(m.status) && <Button size="sm" variant="text" className="text-muted hover:text-bad-ink" onClick={() => { closeModals(); setUnassign(m); }}>Unassign</Button>}
+                </span>
               </div>
             </div>
           ))}
         </div>
       )}
-      <Modal open={!!reassign} onClose={() => setReassign(null)} title={`Reassign ${reassign?.student_name}`} footer={<><Button variant="secondary" onClick={() => setReassign(null)}>Cancel</Button><Button disabled={!target || why.length < 10} onClick={doReassign}>Reassign</Button></>}>
+
+      <Modal open={!!reassign} onClose={closeModals} title={`Reassign ${reassign?.student_name}`} footer={<><Button variant="secondary" onClick={closeModals}>Cancel</Button><Button disabled={!target || why.trim().length < 10} onClick={doReassign}>Reassign</Button></>}>
         <div className="flex flex-col gap-3 text-text">
-          {error && <Banner tone="bad">{error.message}</Banner>}
+          {modalError}
           <Field label="Move to project" error={error?.field === "listing_id" ? error.message : null}>
-            <Select id="target" value={target} onChange={(e) => setTarget(e.target.value)}><option value="">Choose a project with an open slot</option>{(listings.data ?? []).filter((l) => l.id !== reassign?.listing_id && l.filled_slots < l.available_slots).map((l) => <option key={l.id} value={l.id}>{l.title} · {l.available_slots - l.filled_slots} open</option>)}</Select>
+            <Select id="target" value={target} onChange={(e) => setTarget(e.target.value)}><option value="">Choose a project with an open slot</option>{projectOptions(reassign?.listing_id)}</Select>
           </Field>
-          <Field label="Justification" hint="Required. Recorded in the audit log with your name and the time." error={error?.field === "justification" ? error.message : null}>
-            <Textarea id="why" rows={3} value={why} onChange={(e) => setWhy(e.target.value)} />
+          {whyField("Required, at least 10 characters. Recorded in the audit log with your name and the time.")}
+        </div>
+      </Modal>
+      <Modal open={!!assign} onClose={closeModals} title={`Manually assign ${assign?.user.name}`} footer={<><Button variant="secondary" onClick={closeModals}>Cancel</Button><Button disabled={!target || why.trim().length < 10} onClick={doAssign}>Assign</Button></>}>
+        <div className="flex flex-col gap-3 text-text">
+          {modalError}
+          <div className="text-[13px] text-muted">{published ? "Results are already published, so the student gets the offer straight away." : "The match is published with the rest of the round."} No supervisor approval is needed.</div>
+          <Field label="Project" error={error?.field === "listing_id" ? error.message : null}>
+            <Select id="assign-target" value={target} onChange={(e) => setTarget(e.target.value)}><option value="">Choose a project with an open slot</option>{projectOptions()}</Select>
           </Field>
+          {whyField("Required, at least 10 characters. Manual assignment is for exceptional cases and is recorded in the audit log.")}
+        </div>
+      </Modal>
+      <Modal open={!!unassign} onClose={closeModals} title={`Unassign ${unassign?.student_name}?`} footer={<><Button variant="secondary" onClick={closeModals}>Cancel</Button><Button variant="destructive" disabled={why.trim().length < 10} onClick={doUnassign}>Unassign</Button></>}>
+        <div className="flex flex-col gap-3 text-text">
+          {modalError}
+          <div className="text-[13px] text-muted">{unassign?.student_name} is taken off {unassign?.listing_title} and the slot opens again. {unassign?.status === "accepted" ? "They had accepted, so they return to the pool and can be assigned elsewhere. " : ""}The student and supervisor are told.</div>
+          {whyField("Required, at least 10 characters. Recorded in the audit log.")}
         </div>
       </Modal>
       <Modal open={confirmPublish} onClose={() => setConfirmPublish(false)} title="Publish results?" footer={<><Button variant="secondary" onClick={() => setConfirmPublish(false)}>Not yet</Button><Button onClick={publish}>Publish</Button></>}>

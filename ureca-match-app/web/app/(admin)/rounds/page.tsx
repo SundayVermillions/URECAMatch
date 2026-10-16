@@ -6,9 +6,10 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Card, Field, Input, Loading, Modal, RankBadge, Select, Spinner, Stat, Status, Stepper, fmtDate } from "@/components/ui";
+import { Banner, Button, Card, Field, Input, Loading, Modal, RankBadge, Select, Spinner, Stat, Status, Stepper, Toggle, fmtDate } from "@/components/ui";
 import { getClient } from "@/lib/api/client";
 import { ApiError, type Cycle, type Round, type RoundSummary } from "@/lib/api/models";
+import type * as M from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
 export default function Rounds() {
@@ -50,7 +51,10 @@ export default function Rounds() {
   const reviewClosed = !!current && !!now && viewedIsActive && (current.number < (now.round_number ?? 0) || (now.round_id === current.id && (now.window === "awaiting_results" || now.window === "results")));
   const statusOf = (r: Round) => {
     if (!viewedIsActive) return r.published_at ? "published" : r.executed_at ? "awaiting_publication" : "completed";
-    return r.published_at ? "published" : r.executed_at ? "awaiting_publication" : now?.round_id === r.id ? (now.window === "review" ? "review_window" : "application_window") : Date.parse(r.review_end) < Date.parse(now?.window_ends_at ?? "") ? "completed" : "scheduled";
+    if (r.published_at) return "published";
+    if (r.executed_at) return "awaiting_publication";
+    if (now?.round_id === r.id) return now.window === "application" ? "application_window" : now.window === "review" ? "review_window" : "ready_for_matching";
+    return now?.round_number && r.number < now.round_number ? "completed" : "scheduled";
   };
 
   return (
@@ -143,17 +147,25 @@ const DAY_MS = 86_400_000;
 const atNine = (d: string) => new Date(`${d}T09:00:00.000Z`).toISOString();
 const toDateInput = (iso?: string) => (iso ? new Date(iso).toISOString().slice(0, 10) : "");
 
-/** Mirror of setRounds date derivation so the modal can validate before saving.
- *  Returns each round's review-window end (ms). Rounds already under way (not "scheduled") keep their dates. */
-function derivedRoundEnds(cycle: Cycle, count: number, applyDays: number, reviewDays: number): { number: number; revEnd: number }[] {
-  let cursor = Date.parse(cycle.opening_date) + cycle.pre_application_days * DAY_MS;
-  const out: { number: number; revEnd: number }[] = [];
+type Planned = { number: number; start: number; revEnd: number; started: boolean };
+
+/** Mirror of set_rounds so the modal can show and check the dates before saving (use case 1-2).
+ *  Rounds already under way (not "scheduled") keep their dates. A round with a start date in `starts` begins then;
+ *  otherwise 4 days after the previous round, and Round 1 when the pre-application window ends. */
+function planRounds(cycle: Cycle, opensMs: number, preDays: number, count: number, applyDays: number, reviewDays: number, starts: Record<number, string>): Planned[] {
+  let cursor = opensMs + preDays * DAY_MS;
+  const out: Planned[] = [];
   for (let n = 1; n <= count; n++) {
     const old = cycle.rounds.find((r) => r.number === n);
-    if (old && old.status !== "scheduled") { out.push({ number: n, revEnd: Date.parse(old.review_end) }); cursor = Date.parse(old.review_end) + 4 * DAY_MS; continue; }
-    const revEnd = cursor + applyDays * DAY_MS + reviewDays * DAY_MS - 1000;
-    out.push({ number: n, revEnd });
-    cursor = revEnd + 4 * DAY_MS;
+    if (old && old.status !== "scheduled") {
+      out.push({ number: n, start: Date.parse(old.application_start), revEnd: Date.parse(old.review_end), started: true });
+      cursor = Date.parse(old.review_end) + 1000 + 4 * DAY_MS;
+      continue;
+    }
+    const start = starts[n] ? Date.parse(atNine(starts[n])) : cursor;
+    const revEnd = start + applyDays * DAY_MS + reviewDays * DAY_MS - 1000;
+    out.push({ number: n, start, revEnd, started: false });
+    cursor = revEnd + 1000 + 4 * DAY_MS;
   }
   return out;
 }
@@ -242,11 +254,16 @@ function CloseCycleModal({ open, cycleId, onClose, onClosed }: { open: boolean; 
 
 function CycleSettings({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
   const call = useCall();
+  const { me } = useMe();
   const [cycle, setCycle] = useState<Cycle | null>(null);
   const [applyDays, setApplyDays] = useState(5);
   const [reviewDays, setReviewDays] = useState(2);
   const [count, setCount] = useState(3);
+  const [opens, setOpens] = useState("");
   const [closes, setCloses] = useState("");
+  const [preDays, setPreDays] = useState(7);
+  const [starts, setStarts] = useState<Record<number, string>>({}); // start dates the admin typed; others are derived
+  const [rollover, setRollover] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -254,57 +271,97 @@ function CycleSettings({ open, onClose, onSaved }: { open: boolean; onClose: () 
     let alive = true;
     getClient().then((api) => api.cycle()).then((c) => {
       if (!alive || !c) return;
-      setCycle(c);
-      setCloses(toDateInput(c.closing_date));
+      setCycle(c); setOpens(toDateInput(c.opening_date)); setCloses(toDateInput(c.closing_date)); setPreDays(c.pre_application_days);
+      setRollover(c.rollover_unmatched); setError(null);
       if (c.rounds.length) setCount(c.rounds.length);
       const editable = c.rounds.find((r) => r.status === "scheduled") ?? c.rounds[c.rounds.length - 1];
-      if (editable) { setApplyDays(Math.round((Date.parse(editable.application_end) - Date.parse(editable.application_start)) / DAY_MS)); setReviewDays(Math.round((Date.parse(editable.review_end) - Date.parse(editable.review_start)) / DAY_MS)); }
+      const apply = editable ? Math.round((Date.parse(editable.application_end) - Date.parse(editable.application_start)) / DAY_MS) : 5;
+      const review = editable ? Math.round((Date.parse(editable.review_end) - Date.parse(editable.review_start)) / DAY_MS) : 2;
+      setApplyDays(apply); setReviewDays(review);
+      // Keep a start date chosen earlier: any upcoming round that does not begin on its default date had one.
+      const chosen: Record<number, string> = {};
+      let cursor = Date.parse(c.opening_date) + c.pre_application_days * DAY_MS;
+      for (const r of [...c.rounds].sort((x, y) => x.number - y.number)) {
+        if (r.status === "scheduled" && Date.parse(r.application_start) !== cursor) chosen[r.number] = toDateInput(r.application_start);
+        cursor = Date.parse(r.review_end) + 1000 + 4 * DAY_MS;
+      }
+      setStarts(chosen);
     });
     return () => { alive = false; };
   }, [open]);
 
-  // Live check (before Save): derive the rounds and confirm they end before the cycle closes.
+  // REQ-CYCLE-2: the opening date can change until it passes; the pre-application window until Round 1 starts.
+  const anyStarted = (cycle?.rounds ?? []).some((r) => r.status !== "scheduled");
+  const canEditOpening = me?.phase.window === "before_cycle";
+  const canEditPre = !anyStarted && (me?.phase.window === "before_cycle" || me?.phase.window === "pre_application");
+  // Live check (before Save): plan the rounds and confirm they fit the cycle and do not overlap (REQ-ROUND-3).
+  const opensMs = opens ? Date.parse(atNine(opens)) : NaN;
   const closesMs = closes ? Date.parse(atNine(closes)) : NaN;
-  const ends = cycle ? derivedRoundEnds(cycle, count, applyDays, reviewDays) : [];
-  const overflow = ends.find((e) => e.revEnd > closesMs);
-  const lastEnd = ends.length ? ends[ends.length - 1].revEnd : NaN;
+  const plan = cycle && !Number.isNaN(opensMs) ? planRounds(cycle, opensMs, preDays, count, applyDays, reviewDays, starts) : [];
+  const overflow = plan.find((p) => p.revEnd > closesMs);
+  const overlap = plan.find((p, i) => i > 0 && !p.started && p.start <= plan[i - 1].revEnd);
+  const early = plan.find((p) => !p.started && p.start < opensMs + preDays * DAY_MS);
+  const lastEnd = plan.length ? plan[plan.length - 1].revEnd : NaN;
   const requiredClose = Number.isNaN(lastEnd) ? "" : toDateInput(new Date(lastEnd).toISOString());
   // REQ-ROUND-2: a round that has started cannot be removed, so the count cannot drop below it
   const minRounds = Math.max(1, ...(cycle?.rounds ?? []).filter((r) => r.status !== "scheduled").map((r) => r.number));
-  const valid = !!cycle && closes !== "" && !overflow && count >= minRounds;
+  const valid = !!cycle && opens !== "" && closes !== "" && closesMs > opensMs && !overflow && !overlap && !early && count >= minRounds;
 
   async function save() {
     if (!cycle || !valid) return;
     setError(null); setBusy(true);
     try {
-      // The API checks each change against the other's current value, so the order matters: a later closing
-      // date must be saved before longer rounds, and shorter rounds before an earlier closing date.
-      const newClose = atNine(closes);
-      const saveClose = toDateInput(cycle.closing_date) !== closes ? () => call((api) => api.updateCycle(cycle.id, { closing_date: newClose })) : async () => undefined;
-      const saveRounds = () => call((api) => api.setRounds(cycle.id, { rounds: Array.from({ length: count }, (_, i) => ({ number: i + 1, application_days: applyDays, review_days: reviewDays })), rollover_unmatched: true }));
-      if (Date.parse(newClose) < Date.parse(cycle.closing_date)) { await saveRounds(); await saveClose(); } else { await saveClose(); await saveRounds(); }
+      // The API checks each change against the other's current value, so the order matters. Opening and
+      // pre-application changes go first (they move the rounds that have not started), and a later closing date
+      // with them; the rounds come next; an earlier closing date goes last, once the rounds fit inside it.
+      const newOpen = atNine(opens), newClose = atNine(closes);
+      const first: M.CycleUpdate = {};
+      if (canEditOpening && toDateInput(cycle.opening_date) !== opens) first.opening_date = newOpen;
+      if (canEditPre && preDays !== cycle.pre_application_days) first.pre_application_days = preDays;
+      const closeLater = Date.parse(newClose) > Date.parse(cycle.closing_date), closeEarlier = Date.parse(newClose) < Date.parse(cycle.closing_date);
+      if (closeLater) first.closing_date = newClose;
+      if (Object.keys(first).length) await call((api) => api.updateCycle(cycle.id, first));
+      const rounds = Array.from({ length: count }, (_, i) => ({ number: i + 1, application_days: applyDays, review_days: reviewDays, start_date: starts[i + 1] ? atNine(starts[i + 1]) : null }));
+      await call((api) => api.setRounds(cycle.id, { rounds, rollover_unmatched: rollover }));
+      if (closeEarlier) await call((api) => api.updateCycle(cycle.id, { closing_date: newClose }));
       onSaved();
     } catch (e) { setError(e as ApiError); } finally { setBusy(false); }
   }
+  const day = (ms: number) => fmtDate(new Date(ms).toISOString());
   return (
     <Modal open={open} onClose={onClose} title="Cycle settings" footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={save} disabled={!valid || busy}>{busy ? "Saving…" : "Save settings"}</Button></>}>
       <div className="flex flex-col gap-4 text-text">
         {error && <Banner tone="bad">{error.message}</Banner>}
         {overflow && (
-          <Banner tone="warn" action={requiredClose ? <button type="button" onClick={() => setCloses(requiredClose)} className="text-[12.5px] font-semibold underline whitespace-nowrap">Extend to {fmtDate(new Date(lastEnd).toISOString())}</button> : undefined}>
-            Round {overflow.number} would end {fmtDate(new Date(overflow.revEnd).toISOString())}, after the cycle closes {fmtDate(atNine(closes))}.
+          <Banner tone="warn" action={requiredClose ? <button type="button" onClick={() => setCloses(requiredClose)} className="text-[12.5px] font-semibold underline whitespace-nowrap">Extend to {day(lastEnd)}</button> : undefined}>
+            Round {overflow.number} would end {day(overflow.revEnd)}, after the cycle closes {fmtDate(atNine(closes))}.
           </Banner>
         )}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Cycle opens"><Input value={fmtDate(cycle?.opening_date, { day: "numeric", month: "short", year: "numeric" })} readOnly /></Field>
+        {overlap && <Banner tone="warn">Round {overlap.number} would start before Round {overlap.number - 1} ends on {day(plan[overlap.number - 2].revEnd)}. Pick a later start date.</Banner>}
+        {early && <Banner tone="warn">Round {early.number} would start before the pre-application window ends on {day(opensMs + preDays * DAY_MS)}.</Banner>}
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Cycle opens" hint={canEditOpening ? undefined : "Opened; can no longer change"}><Input type="date" value={opens} onChange={(e) => setOpens(e.target.value)} disabled={!canEditOpening} /></Field>
           <Field label="Cycle closes"><Input type="date" value={closes} onChange={(e) => setCloses(e.target.value)} invalid={!!overflow} /></Field>
+          <div><div className="text-[12.5px] font-semibold mb-1.5">Pre-application</div>{canEditPre ? <Stepper value={preDays} onChange={setPreDays} min={0} max={60} format={(v) => `${v} days`} /> : <div className="h-10 flex items-center text-[13px] text-muted">{preDays} days (ended)</div>}</div>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div><div className="text-[12.5px] font-semibold mb-1.5">Application window</div><Stepper value={applyDays} onChange={setApplyDays} min={1} max={14} format={(v) => `${v} days`} /></div>
           <div><div className="text-[12.5px] font-semibold mb-1.5">Review window</div><Stepper value={reviewDays} onChange={setReviewDays} min={1} max={7} format={(v) => `${v} day${v === 1 ? "" : "s"}`} /></div>
           <div><div className="text-[12.5px] font-semibold mb-1.5">Rounds</div><Stepper value={count} onChange={setCount} min={minRounds} max={3} /></div>
         </div>
-        <div className="text-[12px] text-faint">Rounds that have already started are kept and cannot be removed. Later rounds are re-derived from these lengths with a 4-day gap, and the last must end before the cycle closes.</div>
+        <div className="flex flex-col gap-2">
+          {plan.map((p) => (
+            <div key={p.number} className="grid grid-cols-[90px_170px_1fr] gap-3 items-center text-[13px]">
+              <span className="font-semibold">Round {p.number}</span>
+              {p.started ? <span className="text-muted">Started {day(p.start)}</span>
+                : <Input type="date" aria-label={`Round ${p.number} starts`} value={starts[p.number] ?? toDateInput(new Date(p.start).toISOString())}
+                    onChange={(e) => setStarts((cur) => { const next = { ...cur }; if (e.target.value) next[p.number] = e.target.value; else delete next[p.number]; return next; })} invalid={overlap?.number === p.number || early?.number === p.number} />}
+              <span className="text-muted">review ends {day(p.revEnd)}{!p.started && !starts[p.number] ? " · default start" : ""}</span>
+            </div>
+          ))}
+        </div>
+        <Toggle on={rollover} onChange={setRollover} label="Carry unmatched students' applications into the next round" />
+        <div className="text-[12px] text-faint">Rounds that have already started are kept and cannot be removed. A round without a start date opens 4 days after the previous one. Open projects and slots freed by declines always carry over.</div>
       </div>
     </Modal>
   );

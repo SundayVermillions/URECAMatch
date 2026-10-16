@@ -12,6 +12,8 @@ from app.deps import AdminUser, SettingsDep, StoreDep, StudentUser, SupervisorUs
 from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
     AccountStatus,
+    Applicant,
+    ApplicantStudent,
     ApplicationStatus,
     AuditEntry,
     AuditOperation,
@@ -26,6 +28,7 @@ from app.models import (
     Role,
     RoundStatus,
     RoundSummary,
+    UserListItem,
 )
 from app.services.audit import audit
 from app.services.matching.algorithm import ListingPrefs, StudentPrefs, match
@@ -125,28 +128,48 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
 def summary(round_id: str, admin: AdminUser, store: StoreDep) -> RoundSummary:
     r = _round(store, round_id)
     ms = [m for m in store.matches if m.round_id == round_id]
-    # Applications already decided by publish count too, so the numbers stay the same after results are out.
-    applied = {
-        a.student_id
-        for a in store.applications_for(round_id=round_id)
-        if a.status in (ApplicationStatus.submitted, ApplicationStatus.matched, ApplicationStatus.unmatched)
-    }
-    placed = {m.student_id for m in ms if m.status != MatchStatus.rejected}
-    earlier = _ruled_out(store, before=r)
-    excluded_ids = {
-        sid for sid in applied - placed if sid in earlier or ((sp := store.student(sid)) and not sp.eligible_for_matching)
-    }
+    applied, placed, excluded = _round_sets(store, r, ms)
     prefs = [m.preference_rank for m in ms if m.preference_rank]
     decided = [m for m in ms if m.status != MatchStatus.proposed]  # a rejection is a decision too (REQ-APPRV-2)
     return RoundSummary(
         round=r,
         matched=len(ms),
-        unmatched=len(applied - placed - excluded_ids),
-        excluded=len(excluded_ids),
+        unmatched=len(applied - placed - excluded),
+        excluded=len(excluded),
         avg_preference=round(sum(prefs) / len(prefs), 2) if prefs else None,
         approvals_done=len(decided),
         approvals_total=len(ms),
     )
+
+
+def _round_sets(store, r, ms) -> tuple[set[str], set[str], set[str]]:
+    """Students who applied in the round, those it placed (any match but a rejection), and those excluded because an
+    earlier round placed them or they declined or timed out. Applications already decided by publish still count."""
+    applied = {
+        a.student_id
+        for a in store.applications_for(round_id=r.id)
+        if a.status in (ApplicationStatus.submitted, ApplicationStatus.matched, ApplicationStatus.unmatched)
+    }
+    placed = {m.student_id for m in ms if m.status != MatchStatus.rejected}
+    earlier = _ruled_out(store, before=r)
+    excluded = {
+        sid for sid in applied - placed if sid in earlier or ((sp := store.student(sid)) and not sp.eligible_for_matching)
+    }
+    return applied, placed, excluded
+
+
+@router.get("/admin/rounds/{round_id}/unmatched", response_model=list[UserListItem])
+def unmatched_students(round_id: str, admin: AdminUser, store: StoreDep) -> list[UserListItem]:
+    """REQ-REV-1 "Unmatched": students who applied in this round and hold no match, so an admin can assign them
+    (REQ-ASSIGN-1). The same set as the summary's unmatched count."""
+    r = _round(store, round_id)
+    applied, placed, excluded = _round_sets(store, r, [m for m in store.matches if m.round_id == round_id])
+    out = []
+    for sid in applied - placed - excluded:
+        if (u := store.user(sid)) is not None:
+            sp = store.student(sid)
+            out.append(UserListItem(user=u, school=sp.school if sp else None))
+    return sorted(out, key=lambda x: x.user.name)
 
 
 @router.get("/admin/rounds/{round_id}/matches", response_model=list[Match])
@@ -239,22 +262,86 @@ def manual_assign(round_id: str, body: ManualAssignRequest, admin: AdminUser, st
         raise conflict("already_assigned", "This student already has a project. Unassign it first.")
     lst = _assignable_listing(store, body.listing_id)
     deadline = _late_offer_deadline(store, r, now)
-    m = Match(
-        id=store.next_id("mt"),
-        round_id=round_id,
-        student_id=body.student_id,
-        student_name=student.name,
-        listing_id=lst.id,
-        listing_title=lst.title,
-        supervisor_id=lst.supervisor_id,
-        supervisor_name=lst.supervisor_name,
-        status=MatchStatus.reassigned,
-        justification=body.justification,
-    )
-    store.matches.append(m)
+    own = next((a for a in store.applications_for(student_id=body.student_id, round_id=round_id) if a.listing_id == lst.id), None)
+    placement = {
+        "listing_id": lst.id,
+        "listing_title": lst.title,
+        "supervisor_id": lst.supervisor_id,
+        "supervisor_name": lst.supervisor_name,
+        "status": MatchStatus.reassigned,
+        "justification": body.justification,
+        "preference_rank": own.preference_rank if own else None,
+    }
+    # match_results keeps one row per student per round, so an earlier rejected or declined row is reused.
+    m = next((m for m in store.matches if m.round_id == round_id and m.student_id == body.student_id), None)
+    if m is not None:
+        m.original_listing_id = m.original_listing_id or m.listing_id
+        for k, v in placement.items():
+            setattr(m, k, v)
+        m.supervisor_decided_at = m.published_at = m.offer_expires_at = m.student_responded_at = None
+    else:
+        m = Match(id=store.next_id("mt"), round_id=round_id, student_id=body.student_id, student_name=student.name, **placement)
+        store.matches.append(m)
     audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
     _offer_now(store, m, deadline, now)
     return m
+
+
+@router.post("/admin/matches/{match_id}/unassign", response_model=Ok)
+def unassign(match_id: str, body: MatchDecision, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Ok:
+    """REQ-ASSIGN-3, use case 1-6 E1: take a student off a project so they can be assigned elsewhere.
+    The match is removed; the audit entry keeps who did it, when, and why (REQ-AUDIT-1)."""
+    m = next((m for m in store.matches if m.id == match_id), None)
+    if m is None:
+        raise not_found("Match")
+    reason = (body.note or "").strip()
+    if len(reason) < 10:
+        raise invalid("justification_required", "Give a reason of at least 10 characters.", "note")
+    if m.status in (MatchStatus.rejected, MatchStatus.declined, MatchStatus.timed_out):
+        raise conflict("not_assigned", "This match no longer places the student, so there is nothing to unassign.")
+    now, was = settings.now(), m.status
+    if was == MatchStatus.accepted:  # the student was registered: free the slot
+        lst = store.listing(m.listing_id)
+        if lst and lst.filled_slots > 0:
+            lst.filled_slots -= 1
+            store.save_listing(lst)
+    if was in (MatchStatus.published, MatchStatus.accepted):  # publish marked the offered application "matched"
+        won = [
+            a
+            for a in store.applications_for(student_id=m.student_id, round_id=m.round_id)
+            if a.listing_id == m.listing_id and a.status == ApplicationStatus.matched
+        ]
+        for a in won:
+            a.status = ApplicationStatus.unmatched
+        store.save_applications(*won)
+    store.matches.remove(m)
+    if was == MatchStatus.accepted and m.student_id not in _ruled_out(store):  # back in the pool
+        sp = store.student(m.student_id)
+        if sp and not sp.eligible_for_matching:
+            sp.eligible_for_matching = True
+            store.save_student(sp)
+    note = f"Unassigned from {m.listing_title}: {reason}"
+    audit(store, admin, AuditOperation.manual_reassignment, [m.id, m.student_id], now, note)
+    if was in (MatchStatus.published, MatchStatus.accepted):
+        notify(
+            store,
+            [m.student_id],
+            NotificationEvent.match_rejected,
+            "Your project placement was withdrawn",
+            f"The URECA office removed your match to {m.listing_title}. Reason: {reason}",
+            now,
+            "/my-applications",
+        )
+    notify(
+        store,
+        [m.supervisor_id],
+        NotificationEvent.match_rejected,
+        "A match on your project was removed",
+        f"The URECA office removed {m.student_name} from {m.listing_title}.",
+        now,
+        "/approvals",
+    )
+    return Ok()
 
 
 @router.post("/admin/rounds/{round_id}/publish", response_model=RoundSummary)
@@ -297,8 +384,14 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
     # Only students who may still take part are told they can apply again (REQ-OUTCOME-2, 4).
     ruled_out = _ruled_out(store)
     can_retry = [s for s in unmatched if s not in ruled_out and ((sp := store.student(s)) is None or sp.eligible_for_matching)]
+    carried = _roll_over(store, apps, can_retry, nxt, now) if nxt and store.cycle.rollover_unmatched else set()
+    later = f"Round {nxt.number}" if nxt else ""
     for group, next_step in (
-        (can_retry, f" You can apply again in Round {nxt.number}." if nxt else ""),
+        (
+            [s for s in can_retry if s in carried],
+            f" Your applications carry over to {later}, where you can reorder or withdraw them.",
+        ),
+        ([s for s in can_retry if s not in carried], f" You can apply again in {later}." if nxt else ""),
         ([s for s in unmatched if s not in can_retry], ""),
     ):
         notify(
@@ -327,6 +420,40 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
     return summary(round_id, admin, store)
 
 
+def _roll_over(store, apps, students: list[str], nxt, now) -> set[str]:
+    """REQ-EXEC-3: copy each unmatched, eligible student's applications into the next round in their order, skipping
+    projects that are no longer published, that are fully allocated (as apply() refuses them), or that the student
+    already applied to there. Open projects and slots freed by declines carry over on their own.
+    Returns the students whose applications were carried."""
+    already = {
+        (a.student_id, a.listing_id): a
+        for a in store.applications_for(round_id=nxt.id)
+        if a.status == ApplicationStatus.submitted
+    }
+    copies = []
+    for sid in students:
+        rank = sum(1 for s, _ in already if s == sid)
+        for a in sorted((a for a in apps if a.student_id == sid), key=lambda a: a.preference_rank or 99):
+            lst = store.listing(a.listing_id)
+            full = lst is not None and lst.filled_slots >= lst.available_slots
+            if lst is None or lst.status != ListingStatus.published or full or (sid, a.listing_id) in already:
+                continue
+            rank += 1
+            copies.append(
+                a.model_copy(
+                    update={
+                        "id": store.next_id("app"),
+                        "round_id": nxt.id,
+                        "status": ApplicationStatus.submitted,
+                        "preference_rank": rank,
+                        "submitted_at": now,
+                    }
+                )
+            )
+    store.save_applications(*copies)
+    return {a.student_id for a in copies}
+
+
 @router.get("/admin/audit", response_model=list[AuditEntry])
 def audit_log(admin: AdminUser, store: StoreDep, operation: AuditOperation | None = None) -> list[AuditEntry]:
     return sorted(
@@ -340,6 +467,41 @@ def audit_log(admin: AdminUser, store: StoreDep, operation: AuditOperation | Non
 @router.get("/supervisor/matches", response_model=list[Match])
 def supervisor_matches(user: SupervisorUser, store: StoreDep) -> list[Match]:
     return [m for m in store.matches if m.supervisor_id == user.id]
+
+
+@router.get("/supervisor/matches/{match_id}/student", response_model=Applicant)
+def match_student(match_id: str, user: SupervisorUser, store: StoreDep) -> Applicant:
+    """Use case 3-3 step 3: the profile and application of the student proposed for the supervisor's project.
+    `application_id` is empty when the URECA office assigned the student without an application."""
+    m = next((m for m in store.matches if m.id == match_id), None)
+    if m is None:
+        raise not_found("Match")
+    if m.supervisor_id != user.id:
+        raise forbidden()
+    u, sp = store.user(m.student_id), store.student(m.student_id)
+    if u is None or sp is None:
+        raise not_found("Student")
+    mine = store.applications_for(student_id=m.student_id, round_id=m.round_id)
+    own = next((a for a in mine if a.listing_id == m.listing_id), None)
+    lst = store.listing(m.listing_id)
+    ranking = store.ranking(m.listing_id, m.round_id)
+    return Applicant(
+        application_id=own.id if own else "",
+        student=ApplicantStudent(
+            id=u.id,
+            name=u.name,
+            school=sp.school,
+            year_of_study=sp.year_of_study,
+            cgpa=sp.cgpa,
+            completed_modules=sp.completed_modules,
+            research_interests=sp.research_interests,
+        ),
+        statement=own.statement if own else "",
+        submitted_at=own.submitted_at if own else (m.published_at or u.created_at),
+        documents=[d for d in sp.documents if own and d.id in own.document_ids],
+        meets_prerequisites=all(p in sp.completed_modules for p in lst.prerequisites) if lst else True,
+        rank=ranking.index(own.id) + 1 if own and own.id in ranking else None,
+    )
 
 
 def _decide(match_id: str, user, store, settings, approve: bool, note: str | None) -> Match:

@@ -251,6 +251,7 @@ class Cycle(BaseModel):
     pre_application_days: int
     status: CycleStatus
     rounds: list[Round] = []
+    rollover_unmatched: bool = True  # REQ-EXEC-3: unmatched students' applications carry into the next round
 
 
 class CycleCreate(BaseModel):
@@ -270,6 +271,7 @@ class RoundSpec(BaseModel):
     number: int = Field(ge=1, le=3)
     application_days: int = Field(ge=1, le=14)
     review_days: int = Field(ge=1, le=7)
+    start_date: datetime | None = None  # use case 1-2: the admin picks the start; empty means 4 days after the last round
 
 
 class RoundsUpdate(BaseModel):

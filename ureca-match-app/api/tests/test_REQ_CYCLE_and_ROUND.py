@@ -265,3 +265,92 @@ def test_REQ_CYCLE_1_phase_between_rounds_follows_the_round_just_run(as_student,
     assert phase["round_id"] == "rnd-1" and phase["window"] == "results"
     assert phase["label"] == "Round 1 results published"
     assert as_admin.get("/admin/dashboard").json()["applications_this_round"] == 0  # Round 1 has none open
+
+
+# ---------------------------------------------------------------- round start dates (use case 1-2) and moving the opening
+
+
+def _upcoming_cycle(fresh_store):
+    """Make the seeded cycle start in the future so its opening date and pre-application window can still change."""
+    from datetime import timedelta
+
+    c = fresh_store.cycle
+    shift = timedelta(days=60)
+    c.opening_date, c.closing_date = c.opening_date + shift, c.closing_date + shift
+    for r in c.rounds:
+        r.application_start, r.application_end = r.application_start + shift, r.application_end + shift
+        r.review_start, r.review_end = r.review_start + shift, r.review_end + shift
+        r.status, r.executed_at, r.published_at = "scheduled", None, None
+    return c
+
+
+def test_REQ_ROUND_1_explicit_start_date_is_used(as_admin):
+    spec = {"application_days": 5, "review_days": 2}
+    body = {"rounds": [{"number": 1, **spec}, {"number": 2, **spec}, {"number": 3, **spec, "start_date": "2026-09-20T09:00:00Z"}]}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)
+    assert r.status_code == 200
+    assert next(x for x in r.json()["rounds"] if x["number"] == 3)["application_start"].startswith("2026-09-20T09:00")
+
+
+def test_REQ_ROUND_3_explicit_start_inside_previous_round_rejected(as_admin):
+    spec = {"application_days": 5, "review_days": 2}
+    body = {"rounds": [{"number": 1, **spec}, {"number": 2, **spec}, {"number": 3, **spec, "start_date": "2026-09-11T09:00:00Z"}]}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)  # Round 2 reviews until 12 Sep
+    assert r.status_code == 422 and r.json()["code"] == "rounds_overlap"
+
+
+def test_REQ_ROUND_2_start_date_in_the_past_rejected(as_admin, fresh_store):
+    _upcoming_cycle(fresh_store)
+    spec = {"application_days": 5, "review_days": 2}
+    r = as_admin.put(
+        f"/admin/cycles/{CYCLE_ID}/rounds", json={"rounds": [{"number": 1, **spec, "start_date": "2026-09-01T09:00:00Z"}]}
+    )
+    assert r.status_code == 422 and r.json()["code"] == "date_in_past"
+
+
+def test_REQ_ROUND_3_start_before_pre_application_ends_rejected(as_admin, fresh_store):
+    c = _upcoming_cycle(fresh_store)
+    spec = {"application_days": 5, "review_days": 2}
+    early = (c.opening_date.replace(hour=9)).isoformat()  # pre-application lasts 7 days from here
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json={"rounds": [{"number": 1, **spec, "start_date": early}]})
+    assert r.status_code == 422 and r.json()["code"] == "outside_cycle"
+
+
+def test_REQ_EXEC_3_rollover_setting_is_saved(as_admin, fresh_store):
+    spec = {"application_days": 5, "review_days": 2}
+    body = {"rounds": [{"number": n, **spec} for n in (1, 2, 3)], "rollover_unmatched": False}
+    assert as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body).json()["rollover_unmatched"] is False
+    assert fresh_store.cycle.rollover_unmatched is False
+
+
+def test_REQ_CYCLE_2_moving_the_opening_moves_rounds_that_have_not_started(as_admin, fresh_store):
+    from datetime import timedelta
+
+    c = _upcoming_cycle(fresh_store)
+    before = [r.application_start for r in c.rounds]
+    later = c.opening_date + timedelta(days=3)
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"opening_date": later.isoformat()})
+    assert r.status_code == 200
+    assert [x.application_start for x in fresh_store.cycle.rounds] == [b + timedelta(days=3) for b in before]
+
+
+def test_REQ_CYCLE_2_longer_pre_application_moves_round_1(as_admin, fresh_store):
+    from datetime import timedelta
+
+    c = _upcoming_cycle(fresh_store)
+    first = c.rounds[0].application_start
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"pre_application_days": 9})
+    assert r.status_code == 200
+    assert fresh_store.cycle.rounds[0].application_start == first + timedelta(days=2)
+
+
+def test_REQ_CYCLE_2_pre_application_locked_once_round_1_started(as_admin):
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"pre_application_days": 9})  # 7 Sep: Round 2 is running
+    assert r.status_code == 422 and r.json()["code"] == "date_passed"
+
+
+def test_REQ_ROUND_1_derived_round_starts_on_the_hour(as_admin):
+    spec = {"application_days": 5, "review_days": 2}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json={"rounds": [{"number": n, **spec} for n in (1, 2, 3)]})
+    third = next(x for x in r.json()["rounds"] if x["number"] == 3)
+    assert third["application_start"].startswith("2026-09-16T09:00:00")  # 4 days after Round 2's review window

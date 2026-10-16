@@ -332,13 +332,13 @@ insert into self_proposed_applications (id, student_id, supervisor_id, title, de
 ('prp-4', 'stu-21', 'sup-4', 'Tendon-Driven Finger for Prosthetic Hands', 'I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.', array['Explainable AI','Statistics']::text[], 'I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.', 'declined', '2026-09-07T06:00:00+00:00', '2026-09-08T09:00:00+00:00', array['doc-stu-21-t']::text[])
 on conflict (id) do nothing;
 
-insert into match_results (id, round_id, student_id, listing_id, status, preference_rank, supervisor_decided_at, published_at, offer_expires_at, student_responded_at, original_listing_id, justification, supervisor_note) values
-('mt-1', 'rnd-1', 'stu-33', 'lst-1', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null, null),
-('mt-2', 'rnd-1', 'stu-34', 'lst-4', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null, null),
-('mt-3', 'rnd-1', 'stu-35', 'lst-6', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null, null),
-('mt-4', 'rnd-1', 'stu-36', 'lst-6', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null, null),
-('mt-5', 'rnd-1', 'stu-37', 'lst-9', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null, null),
-('mt-6', 'rnd-1', 'stu-38', 'lst-2', 'declined', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null, null)
+insert into match_results (id, round_id, student_id, listing_id, status, preference_rank, supervisor_decided_at, published_at, offer_expires_at, student_responded_at, original_listing_id, justification) values
+('mt-1', 'rnd-1', 'stu-33', 'lst-1', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
+('mt-2', 'rnd-1', 'stu-34', 'lst-4', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
+('mt-3', 'rnd-1', 'stu-35', 'lst-6', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
+('mt-4', 'rnd-1', 'stu-36', 'lst-6', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
+('mt-5', 'rnd-1', 'stu-37', 'lst-9', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
+('mt-6', 'rnd-1', 'stu-38', 'lst-2', 'declined', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null)
 on conflict (id) do nothing;
 
 insert into notifications (id, user_id, event, title, message, created_at, read, link) values

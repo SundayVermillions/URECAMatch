@@ -27,7 +27,11 @@ def test_REQ_PUB_2_unmatched_applicants_told(fresh_store, as_admin, client_for, 
     assert offered and told
     assert told == applied - offered  # every applicant hears once: an offer, or this
     n = next(n for n in new if n.user_id in told)
-    assert n.message == "You were not matched to a project in Round 2. You can apply again in Round 3."
+    # Rollover is on by default (REQ-EXEC-3), so the next step is that the applications carry over.
+    assert n.message == (
+        "You were not matched to a project in Round 2. "
+        "Your applications carry over to Round 3, where you can reorder or withdraw them."
+    )
     assert n.link == "/my-applications"
 
 

@@ -3090,7 +3090,7 @@
           "admin: cycle"
         ],
         "summary": "Set Rounds",
-        "description": "Derive round dates from the configured window lengths (REQ-ROUND-1) and validate (REQ-ROUND-3).",
+        "description": "Build the rounds from their window lengths and optional start dates (REQ-ROUND-1, use case 1-2), and reject\nrounds that overlap or fall outside the cycle (REQ-ROUND-3). A round without a start date opens 4 days after\nthe previous one ends; Round 1 opens when the pre-application window ends.",
         "operationId": "set_rounds_admin_cycles__cycle_id__rounds_put",
         "parameters": [
           {
@@ -3300,6 +3300,85 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RoundSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/rounds/{round_id}/unmatched": {
+      "get": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Unmatched Students",
+        "description": "REQ-REV-1 \"Unmatched\": students who applied in this round and hold no match, so an admin can assign them\n(REQ-ASSIGN-1). The same set as the summary's unmatched count.",
+        "operationId": "unmatched_students_admin_rounds__round_id__unmatched_get",
+        "parameters": [
+          {
+            "name": "round_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Round Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserListItem"
+                  },
+                  "title": "Response Unmatched Students Admin Rounds  Round Id  Unmatched Get"
                 }
               }
             }
@@ -3579,6 +3658,91 @@
         }
       }
     },
+    "/admin/matches/{match_id}/unassign": {
+      "post": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Unassign",
+        "description": "REQ-ASSIGN-3, use case 1-6 E1: take a student off a project so they can be assigned elsewhere.\nThe match is removed; the audit entry keeps who did it, when, and why (REQ-AUDIT-1).",
+        "operationId": "unassign_admin_matches__match_id__unassign_post",
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Match Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/rounds/{round_id}/publish": {
       "post": {
         "tags": [
@@ -3790,6 +3954,81 @@
                     "$ref": "#/components/schemas/Match"
                   },
                   "title": "Response Supervisor Matches Supervisor Matches Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/supervisor/matches/{match_id}/student": {
+      "get": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Match Student",
+        "description": "Use case 3-3 step 3: the profile and application of the student proposed for the supervisor's project.\n`application_id` is empty when the URECA office assigned the student without an application.",
+        "operationId": "match_student_supervisor_matches__match_id__student_get",
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Match Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Applicant"
                 }
               }
             }
@@ -5200,6 +5439,11 @@
             "type": "array",
             "title": "Rounds",
             "default": []
+          },
+          "rollover_unmatched": {
+            "type": "boolean",
+            "title": "Rollover Unmatched",
+            "default": true
           }
         },
         "type": "object",
@@ -6437,6 +6681,18 @@
             "maximum": 7.0,
             "minimum": 1.0,
             "title": "Review Days"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
           }
         },
         "type": "object",
