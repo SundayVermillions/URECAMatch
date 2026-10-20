@@ -1,6 +1,9 @@
 """Slice C. Supervisor applicant review, ranking and document access."""
 
+import json
 from datetime import timedelta
+
+import httpx
 
 from app.services import windows
 from app.settings import get_settings
@@ -100,3 +103,82 @@ def test_REQ_VRANK_3_view_returns_signed_storage_url(client_for, fresh_store, mo
     r = client_for("stu-1").get("/documents/doc-stu-1-t/view")
     assert r.status_code == 200 and r.json()["url"] == "https://storage.example/signed"
     assert calls == [("documents", "documents/stu-1/doc-stu-1-t.pdf", 10)]
+
+
+# ---------------------------------------------------------------- AI match (REQ-VRANK-1)
+
+AI_MATCH = "/supervisor/listings/{}/applicants/ai-match"
+
+
+def test_REQ_VRANK_1_ai_match_other_supervisor_forbidden(as_supervisor, fresh_store):
+    other = next(lst for lst in fresh_store.listings if lst.supervisor_id != "sup-1")
+    assert as_supervisor.post(AI_MATCH.format(other.id)).status_code == 403
+
+
+def test_REQ_VRANK_1_ai_match_student_forbidden(as_student):
+    assert as_student.post(AI_MATCH.format("lst-1")).status_code == 403
+
+
+def test_REQ_VRANK_1_ai_match_unknown_listing_404(as_supervisor):
+    assert as_supervisor.post(AI_MATCH.format("lst-nope")).status_code == 404
+
+
+def test_REQ_VRANK_1_ai_match_local_fallback_without_key(as_supervisor, fresh_store):
+    _with_applicants(fresh_store, "lst-1", 6)
+    rows = as_supervisor.get("/supervisor/listings/lst-1/applicants").json()
+    scores = as_supervisor.post(AI_MATCH.format("lst-1")).json()
+    assert {s["application_id"] for s in scores} == {r["application_id"] for r in rows}
+    assert all(s["source"] == "local" and 0 <= s["score"] <= 100 and s["reason"] for s in scores)
+
+
+def test_REQ_VRANK_1_local_score_rewards_prerequisites(fresh_store):
+    from app.routers.rankings import _applicants
+    from app.services.ai_match import local_score
+
+    lst = fresh_store.listing("lst-1")
+    a = _applicants(fresh_store, "lst-1", None)[0]
+    with_prereqs = a.model_copy(deep=True)
+    with_prereqs.student.completed_modules = [*lst.prerequisites]
+    without = a.model_copy(deep=True)
+    without.student.completed_modules = []
+    assert lst.prerequisites, "lst-1 needs prerequisites for this test"
+    assert local_score(lst, with_prereqs)[0] > local_score(lst, without)[0]
+    assert local_score(lst, without)[1].startswith("Missing")
+
+
+def test_REQ_VRANK_1_ai_match_falls_back_when_gemini_fails(as_supervisor, monkeypatch):
+    def boom(*args, **kwargs):
+        raise httpx.ConnectError("offline")
+
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "test-key")
+    monkeypatch.setattr("app.services.ai_match.httpx.post", boom)
+    r = as_supervisor.post(AI_MATCH.format("lst-1"))
+    assert r.status_code == 200 and r.json() and all(s["source"] == "local" for s in r.json())
+
+
+def test_REQ_VRANK_1_ai_match_uses_gemini_reply(as_supervisor, fresh_store, monkeypatch):
+    _with_applicants(fresh_store, "lst-1", 3)
+    rows = as_supervisor.get("/supervisor/listings/lst-1/applicants").json()
+    first, rest = rows[0]["student"]["id"], rows[1:]
+    calls = []
+
+    class Reply:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            # Gemini answers for the first applicant only (score out of range on purpose); the rest fall back
+            text = json.dumps([{"student_id": first, "score": 140, "reason": "Strong CV background"}])
+            return {"candidates": [{"content": {"parts": [{"text": text}]}}]}
+
+    def fake_post(url, headers, json, timeout):
+        calls.append((url, headers))
+        return Reply()
+
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "test-key")
+    monkeypatch.setattr("app.services.ai_match.httpx.post", fake_post)
+    scores = {s["student_id"]: s for s in as_supervisor.post(AI_MATCH.format("lst-1")).json()}
+    assert scores[first] == {**scores[first], "score": 100, "reason": "Strong CV background", "source": "ai"}
+    assert all(scores[r["student"]["id"]]["source"] == "local" for r in rest)
+    url, headers = calls[0]
+    assert headers["x-goog-api-key"] == "test-key" and "test-key" not in url  # key in a header, never the URL

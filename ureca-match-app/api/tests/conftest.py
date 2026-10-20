@@ -18,6 +18,7 @@ from app.settings import get_settings, set_clock_override
 def fresh_store(monkeypatch):
     monkeypatch.setenv("API_MODE", "mock")
     monkeypatch.setattr(get_settings(), "email_mode", "off")  # tests never send e-mail, whatever .env says
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "")  # nor call Gemini with a real key from .env
     store_module.reset_store()
     yield store_module.get_store()
     store_module.reset_store()

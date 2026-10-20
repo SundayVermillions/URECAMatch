@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -398,6 +399,16 @@ class ApplicantRanking(BaseModel):
 
 class ApplicantRankingUpdate(BaseModel):
     application_ids: list[str]
+
+
+class ApplicantScore(BaseModel):
+    """AI match fit score for one applicant (REQ-VRANK-1). source says whether Gemini or the local formula scored it."""
+
+    application_id: str
+    student_id: str
+    score: int = Field(ge=0, le=100)
+    reason: str
+    source: Literal["ai", "local"]
 
 
 # ---------------------------------------------------------------- proposals
