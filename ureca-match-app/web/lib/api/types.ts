@@ -214,6 +214,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recommendations
+         * @description REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.
+         *     Empty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).
+         *     Projects already applied to or with no open slot are left out.
+         */
+        get: operations["recommendations_me_recommendations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/listings/{listing_id}": {
         parameters: {
             query?: never;
@@ -1520,6 +1542,18 @@ export interface components {
             /** Storage Path */
             storage_path?: string | null;
         };
+        /**
+         * FitParts
+         * @description How a recommendation's score is made up (REQ-BROWSE-4). Maximums: 50, 30, 20.
+         */
+        FitParts: {
+            /** Interests */
+            interests: number;
+            /** Readiness */
+            readiness: number;
+            /** Chance */
+            chance: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1894,6 +1928,23 @@ export interface components {
             listing_id: string;
             /** Justification */
             justification: string;
+        };
+        /** Recommendation */
+        Recommendation: {
+            listing: components["schemas"]["Listing"];
+            /** Score */
+            score: number;
+            parts: components["schemas"]["FitParts"];
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+            /**
+             * Gaps
+             * @default []
+             */
+            gaps: string[];
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -2663,6 +2714,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Listing"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recommendations_me_recommendations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recommendation"][];
                 };
             };
             /** @description Validation Error */

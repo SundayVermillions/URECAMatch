@@ -44,6 +44,7 @@ export class LiveClient implements ApiClient {
   supervisors = () => this.req<M.SupervisorSummary[]>("GET", "/supervisors");
   topics = () => this.req<M.TopicGroup[]>("GET", "/catalog/topics");
   courses = (q: string, limit?: number) => this.req<M.Course[]>("GET", "/catalog/courses" + this.q({ q, limit }));
+  recommendations = (limit?: number) => this.req<M.Recommendation[]>("GET", "/me/recommendations" + this.q({ limit }));
   coursesByCode = (codes: string[]) => (codes.length ? this.req<M.Course[]>("GET", "/catalog/courses" + this.q({ codes: codes.join(","), limit: 50 })) : Promise.resolve([]));
   myListings = () => this.req<M.Listing[]>("GET", "/supervisor/listings");
   createListing = (b: M.ListingCreate) => this.req<M.Listing>("POST", "/supervisor/listings", b);

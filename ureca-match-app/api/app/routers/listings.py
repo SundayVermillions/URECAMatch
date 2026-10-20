@@ -1,4 +1,4 @@
-"""Slice B: project listings.  REQ-BROWSE-1..3, REQ-PROJ-1..3."""
+"""Slice B: project listings.  REQ-BROWSE-1..4, REQ-PROJ-1..3."""
 
 from __future__ import annotations
 
@@ -6,12 +6,22 @@ import re
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Query, UploadFile
 
-from app.deps import CurrentUser, SettingsDep, StoreDep, SupervisorUser
+from app.deps import CurrentUser, SettingsDep, StoreDep, StudentUser, SupervisorUser
 from app.errors import forbidden, invalid, not_found
-from app.models import AccountStatus, Listing, ListingCreate, ListingStatus, ListingUpdate, Ok, Role, SupervisorSummary
-from app.services import catalog, windows
+from app.models import (
+    AccountStatus,
+    Listing,
+    ListingCreate,
+    ListingStatus,
+    ListingUpdate,
+    Ok,
+    Recommendation,
+    Role,
+    SupervisorSummary,
+)
+from app.services import catalog, placement, recommend, windows
 from app.services.storage import get_storage
 
 router = APIRouter(tags=["listings"])
@@ -56,6 +66,22 @@ def browse(
             continue
         out.append(_decorate(lst, store, user))
     return out
+
+
+@router.get("/me/recommendations", response_model=list[Recommendation])
+def recommendations(user: StudentUser, store: StoreDep, limit: int = Query(default=6, ge=1, le=50)) -> list[Recommendation]:
+    """REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.
+    Empty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).
+    Projects already applied to or with no open slot are left out."""
+    sp = store.student(user.id)
+    if sp is None or not sp.research_interests or not sp.eligible_for_matching or placement.is_placed(store, user.id):
+        return []
+    open_listings = [
+        d
+        for d in (_decorate(lst, store, user) for lst in store.all_listings() if lst.status == ListingStatus.published)
+        if not d.applied and d.filled_slots < d.available_slots
+    ]
+    return recommend.recommend(open_listings, sp, limit)
 
 
 @router.get("/listings/{listing_id}", response_model=Listing)

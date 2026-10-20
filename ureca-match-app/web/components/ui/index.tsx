@@ -90,8 +90,9 @@ export function Chip({ active, children, onClick }: { active?: boolean; children
 /** Compact filter dropdown for toolbars: "School  Any ⌄", opening a popover list with a check on the current choice.
  *  Custom instead of a native <select> so the list is styled consistently; keyboard support is rebuilt:
  *  Enter/Space/↓ opens, ↑/↓ move, Enter selects, Esc or a click outside closes. ARIA listbox roles for screen readers. */
-export function FilterSelect({ label, value, options, onChange, anyLabel = "Any", align = "right" }:
-  { label: string; value: string | undefined; options: string[]; onChange: (v: string | undefined) => void; anyLabel?: string; align?: "left" | "right" }) {
+export function FilterSelect({ label, value, options, onChange, anyLabel = "Any", align = "right", bare = false }:
+  { label: string; value: string | undefined; options: string[]; onChange: (v: string | undefined) => void; anyLabel?: string; align?: "left" | "right";
+    /** No outline, for use inside a toolbar that already has one (Browse search bar). */ bare?: boolean }) {
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0); // highlighted row while open
   const root = useRef<HTMLDivElement>(null);
@@ -127,8 +128,8 @@ export function FilterSelect({ label, value, options, onChange, anyLabel = "Any"
       <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-controls={listId} aria-label={`${label}: ${value ?? anyLabel}`}
         onClick={() => (open ? setOpen(false) : show())} onKeyDown={onKey}
         className={`inline-flex items-center h-10 rounded-pill pl-4 pr-3 text-[13.5px] whitespace-nowrap transition-colors max-w-[260px] ${value
-          ? "bg-accent-soft text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)]"
-          : "bg-surface text-text shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft"}`}>
+          ? `bg-accent-soft text-accent-ink ${bare ? "" : "shadow-[inset_0_0_0_1px_var(--accent-border)]"}`
+          : bare ? "bg-transparent text-text hover:bg-neutral-soft" : "bg-surface text-text shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft"}`}>
         <span className={value ? "text-accent-ink/70" : "text-muted"}>{label}</span>
         <span className="ml-1.5 font-medium truncate">{value ?? anyLabel}</span>
         <span className={`ml-2 shrink-0 transition-transform ${open ? "rotate-180" : ""} ${value ? "text-accent-ink/70" : "text-faint"}`}><I.ChevronDown size={15} /></span>

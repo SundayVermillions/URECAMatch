@@ -5,6 +5,7 @@ import { Suspense, useRef, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
+import { CoursePicker, TopicPicker } from "@/components/pickers";
 import { Banner, Button, Card, Field, Input, Select, fmtDate } from "@/components/ui";
 import { ApiError, type StudentProfile } from "@/lib/api/models";
 import { useCall } from "@/lib/use-api";
@@ -17,8 +18,8 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     school: p?.school ?? "",
     cgpa: p?.cgpa?.toString() ?? "",
     year_of_study: p?.year_of_study?.toString() ?? "",
-    completed_modules: p?.completed_modules.join(", ") ?? "",
-    research_interests: p?.research_interests.join(", ") ?? "",
+    completed_modules: p?.completed_modules ?? [],
+    research_interests: p?.research_interests ?? [],
   }));
   const [error, setError] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState(false);
@@ -41,8 +42,8 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
           school: f.school,
           cgpa: parseFloat(f.cgpa),
           year_of_study: parseInt(f.year_of_study, 10),
-          completed_modules: f.completed_modules.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
-          research_interests: f.research_interests.split(",").map((s) => s.trim()).filter(Boolean),
+          completed_modules: f.completed_modules,
+          research_interests: f.research_interests,
         })
       );
       await refresh();
@@ -167,21 +168,11 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
               </Select>
             </Field>
           </div>
-          <Field label="Completed modules" hint="Course codes, comma separated. Used to check project prerequisites.">
-            <Input
-              id="modules"
-              value={f.completed_modules}
-              onChange={(e) => setF({ ...f, completed_modules: e.target.value })}
-              placeholder="SC1015, SC2001, SC4001"
-            />
+          <Field label="Completed modules" error={err("completed_modules")} hint="NTU courses you have passed. Used to check project prerequisites.">
+            <CoursePicker value={f.completed_modules} onChange={(v) => setF({ ...f, completed_modules: v })} invalid={!!err("completed_modules")} />
           </Field>
-          <Field label="Research interests" hint="Comma separated">
-            <Input
-              id="interests"
-              value={f.research_interests}
-              onChange={(e) => setF({ ...f, research_interests: e.target.value })}
-              placeholder="Machine Learning, HCI"
-            />
+          <Field label="Research interests" error={err("research_interests")} hint="Standard topics, the same ones projects are tagged with.">
+            <TopicPicker value={f.research_interests} onChange={(v) => setF({ ...f, research_interests: v })} invalid={!!err("research_interests")} />
           </Field>
           <div>
             <Button type="submit" size="lg" disabled={busy}>

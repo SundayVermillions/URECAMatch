@@ -1004,6 +1004,88 @@
         }
       }
     },
+    "/me/recommendations": {
+      "get": {
+        "tags": [
+          "listings"
+        ],
+        "summary": "Recommendations",
+        "description": "REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.\nEmpty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).\nProjects already applied to or with no open slot are left out.",
+        "operationId": "recommendations_me_recommendations_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 6,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Recommendation"
+                  },
+                  "title": "Response Recommendations Me Recommendations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/listings/{listing_id}": {
       "get": {
         "tags": [
@@ -6195,6 +6277,30 @@
         ],
         "title": "Document"
       },
+      "FitParts": {
+        "properties": {
+          "interests": {
+            "type": "integer",
+            "title": "Interests"
+          },
+          "readiness": {
+            "type": "integer",
+            "title": "Readiness"
+          },
+          "chance": {
+            "type": "integer",
+            "title": "Chance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "interests",
+          "readiness",
+          "chance"
+        ],
+        "title": "FitParts",
+        "description": "How a recommendation's score is made up (REQ-BROWSE-4). Maximums: 50, 30, 20."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -7275,6 +7381,43 @@
           "justification"
         ],
         "title": "ReassignRequest"
+      },
+      "Recommendation": {
+        "properties": {
+          "listing": {
+            "$ref": "#/components/schemas/Listing"
+          },
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "parts": {
+            "$ref": "#/components/schemas/FitParts"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "default": []
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gaps",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "listing",
+          "score",
+          "parts"
+        ],
+        "title": "Recommendation"
       },
       "RegisterRequest": {
         "properties": {
