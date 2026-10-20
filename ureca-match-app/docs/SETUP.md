@@ -64,6 +64,8 @@ shared/openapi.json     GENERATED contract
 
 Set `NEXT_PUBLIC_API_MODE=live` in `web/.env.local` and run the API. Mock mode sends `X-Demo-User`; live mode sends the Supabase JWT. Both are read by `api/app/deps.py`.
 
+The demo account buttons on the sign-in page are hidden in live mode. To keep them while the API runs with `API_MODE=mock` (for example to try AI match with a real `GEMINI_API_KEY`), also add `NEXT_PUBLIC_DEMO_ACCOUNTS=true` to `web/.env.local` and restart `npm run dev`. Never set it in production.
+
 ### Fake clock (testing a cycle without waiting)
 
 Add `NEXT_PUBLIC_DEBUG_CLOCK=true` to `web/.env.local` and restart `npm run dev`. A clock chip appears top right. Open it to set any date and time, jump +1 hour, day or week, skip past the current window, or go back to the real clock. Every screen reloads for the new time.
