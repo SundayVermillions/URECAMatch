@@ -8,7 +8,7 @@ from fastapi import APIRouter, File, UploadFile
 
 from app.deps import SettingsDep, StoreDep, StudentUser
 from app.errors import invalid, not_found
-from app.models import Document, ProfileUpdate, StudentProfile
+from app.models import Document, Ok, ProfileUpdate, StudentProfile
 from app.services import catalog
 from app.services.storage import get_storage
 
@@ -48,6 +48,10 @@ async def upload_document(
     if len(data) > MAX_PDF_BYTES:
         raise invalid("too_large", "The file is larger than 5 MB.", "file")
 
+    p = store.student(user.id)
+    if p and len(p.documents) >= 5:
+        raise invalid("max_documents", "You can upload a maximum of 5 documents.", "file")
+
     doc_id = store.next_id("doc")
     storage = get_storage()
     path = storage.put("documents", f"{user.id}/{doc_id}.pdf", data, content_type="application/pdf")
@@ -65,3 +69,18 @@ async def upload_document(
     if p:
         p.documents.append(doc)
     return doc
+
+
+@router.delete("/me/documents/{document_id}", response_model=Ok)
+def delete_document(document_id: str, user: StudentUser, store: StoreDep) -> Ok:
+    p = store.student(user.id)
+    if p is None:
+        raise not_found("Profile")
+    doc = next((d for d in p.documents if d.id == document_id), None)
+    if not doc:
+        raise not_found("Document")
+    p.documents = [d for d in p.documents if d.id != document_id]
+    client = getattr(store, "client", None)
+    if client:
+        client.table("supporting_documents").delete().eq("id", document_id).eq("owner_id", user.id).execute()
+    return Ok()
