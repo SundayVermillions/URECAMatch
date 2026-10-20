@@ -55,45 +55,45 @@ on conflict (id) do nothing;
 
 insert into student_profiles (user_id, school, cgpa, year_of_study, completed_modules, research_interests, profile_complete, eligible_for_matching) values
 ('stu-1', 'CCDS', 3.99, 2, array['CE4041','SC1015','SC3020','SC4002']::text[], array['Healthcare AI','Marine Biology']::text[], true, true),
-('stu-2', 'CCDS', 3.69, 4, array['SC1015','SC2001']::text[], array['Healthcare AI','NLP']::text[], true, true),
-('stu-3', 'CCDS', 4.82, 2, array['CE4041','SC3020','SC4001']::text[], array['HCI','Materials']::text[], true, true),
-('stu-4', 'EEE', 4.68, 4, array['EE2004','EE3080','EE4483','SC1015']::text[], array['HCI','Explainable AI']::text[], true, true),
-('stu-5', 'SBS', 4.41, 4, array['SB3101','SB3211']::text[], array['Materials','Machine Learning']::text[], true, true),
-('stu-6', 'MAE', 4.09, 4, array['MA2007','MA4826']::text[], array['Statistics','Energy Systems']::text[], true, true),
+('stu-2', 'CCDS', 3.69, 4, array['SC1015','SC2001']::text[], array['Healthcare AI','Natural Language Processing']::text[], true, true),
+('stu-3', 'CCDS', 4.82, 2, array['CE4041','SC3020','SC4001']::text[], array['Human-Computer Interaction','Materials Science']::text[], true, true),
+('stu-4', 'EEE', 4.68, 4, array['EE2101','EE3015','EE4285','SC1015']::text[], array['Human-Computer Interaction','Explainable AI']::text[], true, true),
+('stu-5', 'SBS', 4.41, 4, array['BS2030','BS3008']::text[], array['Materials Science','Machine Learning']::text[], true, true),
+('stu-6', 'MAE', 4.09, 4, array['MA2007','MA4012']::text[], array['Statistics','Energy Systems']::text[], true, true),
 ('stu-7', 'SPMS', 4.65, 3, array['MH1810','PH2104']::text[], array['Robotics','Marine Biology']::text[], true, true),
-('stu-8', 'NBS', 4.17, 3, array['AB1201','AB2101','BC2402']::text[], array['Machine Learning','Computer Vision']::text[], true, true),
-('stu-9', 'CCDS', 4.32, 4, array['CE4041','SC1015','SC4001','SC4002']::text[], array['Materials','Computer Vision']::text[], true, true),
+('stu-8', 'NBS', 4.17, 3, array['AB1201','AB1202','BC2402']::text[], array['Machine Learning','Computer Vision']::text[], true, true),
+('stu-9', 'CCDS', 4.32, 4, array['CE4041','SC1015','SC4001','SC4002']::text[], array['Materials Science','Computer Vision']::text[], true, true),
 ('stu-10', 'CCDS', 4.18, 3, array['CE4041','SC3020','SC4002']::text[], array['Energy Systems','Genomics']::text[], true, true),
-('stu-11', 'CCDS', 3.46, 3, array['SC1015','SC2001','SC3020']::text[], array['Marine Biology','Materials']::text[], true, true),
-('stu-12', 'EEE', 3.74, 4, array['EE4483','SC1015']::text[], array['Energy Systems','NLP']::text[], true, true),
-('stu-13', 'SBS', 4.08, 4, array['SB2210','SB3101','SB3211']::text[], array['Genomics','Robotics']::text[], true, true),
-('stu-14', 'MAE', 3.57, 4, array['MA2007','MA4826']::text[], array['HCI','Genomics']::text[], true, true),
-('stu-15', 'SPMS', 3.57, 2, array['MH3511','PH2104']::text[], array['HCI','Computer Vision']::text[], true, true),
-('stu-16', 'NBS', 4.73, 3, array['AB1201','BC2402']::text[], array['NLP','Genomics']::text[], true, true),
-('stu-17', 'CCDS', 4.61, 3, array['SC1015','SC2001','SC3020','SC4001']::text[], array['Materials','Statistics']::text[], true, true),
-('stu-18', 'CCDS', 4.59, 3, array['SC2001','SC3020']::text[], array['Materials','Explainable AI']::text[], true, true),
-('stu-19', 'CCDS', 4.64, 4, array['CE4041','SC1015','SC3020','SC4001']::text[], array['NLP','HCI']::text[], true, true),
-('stu-20', 'EEE', 3.98, 3, array['EE2004','EE3080','SC1015']::text[], array['HCI','Genomics']::text[], true, true),
-('stu-21', 'SBS', 3.79, 2, array['SB2210','SB3101','SB3211']::text[], array['Explainable AI','Marine Biology']::text[], true, true),
-('stu-22', 'MAE', 3.54, 3, array['MA2007','MA3005','MA4826']::text[], array['NLP','Marine Biology']::text[], true, true),
-('stu-23', 'SPMS', 4.12, 3, array['MH1810','MH3511','PH2104']::text[], array['NLP','Statistics']::text[], true, true),
-('stu-24', 'NBS', 4.82, 3, array['AB1201','AB2101','BC2402']::text[], array['Marine Biology','Computer Vision']::text[], true, true),
-('stu-25', 'CCDS', 4.42, 4, array['SC1015','SC2001','SC4001']::text[], array['Materials','Explainable AI']::text[], true, true),
-('stu-26', 'CCDS', 4.79, 3, array['CE4041','SC1015','SC2001','SC4002']::text[], array['HCI','Statistics']::text[], true, true),
+('stu-11', 'CCDS', 3.46, 3, array['SC1015','SC2001','SC3020']::text[], array['Marine Biology','Materials Science']::text[], true, true),
+('stu-12', 'EEE', 3.74, 4, array['EE4285','SC1015']::text[], array['Energy Systems','Natural Language Processing']::text[], true, true),
+('stu-13', 'SBS', 4.08, 4, array['BS2004','BS2030','BS3008']::text[], array['Genomics','Robotics']::text[], true, true),
+('stu-14', 'MAE', 3.57, 4, array['MA2007','MA4012']::text[], array['Human-Computer Interaction','Genomics']::text[], true, true),
+('stu-15', 'SPMS', 3.57, 2, array['MH3511','PH2104']::text[], array['Human-Computer Interaction','Computer Vision']::text[], true, true),
+('stu-16', 'NBS', 4.73, 3, array['AB1201','BC2402']::text[], array['Natural Language Processing','Genomics']::text[], true, true),
+('stu-17', 'CCDS', 4.61, 3, array['SC1015','SC2001','SC3020','SC4001']::text[], array['Materials Science','Statistics']::text[], true, true),
+('stu-18', 'CCDS', 4.59, 3, array['SC2001','SC3020']::text[], array['Materials Science','Explainable AI']::text[], true, true),
+('stu-19', 'CCDS', 4.64, 4, array['CE4041','SC1015','SC3020','SC4001']::text[], array['Natural Language Processing','Human-Computer Interaction']::text[], true, true),
+('stu-20', 'EEE', 3.98, 3, array['EE2101','EE3015','SC1015']::text[], array['Human-Computer Interaction','Genomics']::text[], true, true),
+('stu-21', 'SBS', 3.79, 2, array['BS2004','BS2030','BS3008']::text[], array['Explainable AI','Marine Biology']::text[], true, true),
+('stu-22', 'MAE', 3.54, 3, array['MA2007','MA3005','MA4012']::text[], array['Natural Language Processing','Marine Biology']::text[], true, true),
+('stu-23', 'SPMS', 4.12, 3, array['MH1810','MH3511','PH2104']::text[], array['Natural Language Processing','Statistics']::text[], true, true),
+('stu-24', 'NBS', 4.82, 3, array['AB1201','AB1202','BC2402']::text[], array['Marine Biology','Computer Vision']::text[], true, true),
+('stu-25', 'CCDS', 4.42, 4, array['SC1015','SC2001','SC4001']::text[], array['Materials Science','Explainable AI']::text[], true, true),
+('stu-26', 'CCDS', 4.79, 3, array['CE4041','SC1015','SC2001','SC4002']::text[], array['Human-Computer Interaction','Statistics']::text[], true, true),
 ('stu-27', 'CCDS', 4.11, 2, array['SC1015','SC2001','SC4001','SC4002']::text[], array['Robotics','Explainable AI']::text[], true, true),
-('stu-28', 'EEE', 4.63, 2, array['EE2004','EE3080','EE4483','SC1015']::text[], array['Genomics','Computer Vision']::text[], true, true),
-('stu-29', 'SBS', 3.55, 3, array['SB2210','SB3101']::text[], array['Machine Learning','Energy Systems']::text[], true, true),
-('stu-30', 'MAE', 4.22, 4, array['MA2007','MA4826']::text[], array['Healthcare AI','Materials']::text[], true, true),
-('stu-31', 'SPMS', 4.13, 4, array['MH1810','MH3511']::text[], array['HCI','Marine Biology']::text[], true, true),
-('stu-32', 'NBS', 4.68, 3, array['AB2101','BC2402']::text[], array['Machine Learning','Robotics']::text[], true, true),
+('stu-28', 'EEE', 4.63, 2, array['EE2101','EE3015','EE4285','SC1015']::text[], array['Genomics','Computer Vision']::text[], true, true),
+('stu-29', 'SBS', 3.55, 3, array['BS2004','BS3008']::text[], array['Machine Learning','Energy Systems']::text[], true, true),
+('stu-30', 'MAE', 4.22, 4, array['MA2007','MA4012']::text[], array['Healthcare AI','Materials Science']::text[], true, true),
+('stu-31', 'SPMS', 4.13, 4, array['MH1810','MH3511']::text[], array['Human-Computer Interaction','Marine Biology']::text[], true, true),
+('stu-32', 'NBS', 4.68, 3, array['AB1202','BC2402']::text[], array['Machine Learning','Robotics']::text[], true, true),
 ('stu-33', 'CCDS', 4.16, 2, array['CE4041','SC1015']::text[], array['Machine Learning','Computer Vision']::text[], true, true),
-('stu-34', 'CCDS', 4.08, 4, array['CE4041','SC1015','SC3020','SC4001']::text[], array['Computer Vision','HCI']::text[], true, true),
-('stu-35', 'CCDS', 3.75, 3, array['SC1015','SC3020','SC4001']::text[], array['HCI','Machine Learning']::text[], true, true),
-('stu-36', 'EEE', 4.33, 2, array['EE3080','EE4483']::text[], array['Marine Biology','Machine Learning']::text[], true, true),
-('stu-37', 'SBS', 4.67, 4, array['SB2210','SB3101','SB3211']::text[], array['Marine Biology','Computer Vision']::text[], true, true),
-('stu-38', 'MAE', 4.55, 3, array['MA2007','MA3005','MA4826']::text[], array['Statistics','Materials']::text[], true, true),
-('stu-39', 'SPMS', 4.32, 3, array['MH1810','MH3511','PH2104']::text[], array['Materials','Genomics']::text[], false, true),
-('stu-40', 'NBS', 3.93, 4, array['AB1201','BC2402']::text[], array['Machine Learning','NLP']::text[], true, true)
+('stu-34', 'CCDS', 4.08, 4, array['CE4041','SC1015','SC3020','SC4001']::text[], array['Computer Vision','Human-Computer Interaction']::text[], true, true),
+('stu-35', 'CCDS', 3.75, 3, array['SC1015','SC3020','SC4001']::text[], array['Human-Computer Interaction','Machine Learning']::text[], true, true),
+('stu-36', 'EEE', 4.33, 2, array['EE3015','EE4285']::text[], array['Marine Biology','Machine Learning']::text[], true, true),
+('stu-37', 'SBS', 4.67, 4, array['BS2004','BS2030','BS3008']::text[], array['Marine Biology','Computer Vision']::text[], true, true),
+('stu-38', 'MAE', 4.55, 3, array['MA2007','MA3005','MA4012']::text[], array['Statistics','Materials Science']::text[], true, true),
+('stu-39', 'SPMS', 4.32, 3, array['MH1810','MH3511','PH2104']::text[], array['Materials Science','Genomics']::text[], false, true),
+('stu-40', 'NBS', 3.93, 4, array['AB1201','BC2402']::text[], array['Machine Learning','Natural Language Processing']::text[], true, true)
 on conflict (user_id) do nothing;
 
 insert into supervisor_profiles (user_id, faculty, organisation) values
@@ -198,19 +198,46 @@ insert into matching_rounds (id, cycle_id, number, application_start, applicatio
 ('rnd-3', 'cyc-2627s1', 3, '2026-09-16T09:00:00+00:00', '2026-09-21T08:59:59+00:00', '2026-09-21T09:00:00+00:00', '2026-09-23T08:59:59+00:00', 'scheduled', null, null)
 on conflict (id) do nothing;
 
-insert into project_listings (id, supervisor_id, title, description, prerequisites, topic_tags, available_slots, filled_slots, offering_faculty, research_location, cover_url, status, created_at) values
-('lst-1', 'sup-1', 'Deep Learning for Early Detection of Diabetic Retinopathy', 'Build and validate a CNN pipeline for grading retinal images, with attention to clinician-facing explainability and calibration on a public fundus dataset.', array['SC4001']::text[], array['Machine Learning','Healthcare AI','Computer Vision']::text[], 3, 1, 'CCDS', 'N4-02c Lab', '/covers/cover-eye.jpg', 'published', '2026-08-05T09:00:00+00:00'),
-('lst-2', 'sup-1', 'Explainable AI for Clinical Decision Support', 'Evaluate SHAP and counterfactual explanations for tabular clinical models against clinician feedback in a small user study.', array['SC4001']::text[], array['Explainable AI','Healthcare AI']::text[], 2, 0, 'CCDS', 'N4-02c Lab', '/covers/cover-chat.jpg', 'published', '2026-08-06T09:00:00+00:00'),
-('lst-3', 'sup-1', 'Federated Learning for Multi-Hospital Imaging Data', 'Prototype a federated training loop across simulated hospital silos and measure the privacy and accuracy trade-off.', array['SC4001','SC3020']::text[], array['Machine Learning','Healthcare AI']::text[], 2, 0, 'CCDS', 'N4-02c Lab', '/covers/cover-atom.jpg', 'published', '2026-08-07T09:00:00+00:00'),
-('lst-4', 'sup-2', 'Microbiome Diversity in Tropical Coral Reefs', 'Sequence and analyse microbial communities from reef samples collected off Pulau Hantu to link diversity with bleaching resilience.', array['SB2210']::text[], array['Genomics','Marine Biology']::text[], 2, 1, 'SBS', 'SBS-02n-15', '/covers/cover-coral.jpg', 'published', '2026-08-08T09:00:00+00:00'),
-('lst-5', 'sup-2', 'CRISPR Screening for Antibiotic Resistance Genes', 'Design a pooled CRISPR knockout screen to identify genes that change antibiotic sensitivity in E. coli.', array['SB3101']::text[], array['Genomics']::text[], 2, 0, 'SBS', 'SBS-02n-15', '/covers/cover-leaf.jpg', 'published', '2026-08-09T09:00:00+00:00'),
-('lst-6', 'sup-3', 'Solid-State Battery Degradation Modelling', 'Fit physics-informed degradation models to cycling data and predict remaining useful life for a lab cell.', array['EE3080']::text[], array['Energy Systems','Statistics']::text[], 3, 2, 'EEE', 'S2-B4a-03', '/covers/cover-battery.jpg', 'published', '2026-08-10T09:00:00+00:00'),
-('lst-7', 'sup-3', 'Low-Power Edge Inference for Wearable ECG', 'Quantise and deploy an arrhythmia classifier on a microcontroller, then measure latency and battery impact.', array['EE4483','SC1015']::text[], array['Machine Learning','Healthcare AI']::text[], 2, 0, 'EEE', 'S2-B4a-03', '/covers/cover-eye.jpg', 'published', '2026-08-11T09:00:00+00:00'),
-('lst-8', 'sup-4', 'Human-Robot Collaboration in Assistive Environments', 'Study handover strategies between a collaborative arm and a human in a mock kitchen, measuring safety and comfort.', array['MA3005']::text[], array['Robotics','HCI']::text[], 2, 0, 'MAE', 'N3-01a-05', '/covers/cover-robot.jpg', 'published', '2026-08-12T09:00:00+00:00'),
-('lst-9', 'sup-4', 'Soft Gripper Design for Delicate Produce', 'Iterate silicone finger geometries and evaluate grasp success on fruit of varied firmness.', '{}'::text[], array['Robotics','Materials']::text[], 1, 1, 'MAE', 'N3-01a-05', '/covers/cover-robot.jpg', 'closed', '2026-08-13T09:00:00+00:00'),
-('lst-10', 'sup-5', 'Bayesian Methods for Sparse Sensor Networks', 'Develop a hierarchical Bayesian model for missing readings in an air-quality network and validate on NEA data.', array['MH3511']::text[], array['Statistics']::text[], 2, 0, 'SPMS', 'SPMS-MAS-04-01', '/covers/cover-atom.jpg', 'published', '2026-08-14T09:00:00+00:00'),
-('lst-11', 'sup-6', 'NLP for Low-Resource Southeast Asian Languages', 'Adapt a multilingual transformer to Malay and Tamil news text with a small annotated corpus and evaluate transfer.', array['SC4002']::text[], array['NLP','Machine Learning']::text[], 2, 0, 'CCDS', 'N4-02b Lab', '/covers/cover-chat.jpg', 'published', '2026-08-05T09:00:00+00:00'),
-('lst-12', 'sup-6', 'Fair Ranking in Recommender Systems', 'Measure exposure disparity in a movie recommender and implement two re-ranking methods to reduce it.', array['SC3020']::text[], array['Machine Learning','Explainable AI']::text[], 2, 0, 'CCDS', 'N4-02b Lab', '/covers/cover-leaf.jpg', 'published', '2026-08-06T09:00:00+00:00')
+insert into project_listings (id, supervisor_id, title, description, prerequisites, topic_tags, available_slots, filled_slots, offering_faculty, research_location, cover_url, outcomes, skills, hours_per_week, mode, gallery_urls, video_url, status, created_at) values
+('lst-1', 'sup-1', 'Deep Learning for Early Detection of Diabetic Retinopathy', 'Build and validate a CNN pipeline for grading retinal images, with attention to clinician-facing explainability and calibration on a public fundus dataset.', array['SC4001']::text[], array['Machine Learning','Healthcare AI','Computer Vision']::text[], 3, 1, 'CCDS', 'N4-02c Lab', '/covers/cover-eye.jpg', 'Clean and split a public fundus dataset.
+Train a CNN grader and compare it with a baseline.
+Add saliency maps a clinician can read, and check calibration.
+Write a short report and present a poster.', 'PyTorch, model evaluation, explainability methods, scientific writing', 8, 'hybrid', array['/gallery/lst-1-1.jpg','/gallery/lst-1-2.jpg','/gallery/lst-1-3.jpg']::text[], 'https://www.youtube.com/watch?v=aircAruvnKk', 'published', '2026-08-05T09:00:00+00:00'),
+('lst-2', 'sup-1', 'Explainable AI for Clinical Decision Support', 'Evaluate SHAP and counterfactual explanations for tabular clinical models against clinician feedback in a small user study.', array['SC4001']::text[], array['Explainable AI','Healthcare AI']::text[], 2, 0, 'CCDS', 'N4-02c Lab', '/covers/cover-stethoscope.jpg', 'Review explanation methods for tabular clinical data.
+Train a risk model on an open clinical dataset.
+Build a small decision-support prototype with SHAP and counterfactual views.
+Run a usability session with two clinicians and report what helped them.', 'Explainable AI, user studies, Python, Streamlit', 6, 'on_site', array['/gallery/lst-2-1.jpg','/gallery/lst-2-2.jpg']::text[], null, 'published', '2026-08-06T09:00:00+00:00'),
+('lst-3', 'sup-1', 'Federated Learning for Multi-Hospital Imaging Data', 'Prototype a federated training loop across simulated hospital silos and measure the privacy and accuracy trade-off.', array['SC4001','SC3020']::text[], array['Machine Learning','Healthcare AI']::text[], 2, 0, 'CCDS', 'N4-02c Lab', '/covers/cover-atom.jpg', 'Simulate three hospital data silos from a public imaging dataset.
+Implement federated averaging and one privacy defence.
+Measure the accuracy and privacy trade-off.
+Present the results at the lab meeting.', 'Federated learning, differential privacy, experiment design', 10, 'remote', array['/gallery/lst-3-1.jpg','/gallery/lst-3-2.jpg','/gallery/lst-3-3.jpg']::text[], null, 'published', '2026-08-07T09:00:00+00:00'),
+('lst-4', 'sup-2', 'Microbiome Diversity in Tropical Coral Reefs', 'Sequence and analyse microbial communities from reef samples collected off Pulau Hantu to link diversity with bleaching resilience.', array['BS2004']::text[], array['Genomics','Marine Biology']::text[], 2, 1, 'SBS', 'SBS-02n-15', '/covers/cover-coral.jpg', 'Join two field trips to collect coral and water samples off Pulau Hantu.
+Extract DNA and prepare 16S amplicon libraries.
+Analyse diversity with QIIME 2 and relate it to bleaching surveys.', 'Field sampling, DNA extraction, bioinformatics, R', 10, 'on_site', array['/gallery/lst-4-1.jpg','/gallery/lst-4-2.jpg']::text[], null, 'published', '2026-08-08T09:00:00+00:00'),
+('lst-5', 'sup-2', 'CRISPR Screening for Antibiotic Resistance Genes', 'Design a pooled CRISPR knockout screen to identify genes that change antibiotic sensitivity in E. coli.', array['BS3008']::text[], array['Genomics']::text[], 2, 0, 'SBS', 'SBS-02n-15', '/covers/cover-petri.jpg', 'Design a guide RNA library against candidate resistance genes.
+Run the pooled knockout screen under two antibiotics.
+Count guides by sequencing and rank genes by effect.', 'Molecular cloning, CRISPR screening, sequencing analysis, lab safety', 12, 'on_site', array['/gallery/lst-5-1.jpg','/gallery/lst-5-2.jpg']::text[], 'https://www.youtube.com/watch?v=jAhjPd4uNFY', 'published', '2026-08-09T09:00:00+00:00'),
+('lst-6', 'sup-3', 'Solid-State Battery Degradation Modelling', 'Fit physics-informed degradation models to cycling data and predict remaining useful life for a lab cell.', array['EE3015']::text[], array['Energy Systems','Statistics']::text[], 3, 2, 'EEE', 'S2-B4a-03', '/covers/cover-battery.jpg', 'Clean cycling data from coin cells tested in the lab.
+Fit an equivalent-circuit model and a physics-informed degradation model.
+Predict remaining useful life and compare the two models.', 'Battery modelling, Python, curve fitting, uncertainty estimation', 8, 'hybrid', array['/gallery/lst-6-1.jpg','/gallery/lst-6-2.jpg','/gallery/lst-6-3.jpg']::text[], null, 'published', '2026-08-10T09:00:00+00:00'),
+('lst-7', 'sup-3', 'Low-Power Edge Inference for Wearable ECG', 'Quantise and deploy an arrhythmia classifier on a microcontroller, then measure latency and battery impact.', array['EE4285','SC1015']::text[], array['Machine Learning','Healthcare AI']::text[], 2, 0, 'EEE', 'S2-B4a-03', '/covers/cover-wearable.jpg', 'Train a small arrhythmia classifier on the MIT-BIH dataset.
+Quantise it and deploy it on a microcontroller.
+Measure latency, accuracy and battery drain on the board.', 'Embedded C, TinyML, signal processing, power measurement', 8, 'on_site', array['/gallery/lst-7-1.jpg','/gallery/lst-7-2.jpg']::text[], null, 'published', '2026-08-11T09:00:00+00:00'),
+('lst-8', 'sup-4', 'Human-Robot Collaboration in Assistive Environments', 'Study handover strategies between a collaborative arm and a human in a mock kitchen, measuring safety and comfort.', array['MA3005']::text[], array['Robotics','Human-Computer Interaction']::text[], 2, 0, 'MAE', 'N3-01a-05', '/covers/cover-robot.jpg', 'Program three handover strategies on a collaborative robot arm.
+Run a user study with 12 participants in the mock kitchen.
+Analyse safety and comfort ratings and write up the findings.', 'ROS 2, robot programming, user study design, statistics', 10, 'on_site', array['/gallery/lst-8-1.jpg','/gallery/lst-8-2.jpg']::text[], null, 'published', '2026-08-12T09:00:00+00:00'),
+('lst-9', 'sup-4', 'Soft Gripper Design for Delicate Produce', 'Iterate silicone finger geometries and evaluate grasp success on fruit of varied firmness.', '{}'::text[], array['Robotics','Materials Science']::text[], 1, 1, 'MAE', 'N3-01a-05', '/covers/cover-gripper.jpg', 'Design silicone finger geometries in CAD and cast them.
+Test grasp success on fruit of different firmness.', 'CAD, moulding and casting, experimental testing', 8, 'on_site', '{}'::text[], null, 'closed', '2026-08-13T09:00:00+00:00'),
+('lst-10', 'sup-5', 'Bayesian Methods for Sparse Sensor Networks', 'Develop a hierarchical Bayesian model for missing readings in an air-quality network and validate on NEA data.', array['MH3511']::text[], array['Statistics']::text[], 2, 0, 'SPMS', 'SPMS-MAS-04-01', '/covers/cover-haze.jpg', 'Explore a year of air-quality readings and their missing values.
+Build a hierarchical Bayesian model for the gaps.
+Validate it against held-out NEA station data.', 'Bayesian statistics, Stan or PyMC, spatial data, R or Python', 6, 'remote', array['/gallery/lst-10-1.jpg','/gallery/lst-10-2.jpg']::text[], null, 'published', '2026-08-14T09:00:00+00:00'),
+('lst-11', 'sup-6', 'NLP for Low-Resource Southeast Asian Languages', 'Adapt a multilingual transformer to Malay and Tamil news text with a small annotated corpus and evaluate transfer.', array['SC4002']::text[], array['Natural Language Processing','Machine Learning']::text[], 2, 0, 'CCDS', 'N4-02b Lab', '/covers/cover-chat.jpg', 'Annotate a small corpus of Malay and Tamil news headlines.
+Fine-tune a multilingual transformer on it.
+Test how well it transfers between the two languages.
+Release the corpus and a short report.', 'NLP, Hugging Face Transformers, annotation design, evaluation', 8, 'hybrid', array['/gallery/lst-11-1.jpg','/gallery/lst-11-2.jpg','/gallery/lst-11-3.jpg']::text[], 'https://www.youtube.com/watch?v=eMlx5fFNoYc', 'published', '2026-08-05T09:00:00+00:00'),
+('lst-12', 'sup-6', 'Fair Ranking in Recommender Systems', 'Measure exposure disparity in a movie recommender and implement two re-ranking methods to reduce it.', array['SC3020']::text[], array['Machine Learning','Explainable AI']::text[], 2, 0, 'CCDS', 'N4-02b Lab', '/covers/cover-cinema.jpg', 'Train a baseline movie recommender on MovieLens.
+Measure how exposure is shared between popular and niche films.
+Implement two re-ranking methods and compare fairness and accuracy.', 'Recommender systems, fairness metrics, PyTorch, experiment tracking', 6, 'remote', array['/gallery/lst-12-1.jpg','/gallery/lst-12-2.jpg']::text[], null, 'published', '2026-08-06T09:00:00+00:00')
 on conflict (id) do nothing;
 
 insert into listing_applications (id, student_id, listing_id, round_id, statement, submitted_at, preference_rank, status, document_ids) values
@@ -326,9 +353,9 @@ insert into listing_applications (id, student_id, listing_id, round_id, statemen
 on conflict (id) do nothing;
 
 insert into self_proposed_applications (id, student_id, supervisor_id, title, description, research_interests, statement, status, submitted_at, decided_at, document_ids) values
-('prp-1', 'stu-3', 'sup-2', 'Metagenomic Survey of Mangrove Sediments', 'I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.', array['HCI','NLP']::text[], 'I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.', 'submitted', '2026-09-06T09:00:00+00:00', null, array['doc-stu-3-t']::text[]),
+('prp-1', 'stu-3', 'sup-2', 'Metagenomic Survey of Mangrove Sediments', 'I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.', array['Human-Computer Interaction','Natural Language Processing']::text[], 'I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.', 'submitted', '2026-09-06T09:00:00+00:00', null, array['doc-stu-3-t']::text[]),
 ('prp-2', 'stu-9', 'sup-1', 'Self-Supervised Pretraining for Retinal OCT', 'I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.', array['Energy Systems','Machine Learning']::text[], 'My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.', 'submitted', '2026-09-06T16:00:00+00:00', null, array['doc-stu-9-t']::text[]),
-('prp-3', 'stu-14', 'sup-6', 'Code-Switching Detection in Singlish Social Media', 'I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.', array['NLP','Statistics']::text[], 'I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.', 'accepted', '2026-09-06T23:00:00+00:00', '2026-09-08T09:00:00+00:00', array['doc-stu-14-t']::text[]),
+('prp-3', 'stu-14', 'sup-6', 'Code-Switching Detection in Singlish Social Media', 'I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.', array['Natural Language Processing','Statistics']::text[], 'I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.', 'accepted', '2026-09-06T23:00:00+00:00', '2026-09-08T09:00:00+00:00', array['doc-stu-14-t']::text[]),
 ('prp-4', 'stu-21', 'sup-4', 'Tendon-Driven Finger for Prosthetic Hands', 'I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.', array['Explainable AI','Statistics']::text[], 'I placed in the top 15 percent of a public competition on a closely related dataset, so I already understand its quirks. I want to apply that experience to a research question rather than a leaderboard.', 'declined', '2026-09-07T06:00:00+00:00', '2026-09-08T09:00:00+00:00', array['doc-stu-21-t']::text[])
 on conflict (id) do nothing;
 
@@ -342,11 +369,11 @@ insert into match_results (id, round_id, student_id, listing_id, status, prefere
 on conflict (id) do nothing;
 
 insert into notifications (id, user_id, event, title, message, created_at, read, link) values
-('ntf-1', 'stu-1', 'round_opened', 'Round 2 is open', 'Apply and rank your projects before 9 Sep.', '2026-09-05T08:00:00+00:00', true, '/browse'),
-('ntf-2', 'stu-1', 'cycle_changed', 'Round 2 closes in 3 days', 'Applications and rankings close on 9 Sep at 23:59.', '2026-09-06T09:00:00+00:00', false, '/my-applications'),
-('ntf-3', 'stu-33', 'offer_received', 'You have a match offer', 'Deep Learning for Early Detection of Diabetic Retinopathy. Respond by 10 Sep.', '2026-08-31T17:00:00+00:00', false, '/my-applications'),
+('ntf-1', 'stu-1', 'round_opened', 'Round 2 is open', 'Apply and rank your projects by 10 Sep, 5:00 pm SGT.', '2026-09-05T08:00:00+00:00', true, '/browse'),
+('ntf-2', 'stu-1', 'cycle_changed', 'Round 2 closes in 4 days', 'Applications close on 10 Sep at 5:00 pm SGT. Set your preference order in My applications before then.', '2026-09-06T09:00:00+00:00', false, '/my-applications'),
+('ntf-3', 'stu-33', 'offer_received', 'You have a match offer', 'Deep Learning for Early Detection of Diabetic Retinopathy. Respond by 10 Sep, 5:00 pm SGT.', '2026-08-31T17:00:00+00:00', false, '/my-applications'),
 ('ntf-4', 'sup-1', 'proposal_decided', 'New proposal from Aisha Rahman', 'Self-Supervised Pretraining for Retinal OCT is waiting for your decision.', '2026-09-06T15:00:00+00:00', false, '/proposals'),
-('ntf-5', 'sup-1', 'round_opened', 'Round 2 review window opens 10 Sep', 'Rank your applicants between 10 and 11 Sep.', '2026-09-05T08:00:00+00:00', false, '/projects'),
+('ntf-5', 'sup-1', 'round_opened', 'Round 2 review window opens 10 Sep', 'Rankings are due 12 Sep, 5:00 pm SGT. You can start ranking applicants now.', '2026-09-05T08:00:00+00:00', false, '/projects'),
 ('ntf-6', 'adm-1', 'results_published', 'Round 1 results published', '3,912 students notified. 372 declined so far.', '2026-08-31T17:00:00+00:00', true, '/rounds')
 on conflict (id) do nothing;
 

@@ -20,11 +20,16 @@ export interface ApiClient {
   browse(f?: M.ListingFilters): Promise<M.Listing[]>;
   listing(id: string): Promise<M.Listing>;
   supervisors(): Promise<M.SupervisorSummary[]>;
+  topics(): Promise<M.TopicGroup[]>;
+  courses(q: string, limit?: number): Promise<M.Course[]>;
+  coursesByCode(codes: string[]): Promise<M.Course[]>;
   myListings(): Promise<M.Listing[]>;
   createListing(body: M.ListingCreate): Promise<M.Listing>;
   updateListing(id: string, body: M.ListingUpdate): Promise<M.Listing>;
   closeListing(id: string): Promise<M.Listing>;
   uploadCover(id: string, file: File): Promise<M.Listing>;
+  addGalleryPhoto(id: string, file: File): Promise<M.Listing>;
+  removeGalleryPhoto(id: string, index: number): Promise<M.Listing>;
   propose(body: M.ProposalCreate): Promise<M.Proposal>;
   myProposals(): Promise<M.Proposal[]>;
   incomingProposals(): Promise<M.Proposal[]>;

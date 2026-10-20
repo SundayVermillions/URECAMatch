@@ -306,6 +306,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/supervisor/listings/{listing_id}/gallery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Photo
+         * @description Add a photo to the listing's gallery (lab, equipment, sample results). Same rules as the cover.
+         */
+        post: operations["add_photo_supervisor_listings__listing_id__gallery_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supervisor/listings/{listing_id}/gallery/{index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Photo */
+        delete: operations["remove_photo_supervisor_listings__listing_id__gallery__index__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/proposals": {
         parameters: {
             query?: never;
@@ -1027,6 +1064,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalog/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Topics */
+        get: operations["topics_catalog_topics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Courses
+         * @description Search by code prefix ("SC40") or title words ("deep learning"),
+         *     or look up exact codes ("SC4001,SC3020") to show their titles. Unknown codes are left out.
+         */
+        get: operations["courses_catalog_courses_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/debug/clock": {
         parameters: {
             query?: never;
@@ -1242,6 +1317,11 @@ export interface components {
          * @enum {string}
          */
         AuditOperation: "matching_executed" | "manual_reassignment" | "results_published" | "user_updated" | "user_deactivated" | "cycle_updated";
+        /** Body_add_photo_supervisor_listings__listing_id__gallery_post */
+        Body_add_photo_supervisor_listings__listing_id__gallery_post: {
+            /** File */
+            file: string;
+        };
         /** Body_cover_supervisor_listings__listing_id__cover_post */
         Body_cover_supervisor_listings__listing_id__cover_post: {
             /** File */
@@ -1277,6 +1357,25 @@ export interface components {
              * @default false
              */
             overridden: boolean;
+        };
+        /** Course */
+        Course: {
+            /** Code */
+            code: string;
+            /** Title */
+            title: string;
+            /** Au */
+            au?: number | null;
+            /**
+             * Dept
+             * @default
+             */
+            dept: string;
+            /**
+             * Last Offered
+             * @default
+             */
+            last_offered: string;
         };
         /** Cycle */
         Cycle: {
@@ -1404,6 +1503,26 @@ export interface components {
             research_location: string;
             /** Cover Url */
             cover_url?: string | null;
+            /**
+             * Outcomes
+             * @default
+             */
+            outcomes: string;
+            /**
+             * Skills
+             * @default
+             */
+            skills: string;
+            /** Hours Per Week */
+            hours_per_week?: number | null;
+            mode?: components["schemas"]["ListingMode"] | null;
+            /**
+             * Gallery Urls
+             * @default []
+             */
+            gallery_urls: string[];
+            /** Video Url */
+            video_url?: string | null;
             status: components["schemas"]["ListingStatus"];
             /**
              * Created At
@@ -1446,11 +1565,31 @@ export interface components {
             /** Research Location */
             research_location: string;
             /**
+             * Outcomes
+             * @default
+             */
+            outcomes: string;
+            /**
+             * Skills
+             * @default
+             */
+            skills: string;
+            /** Hours Per Week */
+            hours_per_week?: number | null;
+            mode?: components["schemas"]["ListingMode"] | null;
+            /** Video Url */
+            video_url?: string | null;
+            /**
              * Publish
              * @default true
              */
             publish: boolean;
         };
+        /**
+         * ListingMode
+         * @enum {string}
+         */
+        ListingMode: "on_site" | "hybrid" | "remote";
         /**
          * ListingStatus
          * @enum {string}
@@ -1472,6 +1611,15 @@ export interface components {
             offering_faculty?: string | null;
             /** Research Location */
             research_location?: string | null;
+            /** Outcomes */
+            outcomes?: string | null;
+            /** Skills */
+            skills?: string | null;
+            /** Hours Per Week */
+            hours_per_week?: number | null;
+            mode?: components["schemas"]["ListingMode"] | null;
+            /** Video Url */
+            video_url?: string | null;
             /** Publish */
             publish?: boolean | null;
         };
@@ -1897,6 +2045,13 @@ export interface components {
             name: string;
             /** Faculty */
             faculty: string;
+        };
+        /** TopicGroup */
+        TopicGroup: {
+            /** Name */
+            name: string;
+            /** Topics */
+            topics: string[];
         };
         /** User */
         User: {
@@ -2653,6 +2808,79 @@ export interface operations {
                 "multipart/form-data": components["schemas"]["Body_cover_supervisor_listings__listing_id__cover_post"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Listing"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_photo_supervisor_listings__listing_id__gallery_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_add_photo_supervisor_listings__listing_id__gallery_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Listing"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_photo_supervisor_listings__listing_id__gallery__index__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -4150,6 +4378,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupervisorDashboard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    topics_catalog_topics_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopicGroup"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    courses_catalog_courses_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                codes?: string;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"][];
                 };
             };
             /** @description Validation Error */

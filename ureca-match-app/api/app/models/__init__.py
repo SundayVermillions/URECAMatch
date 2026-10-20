@@ -61,6 +61,12 @@ class ListingStatus(str, Enum):
     closed = "closed"
 
 
+class ListingMode(str, Enum):
+    on_site = "on_site"
+    hybrid = "hybrid"
+    remote = "remote"
+
+
 class ApplicationStatus(str, Enum):
     submitted = "submitted"
     withdrawn = "withdrawn"
@@ -297,11 +303,31 @@ class Listing(BaseModel):
     offering_faculty: str
     research_location: str
     cover_url: str | None = None
+    # Project details (all optional): what the student does and gains, time needed, where, photos, one video.
+    outcomes: str = ""
+    skills: str = ""
+    hours_per_week: int | None = None
+    mode: ListingMode | None = None
+    gallery_urls: list[str] = []
+    video_url: str | None = None  # YouTube or Vimeo, stored in canonical form
     status: ListingStatus
     created_at: datetime
     applicant_count: int = 0
     applied: bool = False  # for the current student, if any
     applied_rank: int | None = None
+
+
+class TopicGroup(BaseModel):
+    name: str
+    topics: list[str]
+
+
+class Course(BaseModel):
+    code: str
+    title: str
+    au: float | None = None
+    dept: str = ""
+    last_offered: str = ""
 
 
 class ListingCreate(BaseModel):
@@ -312,6 +338,11 @@ class ListingCreate(BaseModel):
     available_slots: int = Field(ge=1, le=20)
     offering_faculty: str
     research_location: str
+    outcomes: str = Field(default="", max_length=2000)
+    skills: str = Field(default="", max_length=1000)
+    hours_per_week: int | None = Field(default=None, ge=1, le=40)
+    mode: ListingMode | None = None
+    video_url: str | None = None
     publish: bool = True
 
 
@@ -323,6 +354,11 @@ class ListingUpdate(BaseModel):
     available_slots: int | None = Field(default=None, ge=1, le=20)
     offering_faculty: str | None = None
     research_location: str | None = None
+    outcomes: str | None = Field(default=None, max_length=2000)
+    skills: str | None = Field(default=None, max_length=1000)
+    hours_per_week: int | None = Field(default=None, ge=1, le=40)  # sending null clears it
+    mode: ListingMode | None = None  # sending null clears it
+    video_url: str | None = None  # sending null or "" clears it
     publish: bool | None = None  # True publishes a draft (REQ-PROJ-1). Closing has its own endpoint.
 
 

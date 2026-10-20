@@ -24,12 +24,14 @@ from app.models import (
     MatchStatus,
     NotificationEvent,
     Ok,
+    ProposalStatus,
     ReassignRequest,
     Role,
     RoundStatus,
     RoundSummary,
     UserListItem,
 )
+from app.services import placement
 from app.services.audit import audit
 from app.services.matching.algorithm import ListingPrefs, StudentPrefs, match
 from app.services.notify import notify
@@ -582,6 +584,8 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     m = my_match(user, store)
     if m is None or m.status != MatchStatus.published:
         raise conflict("no_offer", "There is no open offer to respond to.")
+    if placement.is_placed(store, user.id):  # already registered to a self-proposed project
+        raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot accept this offer.")
     m.status, m.student_responded_at = MatchStatus.accepted, settings.now()  # REQ-OUTCOME-1
     # In Supabase mode the store returns copies, so every change below is saved explicitly.
     lst = store.listing(m.listing_id)
@@ -594,6 +598,21 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     for a in others:
         a.status, a.preference_rank = ApplicationStatus.withdrawn, None
     store.save_applications(*others)
+    # The same goes for proposals still waiting for a supervisor: they are declined, and each supervisor is told.
+    now = settings.now()
+    for p in store.proposals_for(student_id=user.id):
+        if p.status == ProposalStatus.submitted:
+            p.status, p.decided_at = ProposalStatus.declined, now
+            store.save_proposal(p)
+            notify(
+                store,
+                [p.supervisor_id],
+                NotificationEvent.proposal_decided,
+                "A proposal was withdrawn",
+                f"{user.name} accepted a match offer, so their proposal {p.title} was withdrawn.",
+                now,
+                "/proposals",
+            )
     return m
 
 

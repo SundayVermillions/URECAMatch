@@ -88,6 +88,21 @@ create table matching_rounds (
   check (application_start < application_end and application_end < review_start and review_start < review_end)
 );
 
+-- ------------------------------------------------------------------ reference lists (slice B)
+-- Pickers for listing topic tags and prerequisites, student modules and interests. Rows come from
+-- api/app/db/catalog via seed.sql; the API refuses values that are not in these lists.
+create table topics (
+  name        text primary key,
+  topic_group text not null
+);
+create table courses (                                             -- NTU Content of Courses
+  code         text primary key,
+  title        text not null,
+  au           numeric,
+  dept         text not null default '',
+  last_offered text not null default ''                           -- e.g. 2026_2
+);
+
 -- ------------------------------------------------------------------ listings (slice B)
 create table project_listings (
   id                text primary key,
@@ -101,6 +116,12 @@ create table project_listings (
   offering_faculty  text not null,
   research_location text not null default '',
   cover_url         text,
+  outcomes          text not null default '',                   -- what the student will do
+  skills            text not null default '',                   -- skills they will gain
+  hours_per_week    int check (hours_per_week between 1 and 40),
+  mode              text check (mode in ('on_site', 'hybrid', 'remote')),
+  gallery_urls      text[] not null default '{}',               -- up to 4 photos, public covers bucket
+  video_url         text,                                       -- YouTube or Vimeo, canonical form
   status            listing_status not null default 'draft',
   created_at        timestamptz not null default now()
 );

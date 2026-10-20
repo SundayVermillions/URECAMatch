@@ -494,7 +494,7 @@
       ],
       "research_interests": [
         "Healthcare AI",
-        "NLP"
+        "Natural Language Processing"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -532,8 +532,8 @@
         "SC4001"
       ],
       "research_interests": [
-        "HCI",
-        "Materials"
+        "Human-Computer Interaction",
+        "Materials Science"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -566,13 +566,13 @@
       "cgpa": 4.68,
       "year_of_study": 4,
       "completed_modules": [
-        "EE2004",
-        "EE3080",
-        "EE4483",
+        "EE2101",
+        "EE3015",
+        "EE4285",
         "SC1015"
       ],
       "research_interests": [
-        "HCI",
+        "Human-Computer Interaction",
         "Explainable AI"
       ],
       "profile_complete": true,
@@ -606,11 +606,11 @@
       "cgpa": 4.41,
       "year_of_study": 4,
       "completed_modules": [
-        "SB3101",
-        "SB3211"
+        "BS2030",
+        "BS3008"
       ],
       "research_interests": [
-        "Materials",
+        "Materials Science",
         "Machine Learning"
       ],
       "profile_complete": true,
@@ -645,7 +645,7 @@
       "year_of_study": 4,
       "completed_modules": [
         "MA2007",
-        "MA4826"
+        "MA4012"
       ],
       "research_interests": [
         "Statistics",
@@ -721,7 +721,7 @@
       "year_of_study": 3,
       "completed_modules": [
         "AB1201",
-        "AB2101",
+        "AB1202",
         "BC2402"
       ],
       "research_interests": [
@@ -765,7 +765,7 @@
         "SC4002"
       ],
       "research_interests": [
-        "Materials",
+        "Materials Science",
         "Computer Vision"
       ],
       "profile_complete": true,
@@ -844,7 +844,7 @@
       ],
       "research_interests": [
         "Marine Biology",
-        "Materials"
+        "Materials Science"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -877,12 +877,12 @@
       "cgpa": 3.74,
       "year_of_study": 4,
       "completed_modules": [
-        "EE4483",
+        "EE4285",
         "SC1015"
       ],
       "research_interests": [
         "Energy Systems",
-        "NLP"
+        "Natural Language Processing"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -915,9 +915,9 @@
       "cgpa": 4.08,
       "year_of_study": 4,
       "completed_modules": [
-        "SB2210",
-        "SB3101",
-        "SB3211"
+        "BS2004",
+        "BS2030",
+        "BS3008"
       ],
       "research_interests": [
         "Genomics",
@@ -955,10 +955,10 @@
       "year_of_study": 4,
       "completed_modules": [
         "MA2007",
-        "MA4826"
+        "MA4012"
       ],
       "research_interests": [
-        "HCI",
+        "Human-Computer Interaction",
         "Genomics"
       ],
       "profile_complete": true,
@@ -996,7 +996,7 @@
         "PH2104"
       ],
       "research_interests": [
-        "HCI",
+        "Human-Computer Interaction",
         "Computer Vision"
       ],
       "profile_complete": true,
@@ -1034,7 +1034,7 @@
         "BC2402"
       ],
       "research_interests": [
-        "NLP",
+        "Natural Language Processing",
         "Genomics"
       ],
       "profile_complete": true,
@@ -1074,7 +1074,7 @@
         "SC4001"
       ],
       "research_interests": [
-        "Materials",
+        "Materials Science",
         "Statistics"
       ],
       "profile_complete": true,
@@ -1112,7 +1112,7 @@
         "SC3020"
       ],
       "research_interests": [
-        "Materials",
+        "Materials Science",
         "Explainable AI"
       ],
       "profile_complete": true,
@@ -1152,8 +1152,8 @@
         "SC4001"
       ],
       "research_interests": [
-        "NLP",
-        "HCI"
+        "Natural Language Processing",
+        "Human-Computer Interaction"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -1186,12 +1186,12 @@
       "cgpa": 3.98,
       "year_of_study": 3,
       "completed_modules": [
-        "EE2004",
-        "EE3080",
+        "EE2101",
+        "EE3015",
         "SC1015"
       ],
       "research_interests": [
-        "HCI",
+        "Human-Computer Interaction",
         "Genomics"
       ],
       "profile_complete": true,
@@ -1225,9 +1225,9 @@
       "cgpa": 3.79,
       "year_of_study": 2,
       "completed_modules": [
-        "SB2210",
-        "SB3101",
-        "SB3211"
+        "BS2004",
+        "BS2030",
+        "BS3008"
       ],
       "research_interests": [
         "Explainable AI",
@@ -1266,10 +1266,10 @@
       "completed_modules": [
         "MA2007",
         "MA3005",
-        "MA4826"
+        "MA4012"
       ],
       "research_interests": [
-        "NLP",
+        "Natural Language Processing",
         "Marine Biology"
       ],
       "profile_complete": true,
@@ -1308,7 +1308,7 @@
         "PH2104"
       ],
       "research_interests": [
-        "NLP",
+        "Natural Language Processing",
         "Statistics"
       ],
       "profile_complete": true,
@@ -1343,7 +1343,7 @@
       "year_of_study": 3,
       "completed_modules": [
         "AB1201",
-        "AB2101",
+        "AB1202",
         "BC2402"
       ],
       "research_interests": [
@@ -1386,7 +1386,7 @@
         "SC4001"
       ],
       "research_interests": [
-        "Materials",
+        "Materials Science",
         "Explainable AI"
       ],
       "profile_complete": true,
@@ -1426,7 +1426,7 @@
         "SC4002"
       ],
       "research_interests": [
-        "HCI",
+        "Human-Computer Interaction",
         "Statistics"
       ],
       "profile_complete": true,
@@ -1500,9 +1500,9 @@
       "cgpa": 4.63,
       "year_of_study": 2,
       "completed_modules": [
-        "EE2004",
-        "EE3080",
-        "EE4483",
+        "EE2101",
+        "EE3015",
+        "EE4285",
         "SC1015"
       ],
       "research_interests": [
@@ -1540,8 +1540,8 @@
       "cgpa": 3.55,
       "year_of_study": 3,
       "completed_modules": [
-        "SB2210",
-        "SB3101"
+        "BS2004",
+        "BS3008"
       ],
       "research_interests": [
         "Machine Learning",
@@ -1579,11 +1579,11 @@
       "year_of_study": 4,
       "completed_modules": [
         "MA2007",
-        "MA4826"
+        "MA4012"
       ],
       "research_interests": [
         "Healthcare AI",
-        "Materials"
+        "Materials Science"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -1620,7 +1620,7 @@
         "MH3511"
       ],
       "research_interests": [
-        "HCI",
+        "Human-Computer Interaction",
         "Marine Biology"
       ],
       "profile_complete": true,
@@ -1654,7 +1654,7 @@
       "cgpa": 4.68,
       "year_of_study": 3,
       "completed_modules": [
-        "AB2101",
+        "AB1202",
         "BC2402"
       ],
       "research_interests": [
@@ -1737,7 +1737,7 @@
       ],
       "research_interests": [
         "Computer Vision",
-        "HCI"
+        "Human-Computer Interaction"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -1775,7 +1775,7 @@
         "SC4001"
       ],
       "research_interests": [
-        "HCI",
+        "Human-Computer Interaction",
         "Machine Learning"
       ],
       "profile_complete": true,
@@ -1809,8 +1809,8 @@
       "cgpa": 4.33,
       "year_of_study": 2,
       "completed_modules": [
-        "EE3080",
-        "EE4483"
+        "EE3015",
+        "EE4285"
       ],
       "research_interests": [
         "Marine Biology",
@@ -1847,9 +1847,9 @@
       "cgpa": 4.67,
       "year_of_study": 4,
       "completed_modules": [
-        "SB2210",
-        "SB3101",
-        "SB3211"
+        "BS2004",
+        "BS2030",
+        "BS3008"
       ],
       "research_interests": [
         "Marine Biology",
@@ -1888,11 +1888,11 @@
       "completed_modules": [
         "MA2007",
         "MA3005",
-        "MA4826"
+        "MA4012"
       ],
       "research_interests": [
         "Statistics",
-        "Materials"
+        "Materials Science"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -1930,7 +1930,7 @@
         "PH2104"
       ],
       "research_interests": [
-        "Materials",
+        "Materials Science",
         "Genomics"
       ],
       "profile_complete": false,
@@ -1969,7 +1969,7 @@
       ],
       "research_interests": [
         "Machine Learning",
-        "NLP"
+        "Natural Language Processing"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -2219,6 +2219,16 @@
       "offering_faculty": "CCDS",
       "research_location": "N4-02c Lab",
       "cover_url": "/covers/cover-eye.jpg",
+      "outcomes": "Clean and split a public fundus dataset.\nTrain a CNN grader and compare it with a baseline.\nAdd saliency maps a clinician can read, and check calibration.\nWrite a short report and present a poster.",
+      "skills": "PyTorch, model evaluation, explainability methods, scientific writing",
+      "hours_per_week": 8,
+      "mode": "hybrid",
+      "gallery_urls": [
+        "/gallery/lst-1-1.jpg",
+        "/gallery/lst-1-2.jpg",
+        "/gallery/lst-1-3.jpg"
+      ],
+      "video_url": "https://www.youtube.com/watch?v=aircAruvnKk",
       "status": "published",
       "created_at": "2026-08-05T09:00:00Z",
       "applicant_count": 0,
@@ -2242,7 +2252,16 @@
       "filled_slots": 0,
       "offering_faculty": "CCDS",
       "research_location": "N4-02c Lab",
-      "cover_url": "/covers/cover-chat.jpg",
+      "cover_url": "/covers/cover-stethoscope.jpg",
+      "outcomes": "Review explanation methods for tabular clinical data.\nTrain a risk model on an open clinical dataset.\nBuild a small decision-support prototype with SHAP and counterfactual views.\nRun a usability session with two clinicians and report what helped them.",
+      "skills": "Explainable AI, user studies, Python, Streamlit",
+      "hours_per_week": 6,
+      "mode": "on_site",
+      "gallery_urls": [
+        "/gallery/lst-2-1.jpg",
+        "/gallery/lst-2-2.jpg"
+      ],
+      "video_url": null,
       "status": "published",
       "created_at": "2026-08-06T09:00:00Z",
       "applicant_count": 0,
@@ -2268,6 +2287,16 @@
       "offering_faculty": "CCDS",
       "research_location": "N4-02c Lab",
       "cover_url": "/covers/cover-atom.jpg",
+      "outcomes": "Simulate three hospital data silos from a public imaging dataset.\nImplement federated averaging and one privacy defence.\nMeasure the accuracy and privacy trade-off.\nPresent the results at the lab meeting.",
+      "skills": "Federated learning, differential privacy, experiment design",
+      "hours_per_week": 10,
+      "mode": "remote",
+      "gallery_urls": [
+        "/gallery/lst-3-1.jpg",
+        "/gallery/lst-3-2.jpg",
+        "/gallery/lst-3-3.jpg"
+      ],
+      "video_url": null,
       "status": "published",
       "created_at": "2026-08-07T09:00:00Z",
       "applicant_count": 0,
@@ -2281,7 +2310,7 @@
       "title": "Microbiome Diversity in Tropical Coral Reefs",
       "description": "Sequence and analyse microbial communities from reef samples collected off Pulau Hantu to link diversity with bleaching resilience.",
       "prerequisites": [
-        "SB2210"
+        "BS2004"
       ],
       "topic_tags": [
         "Genomics",
@@ -2292,6 +2321,15 @@
       "offering_faculty": "SBS",
       "research_location": "SBS-02n-15",
       "cover_url": "/covers/cover-coral.jpg",
+      "outcomes": "Join two field trips to collect coral and water samples off Pulau Hantu.\nExtract DNA and prepare 16S amplicon libraries.\nAnalyse diversity with QIIME 2 and relate it to bleaching surveys.",
+      "skills": "Field sampling, DNA extraction, bioinformatics, R",
+      "hours_per_week": 10,
+      "mode": "on_site",
+      "gallery_urls": [
+        "/gallery/lst-4-1.jpg",
+        "/gallery/lst-4-2.jpg"
+      ],
+      "video_url": null,
       "status": "published",
       "created_at": "2026-08-08T09:00:00Z",
       "applicant_count": 0,
@@ -2305,7 +2343,7 @@
       "title": "CRISPR Screening for Antibiotic Resistance Genes",
       "description": "Design a pooled CRISPR knockout screen to identify genes that change antibiotic sensitivity in E. coli.",
       "prerequisites": [
-        "SB3101"
+        "BS3008"
       ],
       "topic_tags": [
         "Genomics"
@@ -2314,7 +2352,16 @@
       "filled_slots": 0,
       "offering_faculty": "SBS",
       "research_location": "SBS-02n-15",
-      "cover_url": "/covers/cover-leaf.jpg",
+      "cover_url": "/covers/cover-petri.jpg",
+      "outcomes": "Design a guide RNA library against candidate resistance genes.\nRun the pooled knockout screen under two antibiotics.\nCount guides by sequencing and rank genes by effect.",
+      "skills": "Molecular cloning, CRISPR screening, sequencing analysis, lab safety",
+      "hours_per_week": 12,
+      "mode": "on_site",
+      "gallery_urls": [
+        "/gallery/lst-5-1.jpg",
+        "/gallery/lst-5-2.jpg"
+      ],
+      "video_url": "https://www.youtube.com/watch?v=jAhjPd4uNFY",
       "status": "published",
       "created_at": "2026-08-09T09:00:00Z",
       "applicant_count": 0,
@@ -2328,7 +2375,7 @@
       "title": "Solid-State Battery Degradation Modelling",
       "description": "Fit physics-informed degradation models to cycling data and predict remaining useful life for a lab cell.",
       "prerequisites": [
-        "EE3080"
+        "EE3015"
       ],
       "topic_tags": [
         "Energy Systems",
@@ -2339,6 +2386,16 @@
       "offering_faculty": "EEE",
       "research_location": "S2-B4a-03",
       "cover_url": "/covers/cover-battery.jpg",
+      "outcomes": "Clean cycling data from coin cells tested in the lab.\nFit an equivalent-circuit model and a physics-informed degradation model.\nPredict remaining useful life and compare the two models.",
+      "skills": "Battery modelling, Python, curve fitting, uncertainty estimation",
+      "hours_per_week": 8,
+      "mode": "hybrid",
+      "gallery_urls": [
+        "/gallery/lst-6-1.jpg",
+        "/gallery/lst-6-2.jpg",
+        "/gallery/lst-6-3.jpg"
+      ],
+      "video_url": null,
       "status": "published",
       "created_at": "2026-08-10T09:00:00Z",
       "applicant_count": 0,
@@ -2352,7 +2409,7 @@
       "title": "Low-Power Edge Inference for Wearable ECG",
       "description": "Quantise and deploy an arrhythmia classifier on a microcontroller, then measure latency and battery impact.",
       "prerequisites": [
-        "EE4483",
+        "EE4285",
         "SC1015"
       ],
       "topic_tags": [
@@ -2363,7 +2420,16 @@
       "filled_slots": 0,
       "offering_faculty": "EEE",
       "research_location": "S2-B4a-03",
-      "cover_url": "/covers/cover-eye.jpg",
+      "cover_url": "/covers/cover-wearable.jpg",
+      "outcomes": "Train a small arrhythmia classifier on the MIT-BIH dataset.\nQuantise it and deploy it on a microcontroller.\nMeasure latency, accuracy and battery drain on the board.",
+      "skills": "Embedded C, TinyML, signal processing, power measurement",
+      "hours_per_week": 8,
+      "mode": "on_site",
+      "gallery_urls": [
+        "/gallery/lst-7-1.jpg",
+        "/gallery/lst-7-2.jpg"
+      ],
+      "video_url": null,
       "status": "published",
       "created_at": "2026-08-11T09:00:00Z",
       "applicant_count": 0,
@@ -2381,13 +2447,22 @@
       ],
       "topic_tags": [
         "Robotics",
-        "HCI"
+        "Human-Computer Interaction"
       ],
       "available_slots": 2,
       "filled_slots": 0,
       "offering_faculty": "MAE",
       "research_location": "N3-01a-05",
       "cover_url": "/covers/cover-robot.jpg",
+      "outcomes": "Program three handover strategies on a collaborative robot arm.\nRun a user study with 12 participants in the mock kitchen.\nAnalyse safety and comfort ratings and write up the findings.",
+      "skills": "ROS 2, robot programming, user study design, statistics",
+      "hours_per_week": 10,
+      "mode": "on_site",
+      "gallery_urls": [
+        "/gallery/lst-8-1.jpg",
+        "/gallery/lst-8-2.jpg"
+      ],
+      "video_url": null,
       "status": "published",
       "created_at": "2026-08-12T09:00:00Z",
       "applicant_count": 0,
@@ -2403,13 +2478,19 @@
       "prerequisites": [],
       "topic_tags": [
         "Robotics",
-        "Materials"
+        "Materials Science"
       ],
       "available_slots": 1,
       "filled_slots": 1,
       "offering_faculty": "MAE",
       "research_location": "N3-01a-05",
-      "cover_url": "/covers/cover-robot.jpg",
+      "cover_url": "/covers/cover-gripper.jpg",
+      "outcomes": "Design silicone finger geometries in CAD and cast them.\nTest grasp success on fruit of different firmness.",
+      "skills": "CAD, moulding and casting, experimental testing",
+      "hours_per_week": 8,
+      "mode": "on_site",
+      "gallery_urls": [],
+      "video_url": null,
       "status": "closed",
       "created_at": "2026-08-13T09:00:00Z",
       "applicant_count": 0,
@@ -2432,7 +2513,16 @@
       "filled_slots": 0,
       "offering_faculty": "SPMS",
       "research_location": "SPMS-MAS-04-01",
-      "cover_url": "/covers/cover-atom.jpg",
+      "cover_url": "/covers/cover-haze.jpg",
+      "outcomes": "Explore a year of air-quality readings and their missing values.\nBuild a hierarchical Bayesian model for the gaps.\nValidate it against held-out NEA station data.",
+      "skills": "Bayesian statistics, Stan or PyMC, spatial data, R or Python",
+      "hours_per_week": 6,
+      "mode": "remote",
+      "gallery_urls": [
+        "/gallery/lst-10-1.jpg",
+        "/gallery/lst-10-2.jpg"
+      ],
+      "video_url": null,
       "status": "published",
       "created_at": "2026-08-14T09:00:00Z",
       "applicant_count": 0,
@@ -2449,7 +2539,7 @@
         "SC4002"
       ],
       "topic_tags": [
-        "NLP",
+        "Natural Language Processing",
         "Machine Learning"
       ],
       "available_slots": 2,
@@ -2457,6 +2547,16 @@
       "offering_faculty": "CCDS",
       "research_location": "N4-02b Lab",
       "cover_url": "/covers/cover-chat.jpg",
+      "outcomes": "Annotate a small corpus of Malay and Tamil news headlines.\nFine-tune a multilingual transformer on it.\nTest how well it transfers between the two languages.\nRelease the corpus and a short report.",
+      "skills": "NLP, Hugging Face Transformers, annotation design, evaluation",
+      "hours_per_week": 8,
+      "mode": "hybrid",
+      "gallery_urls": [
+        "/gallery/lst-11-1.jpg",
+        "/gallery/lst-11-2.jpg",
+        "/gallery/lst-11-3.jpg"
+      ],
+      "video_url": "https://www.youtube.com/watch?v=eMlx5fFNoYc",
       "status": "published",
       "created_at": "2026-08-05T09:00:00Z",
       "applicant_count": 0,
@@ -2480,7 +2580,16 @@
       "filled_slots": 0,
       "offering_faculty": "CCDS",
       "research_location": "N4-02b Lab",
-      "cover_url": "/covers/cover-leaf.jpg",
+      "cover_url": "/covers/cover-cinema.jpg",
+      "outcomes": "Train a baseline movie recommender on MovieLens.\nMeasure how exposure is shared between popular and niche films.\nImplement two re-ranking methods and compare fairness and accuracy.",
+      "skills": "Recommender systems, fairness metrics, PyTorch, experiment tracking",
+      "hours_per_week": 6,
+      "mode": "remote",
+      "gallery_urls": [
+        "/gallery/lst-12-1.jpg",
+        "/gallery/lst-12-2.jpg"
+      ],
+      "video_url": null,
       "status": "published",
       "created_at": "2026-08-06T09:00:00Z",
       "applicant_count": 0,
@@ -4342,8 +4451,8 @@
       "title": "Metagenomic Survey of Mangrove Sediments",
       "description": "I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.",
       "research_interests": [
-        "HCI",
-        "NLP"
+        "Human-Computer Interaction",
+        "Natural Language Processing"
       ],
       "statement": "I completed the prerequisite module last semester and built a related course project that reached 0.89 AUC on a held-out set. I am keen to take that further with real data and clinician feedback.",
       "status": "submitted",
@@ -4386,7 +4495,7 @@
       "title": "Code-Switching Detection in Singlish Social Media",
       "description": "I propose a semester-long study with a clear deliverable: a dataset, a baseline model and an evaluation report. I have already collected pilot data and would value supervision on method design.",
       "research_interests": [
-        "NLP",
+        "Natural Language Processing",
         "Statistics"
       ],
       "statement": "I have self-studied the core methods for a year and wrote a term paper on the evaluation problem in this area. This project sits exactly at the intersection of my background and my goals.",

@@ -78,11 +78,18 @@ def test_REQ_OUTCOME_2_declined_or_placed_students_are_not_matched_again(as_admi
     for sid in ("stu-33", "stu-38"):
         assert fresh_store.student(sid).eligible_for_matching  # the seed does not set the flag (slice B's seed)
     _set_now(monkeypatch, datetime(2026, 9, 7, 10, tzinfo=UTC))
-    for sid, lst in (("stu-33", "lst-1"), ("stu-38", "lst-1")):
-        r = client_for(sid).post("/applications", json={"listing_id": lst, "statement": "s " * 30})
-        assert r.status_code == 201
-        app_id = r.json()["id"]
-        fresh_store.applicant_rankings["lst-1:rnd-2"].insert(0, app_id)  # ranked first, so only the rule can stop it
+    # A placed student is now refused at the door (one project per cycle, slice B)...
+    r = client_for("stu-33").post("/applications", json={"listing_id": "lst-1", "statement": "s " * 30})
+    assert r.status_code == 409 and r.json()["code"] == "already_placed"
+    # ...so give stu-33 an application directly, as one made before placement would be: matching must still skip it.
+    stray = fresh_store.application("app-1").model_copy(
+        update={"id": "app-stray", "student_id": "stu-33", "listing_id": "lst-1", "round_id": "rnd-2", "status": "submitted"}
+    )
+    fresh_store.save_applications(stray)
+    fresh_store.applicant_rankings["lst-1:rnd-2"].insert(0, stray.id)
+    r = client_for("stu-38").post("/applications", json={"listing_id": "lst-1", "statement": "s " * 30})
+    assert r.status_code == 201
+    fresh_store.applicant_rankings["lst-1:rnd-2"].insert(0, r.json()["id"])  # ranked first, so only the rule can stop it
     _set_now(monkeypatch, datetime(2026, 9, 12, 9, tzinfo=UTC))
     assert as_admin.post("/admin/rounds/rnd-2/execute").status_code == 200
     assert not [m for m in fresh_store.matches if m.round_id == "rnd-2" and m.student_id in ("stu-33", "stu-38")]

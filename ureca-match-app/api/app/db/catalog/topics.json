@@ -1,0 +1,33 @@
+{
+  "Computing and AI": [
+    "Machine Learning", "Deep Learning", "Computer Vision", "Natural Language Processing", "Explainable AI",
+    "Healthcare AI", "Reinforcement Learning", "Data Science", "Cybersecurity", "Blockchain",
+    "Human-Computer Interaction", "Software Engineering", "Distributed Systems", "Cloud Computing",
+    "Internet of Things", "Computer Graphics", "Virtual and Augmented Reality", "Quantum Computing",
+    "Algorithms and Theory", "Databases"
+  ],
+  "Engineering": [
+    "Robotics", "Control Systems", "Signal Processing", "Communications and Networks", "Microelectronics",
+    "Photonics", "Power Systems", "Energy Systems", "Renewable Energy", "Mechanical Design",
+    "Fluid Mechanics", "Thermal Engineering", "Additive Manufacturing", "Aerospace", "Autonomous Vehicles",
+    "Structural Engineering", "Geotechnical Engineering", "Transportation", "Water and Environment",
+    "Chemical Engineering", "Biomedical Engineering"
+  ],
+  "Science": [
+    "Mathematics", "Statistics", "Physics", "Chemistry", "Materials Science", "Nanotechnology",
+    "Biology", "Genomics", "Neuroscience", "Microbiology", "Marine Biology", "Ecology", "Earth Science",
+    "Climate Science", "Food Science"
+  ],
+  "Medicine and Health": [
+    "Clinical Research", "Public Health", "Drug Discovery", "Medical Imaging", "Immunology",
+    "Sports Science", "Mental Health"
+  ],
+  "Humanities, Arts and Social Sciences": [
+    "Psychology", "Linguistics", "Economics", "Sociology", "Public Policy", "History", "Philosophy",
+    "Literature", "Communication and Media", "Art and Design", "Education", "Learning Sciences"
+  ],
+  "Business": [
+    "Finance", "Accounting", "Marketing", "Business Analytics", "Entrepreneurship", "Supply Chain",
+    "Sustainability"
+  ]
+}
