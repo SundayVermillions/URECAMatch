@@ -90,8 +90,8 @@ export function Chip({ active, children, onClick }: { active?: boolean; children
 /** Compact filter dropdown for toolbars: "School  Any ⌄", opening a popover list with a check on the current choice.
  *  Custom instead of a native <select> so the list is styled consistently; keyboard support is rebuilt:
  *  Enter/Space/↓ opens, ↑/↓ move, Enter selects, Esc or a click outside closes. ARIA listbox roles for screen readers. */
-export function FilterSelect({ label, value, options, onChange, anyLabel = "Any" }:
-  { label: string; value: string | undefined; options: string[]; onChange: (v: string | undefined) => void; anyLabel?: string }) {
+export function FilterSelect({ label, value, options, onChange, anyLabel = "Any", align = "right" }:
+  { label: string; value: string | undefined; options: string[]; onChange: (v: string | undefined) => void; anyLabel?: string; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0); // highlighted row while open
   const root = useRef<HTMLDivElement>(null);
@@ -135,7 +135,7 @@ export function FilterSelect({ label, value, options, onChange, anyLabel = "Any"
       </button>
       {open && (
         <ul id={listId} role="listbox" aria-label={label}
-          className="absolute right-0 z-20 mt-2 min-w-[220px] max-w-[320px] max-h-[320px] overflow-y-auto p-1.5 rounded-[14px] bg-surface/95 backdrop-blur-xl shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]">
+          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-20 mt-2 min-w-[220px] max-w-[320px] max-h-[320px] overflow-y-auto p-1.5 rounded-[14px] bg-surface/95 backdrop-blur-xl shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]`}>
           {items.map((o, i) => {
             const selected = o === value;
             return (

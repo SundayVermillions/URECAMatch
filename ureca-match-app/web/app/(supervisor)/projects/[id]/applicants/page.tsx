@@ -7,9 +7,13 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
 import { DocumentViewer } from "@/components/supervisor/document-viewer";
-import { Avatar, Banner, Button, Chip, DeadlineChip, Drawer, Empty, IconButton, Loading, Pill, RankBadge, fmtDate } from "@/components/ui";
+import { Avatar, Banner, Button, Chip, DeadlineChip, Drawer, Empty, FilterSelect, IconButton, Loading, Pill, RankBadge, fmtDate } from "@/components/ui";
 import { ApiError, type Applicant, type ApplicantFilters } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
+
+const SCHOOLS = ["CCDS", "EEE", "SBS", "MAE", "SPMS"];
+const CGPA_MINS = [4.0, 4.5];
+const cgpaLabel = (v: number) => `${v.toFixed(2)}+`;
 
 export default function Applicants() {
   const { id } = useParams<{ id: string }>();
@@ -49,13 +53,12 @@ export default function Applicants() {
       {canRank && unranked > 0 && <div className="mb-4"><Banner tone="warn" title={`${unranked} ${unranked === 1 ? "applicant is" : "applicants are"} not ranked yet.`}>Students you do not rank cannot be matched to this project. Rank them before the deadline: {me?.phase.label}.</Banner></div>}
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
       <div className="grid grid-cols-[1fr_420px] gap-5 items-start">
-        <div className="bg-surface border border-border rounded-card overflow-hidden">
+        <div className="bg-surface border border-border rounded-card">{/* not overflow-hidden: the filter menus drop below the card */}
           <div className="flex items-baseline gap-2 px-[18px] pt-4 pb-2.5"><h2>Applicants</h2><span className="text-[12.5px] text-muted font-semibold">{pool.length} not ranked</span></div>
           <div className="flex items-center gap-1.5 px-[18px] pb-3 border-b border-border flex-wrap">
-            <span className="eyebrow">CGPA</span>
-            {[undefined, 4.0, 4.5].map((v) => <Chip key={String(v)} active={filters.min_cgpa === v} onClick={() => setFilters({ ...filters, min_cgpa: v })}>{v ? `${v.toFixed(2)}+` : "Any"}</Chip>)}
-            <span className="eyebrow ml-2">School</span>
-            {[undefined, "CCDS", "EEE", "SBS", "MAE", "SPMS"].map((s) => <Chip key={String(s)} active={filters.school === s} onClick={() => setFilters({ ...filters, school: s })}>{s ?? "Any"}</Chip>)}
+            <FilterSelect label="CGPA" align="left" value={filters.min_cgpa != null ? cgpaLabel(filters.min_cgpa) : undefined} options={CGPA_MINS.map(cgpaLabel)}
+              onChange={(v) => setFilters({ ...filters, min_cgpa: CGPA_MINS.find((m) => cgpaLabel(m) === v) })} />
+            <FilterSelect label="School" align="left" value={filters.school} options={SCHOOLS} onChange={(s) => setFilters({ ...filters, school: s })} />
             <Chip active={!!filters.prerequisites_only} onClick={() => setFilters({ ...filters, prerequisites_only: !filters.prerequisites_only })}>Meets prerequisites</Chip>
             <Chip active={recommendedOnly} onClick={() => setRecommendedOnly(!recommendedOnly)}>Top 10</Chip>
           </div>
