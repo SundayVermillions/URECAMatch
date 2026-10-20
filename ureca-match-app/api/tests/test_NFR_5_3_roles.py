@@ -47,6 +47,7 @@ STUDENT_ONLY = {
     ("GET", "/me/profile"),
     ("PUT", "/me/profile"),
     ("POST", "/me/documents"),
+    ("DELETE", "/me/documents/{document_id}"),
     ("POST", "/proposals"),
     ("GET", "/me/proposals"),
     ("GET", "/me/applications"),

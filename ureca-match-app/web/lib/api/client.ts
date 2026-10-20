@@ -12,6 +12,7 @@ export interface ApiClient {
   getProfile(): Promise<M.StudentProfile>;
   updateProfile(body: M.ProfileUpdate): Promise<M.StudentProfile>;
   uploadDocument(file: File): Promise<M.Document>;
+  deleteDocument(id: string): Promise<void>;
   listUsers(f?: M.UserFilters): Promise<M.UserListItem[]>;
   createUser(body: M.UserCreate): Promise<M.User>;
   updateUser(id: string, body: M.UserUpdate): Promise<M.User>;

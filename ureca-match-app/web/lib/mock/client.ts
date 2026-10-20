@@ -1,3 +1,4 @@
+const mockFileUrls = new Map<string, string>();
 /** In-browser mock of the API. Same rules as api/app/routers, same seed (lib/mock/seed.json).
  *  State lives in memory for the tab; reload the page to reset.
  *  Sign in as any seeded user with password "password", or pick a demo user on the sign-in page. */
@@ -168,12 +169,25 @@ export class MockClient implements ApiClient {
     Object.assign(p, b, { completed_modules, research_interests, profile_complete: true });
     return p;
   }
+    async deleteDocument(id: string): Promise<void> {
+    await sleep();
+    const u = this.user();
+    const s = this.db.students.find((s) => s.user_id === u.id);
+    if (!s) throw new M.ApiError(404, "not_found", "Profile not found.");
+    s.documents = s.documents.filter((d) => d.id !== id);
+  }
+
   async uploadDocument(file: File): Promise<M.Document> {
     const u = this.need("student");
+    const st = this.student(u.id)!;
+    if (st.documents.length >= 5) throw new M.ApiError(422, "max_documents", "Maximum limit of 5 documents reached.", "file");
     if (file.type !== "application/pdf" || !file.name.toLowerCase().endsWith(".pdf")) throw new M.ApiError(422, "not_pdf", "Upload a PDF file.", "file");
     if (file.size > 5 * 1024 * 1024) throw new M.ApiError(422, "too_large", "The file is larger than 5 MB.", "file");
-    const d: M.Document = { id: this.id("doc"), owner_id: u.id, file_name: file.name, file_format: "pdf", file_size: file.size, uploaded_at: this.iso(), url: null };
-    this.student(u.id)!.documents.push(d);
+    const docId = this.id("doc");
+    const url = typeof window !== "undefined" && typeof URL !== "undefined" ? URL.createObjectURL(file) : null;
+    if (url) mockFileUrls.set(docId, url);
+    const d: M.Document = { id: docId, owner_id: u.id, file_name: file.name, file_format: "pdf", file_size: file.size, uploaded_at: this.iso(), url };
+    st.documents.push(d);
     return d;
   }
   async listUsers(f: M.UserFilters = {}) {
@@ -484,7 +498,8 @@ export class MockClient implements ApiClient {
       const proposed = this.db.proposals.some((p) => p.student_id === s.user_id && p.supervisor_id === u.id && (p.document_ids ?? []).includes(id));
       const ok = u.id === s.user_id || u.role === "admin" || (u.role === "supervisor" && (applied || proposed));
       if (!ok) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
-      return { ...d, url: "/sample-transcript.pdf" };
+      const liveUrl = mockFileUrls.get(id) ?? d.url ?? "/sample-transcript.pdf";
+      return { ...d, url: liveUrl };
     }
     throw new M.ApiError(404, "not_found", "Document was not found.");
   }
