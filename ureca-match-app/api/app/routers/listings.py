@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import re
 from typing import Annotated
+from uuid import uuid4
 
 from fastapi import APIRouter, File, UploadFile
 
 from app.deps import CurrentUser, SettingsDep, StoreDep, SupervisorUser
 from app.errors import forbidden, invalid, not_found
 from app.models import AccountStatus, Listing, ListingCreate, ListingStatus, ListingUpdate, Ok, Role, SupervisorSummary
-from app.services import windows
+from app.services import catalog, windows
 from app.services.storage import get_storage
 
 router = APIRouter(tags=["listings"])
@@ -92,11 +94,16 @@ def create(body: ListingCreate, user: SupervisorUser, store: StoreDep, settings:
         supervisor_name=user.name,
         title=body.title,
         description=body.description,
-        prerequisites=body.prerequisites,
-        topic_tags=body.topic_tags,
+        prerequisites=catalog.clean_courses(body.prerequisites, "prerequisites"),  # NTU course codes only
+        topic_tags=catalog.clean_topics(body.topic_tags, "topic_tags"),  # standard topics only
         available_slots=body.available_slots,
         offering_faculty=body.offering_faculty,
         research_location=body.research_location,
+        outcomes=body.outcomes.strip(),
+        skills=body.skills.strip(),
+        hours_per_week=body.hours_per_week,
+        mode=body.mode,
+        video_url=_video_url(body.video_url),
         created_at=settings.now(),
         status=ListingStatus.published if body.publish else ListingStatus.draft,
     )  # REQ-PROJ-1
@@ -120,6 +127,15 @@ def update(listing_id: str, body: ListingUpdate, user: SupervisorUser, store: St
             "available_slots",
         )
     changes = body.model_dump(exclude_none=True)
+    if body.prerequisites is not None:
+        changes["prerequisites"] = catalog.clean_courses(body.prerequisites, "prerequisites")
+    if body.topic_tags is not None:
+        changes["topic_tags"] = catalog.clean_topics(body.topic_tags, "topic_tags")
+    for k in ("hours_per_week", "mode", "video_url"):  # optional details: an explicit null clears them
+        if k in body.model_fields_set:
+            changes[k] = getattr(body, k)
+    if "video_url" in changes:
+        changes["video_url"] = _video_url(changes["video_url"])
     if changes.pop("publish", False) and lst.status == ListingStatus.draft:  # REQ-PROJ-1: publish a draft
         lst.status = ListingStatus.published
     for k, v in changes.items():
@@ -156,24 +172,75 @@ async def cover(
     listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep, file: Annotated[UploadFile, File()]
 ) -> Listing:
     """Upload or replace a listing's cover image. Changing the cover is an edit, so REQ-PROJ-2 applies."""
-    lst = store.listing(listing_id)
-    if lst is None or lst.supervisor_id != user.id:
-        raise not_found("Project")
-    if _cycle_closed(store, settings):  # REQ-PROJ-2
-        raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
-    content_type = file.content_type or ""
-    if content_type not in COVER_TYPES:
-        raise invalid("not_image", "Upload a JPEG or PNG image.", "file")
-    data = await file.read()
-    if len(data) > MAX_COVER_BYTES:
-        raise invalid("too_large", "The image is larger than 5 MB.", "file")
-    path = get_storage().put("covers", f"{listing_id}.{COVER_TYPES[content_type]}", data, content_type=content_type)
+    lst = _editable(listing_id, user, store, settings)
+    data, content_type = await _read_image(file)
+    path = get_storage().put("covers", f"{listing_id}.{IMAGE_TYPES[content_type]}", data, content_type=content_type)
     lst.cover_url = _public_cover_url(path, settings)
     return store.save_listing(lst)
 
 
-COVER_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
-MAX_COVER_BYTES = 5 * 1024 * 1024
+@router.post("/supervisor/listings/{listing_id}/gallery", response_model=Listing)
+async def add_photo(
+    listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep, file: Annotated[UploadFile, File()]
+) -> Listing:
+    """Add a photo to the listing's gallery (lab, equipment, sample results). Same rules as the cover."""
+    lst = _editable(listing_id, user, store, settings)
+    if len(lst.gallery_urls) >= MAX_GALLERY:
+        raise invalid("gallery_full", f"A project can show up to {MAX_GALLERY} photos. Remove one first.", "file")
+    data, content_type = await _read_image(file)
+    name = f"gallery/{listing_id}-{uuid4().hex[:8]}.{IMAGE_TYPES[content_type]}"  # a new name, so no cache-busting needed
+    path = get_storage().put("covers", name, data, content_type=content_type)
+    lst.gallery_urls = [*lst.gallery_urls, _public_cover_url(path, settings)]
+    return store.save_listing(lst)
+
+
+@router.delete("/supervisor/listings/{listing_id}/gallery/{index}", response_model=Listing)
+def remove_photo(listing_id: str, index: int, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Listing:
+    lst = _editable(listing_id, user, store, settings)
+    if not 0 <= index < len(lst.gallery_urls):
+        raise not_found("Photo")
+    lst.gallery_urls = [u for i, u in enumerate(lst.gallery_urls) if i != index]
+    return store.save_listing(lst)
+
+
+def _editable(listing_id: str, user, store, settings) -> Listing:
+    """The supervisor's own listing, while the cycle is open (REQ-PROJ-2)."""
+    lst = store.listing(listing_id)
+    if lst is None or lst.supervisor_id != user.id:
+        raise not_found("Project")
+    if _cycle_closed(store, settings):
+        raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
+    return lst
+
+
+async def _read_image(file: UploadFile) -> tuple[bytes, str]:
+    content_type = file.content_type or ""
+    if content_type not in IMAGE_TYPES:
+        raise invalid("not_image", "Upload a JPEG or PNG image.", "file")
+    data = await file.read()
+    if len(data) > MAX_IMAGE_BYTES:
+        raise invalid("too_large", "The image is larger than 5 MB.", "file")
+    return data, content_type
+
+
+IMAGE_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_GALLERY = 4
+
+_YOUTUBE = re.compile(r"^(?:https?://)?(?:www\.|m\.)?(?:youtube\.com/(?:watch\?(?:.*&)?v=|shorts/|embed/)|youtu\.be/)([\w-]{11})")
+_VIMEO = re.compile(r"^(?:https?://)?(?:www\.)?vimeo\.com/(?:video/)?(\d+)")
+
+
+def _video_url(url: str | None) -> str | None:
+    """YouTube or Vimeo only, stored in one canonical form so the page can embed it. Blank clears it."""
+    url = (url or "").strip()
+    if not url:
+        return None
+    if m := _YOUTUBE.match(url):
+        return f"https://www.youtube.com/watch?v={m.group(1)}"
+    if m := _VIMEO.match(url):
+        return f"https://vimeo.com/{m.group(1)}"
+    raise invalid("video_not_supported", "Paste a YouTube or Vimeo link.", "video_url")
 
 
 def _public_cover_url(path: str, settings) -> str:

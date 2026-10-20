@@ -5,6 +5,7 @@ import { Suspense, useRef, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
+import { CoursePicker, TopicPicker } from "@/components/pickers";
 import { Banner, Button, Card, Field, Input, Select, fmtDate } from "@/components/ui";
 import { ApiError, type StudentProfile } from "@/lib/api/models";
 import { useCall } from "@/lib/use-api";
@@ -13,7 +14,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   const { refresh } = useMe();
   const call = useCall();
   const mustComplete = useSearchParams().get("complete") === "1";
-  const [f, setF] = useState(() => ({ school: p?.school ?? "", cgpa: p?.cgpa?.toString() ?? "", year_of_study: p?.year_of_study?.toString() ?? "", completed_modules: p?.completed_modules.join(", ") ?? "", research_interests: p?.research_interests.join(", ") ?? "" }));
+  const [f, setF] = useState(() => ({ school: p?.school ?? "", cgpa: p?.cgpa?.toString() ?? "", year_of_study: p?.year_of_study?.toString() ?? "", completed_modules: p?.completed_modules ?? [], research_interests: p?.research_interests ?? [] }));
   const [error, setError] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,7 +25,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     e.preventDefault(); setBusy(true); setError(null); setSaved(false);
     try {
       await call((api) => api.updateProfile({ school: f.school, cgpa: parseFloat(f.cgpa), year_of_study: parseInt(f.year_of_study, 10),
-        completed_modules: f.completed_modules.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean), research_interests: f.research_interests.split(",").map((s) => s.trim()).filter(Boolean) }));
+        completed_modules: f.completed_modules, research_interests: f.research_interests }));
       await refresh(); setSaved(true);
     } catch (err) { setError(err as ApiError); } finally { setBusy(false); }
   }
@@ -46,8 +47,12 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             <Field label="CGPA" error={err("cgpa")} hint="0.00 to 5.00"><Input id="cgpa" type="number" step="0.01" min={0} max={5} value={f.cgpa} onChange={(e) => setF({ ...f, cgpa: e.target.value })} required invalid={!!err("cgpa")} /></Field>
             <Field label="Year of study"><Select id="year" value={f.year_of_study} onChange={(e) => setF({ ...f, year_of_study: e.target.value })} required><option value="">Choose</option>{[1, 2, 3, 4, 5].map((y) => <option key={y} value={y}>Year {y}</option>)}</Select></Field>
           </div>
-          <Field label="Completed modules" hint="Course codes, comma separated. Used to check project prerequisites."><Input id="modules" value={f.completed_modules} onChange={(e) => setF({ ...f, completed_modules: e.target.value })} placeholder="SC1015, SC2001, SC4001" /></Field>
-          <Field label="Research interests" hint="Comma separated"><Input id="interests" value={f.research_interests} onChange={(e) => setF({ ...f, research_interests: e.target.value })} placeholder="Machine Learning, HCI" /></Field>
+          <Field label="Completed modules" error={err("completed_modules")} hint="NTU courses you have passed. Used to check project prerequisites.">
+            <CoursePicker value={f.completed_modules} onChange={(v) => setF({ ...f, completed_modules: v })} invalid={!!err("completed_modules")} />
+          </Field>
+          <Field label="Research interests" error={err("research_interests")} hint="Standard topics, the same ones projects are tagged with.">
+            <TopicPicker value={f.research_interests} onChange={(v) => setF({ ...f, research_interests: v })} invalid={!!err("research_interests")} />
+          </Field>
           <div><Button type="submit" size="lg" disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button></div>
         </Card>
         <Card>

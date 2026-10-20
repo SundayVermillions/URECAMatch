@@ -50,6 +50,8 @@ api/app/db/seed_data.py single source of demo data
 supabase/schema.sql     tables, enums, audit_log append-only trigger
 supabase/policies.sql   RLS and storage policies: no direct client access, API only
 supabase/seed.sql       GENERATED demo rows
+supabase/catalog.sql    GENERATED reference lists: standard topics and NTU courses (safe to re-run)
+supabase/migrations/    one-off changes for a database created from an older schema.sql
 shared/openapi.json     GENERATED contract
 ```
 
@@ -78,4 +80,4 @@ Owners: Edwin (A), Robin (B), Ian (C), Nicholas (D), Benjamin (E). The full guid
 
 - Web: import the repo into Vercel with root `ureca-match-app/web`. Env: `NEXT_PUBLIC_API_MODE=live`, `NEXT_PUBLIC_API_URL=<api url>`.
 - API: second Vercel project with root `ureca-match-app/api` (Python runtime, entry `api/index.py`), or Render. Env from `api/.env.example` with `API_MODE=supabase`.
-- Database: in the Supabase SQL editor, run `supabase/schema.sql`, then `supabase/policies.sql`, then `supabase/seed.sql`. `policies.sql` is safe to run again after any schema change.
+- Database: in the Supabase SQL editor, run `supabase/schema.sql`, then `supabase/policies.sql`, then `supabase/seed.sql`, then `supabase/catalog.sql`. `policies.sql` and `catalog.sql` are safe to run again. A database made before a change in `supabase/migrations/` needs those files run once, oldest first.

@@ -1459,6 +1459,174 @@
         }
       }
     },
+    "/supervisor/listings/{listing_id}/gallery": {
+      "post": {
+        "tags": [
+          "listings"
+        ],
+        "summary": "Add Photo",
+        "description": "Add a photo to the listing's gallery (lab, equipment, sample results). Same rules as the cover.",
+        "operationId": "add_photo_supervisor_listings__listing_id__gallery_post",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Listing Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_photo_supervisor_listings__listing_id__gallery_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/supervisor/listings/{listing_id}/gallery/{index}": {
+      "delete": {
+        "tags": [
+          "listings"
+        ],
+        "summary": "Remove Photo",
+        "operationId": "remove_photo_supervisor_listings__listing_id__gallery__index__delete",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Listing Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/proposals": {
       "post": {
         "tags": [
@@ -4824,6 +4992,177 @@
         }
       }
     },
+    "/catalog/topics": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Topics",
+        "operationId": "topics_catalog_topics_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TopicGroup"
+                  },
+                  "title": "Response Topics Catalog Topics Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/courses": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Courses",
+        "description": "Search by code prefix (\"SC40\") or title words (\"deep learning\"),\nor look up exact codes (\"SC4001,SC3020\") to show their titles. Unknown codes are left out.",
+        "operationId": "courses_catalog_courses_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "codes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Codes"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Course"
+                  },
+                  "title": "Response Courses Catalog Courses Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/debug/clock": {
       "get": {
         "tags": [
@@ -5466,6 +5805,20 @@
         ],
         "title": "AuditOperation"
       },
+      "Body_add_photo_supervisor_listings__listing_id__gallery_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_add_photo_supervisor_listings__listing_id__gallery_post"
+      },
       "Body_cover_supervisor_listings__listing_id__cover_post": {
         "properties": {
           "file": {
@@ -5532,6 +5885,45 @@
         ],
         "title": "ClockState",
         "description": "Debug clock (developer tool). `enabled` is false when the server has DEBUG_CLOCK off."
+      },
+      "Course": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "au": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Au"
+          },
+          "dept": {
+            "type": "string",
+            "title": "Dept",
+            "default": ""
+          },
+          "last_offered": {
+            "type": "string",
+            "title": "Last Offered",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title"
+        ],
+        "title": "Course"
       },
       "Cycle": {
         "properties": {
@@ -5808,6 +6200,56 @@
             ],
             "title": "Cover Url"
           },
+          "outcomes": {
+            "type": "string",
+            "title": "Outcomes",
+            "default": ""
+          },
+          "skills": {
+            "type": "string",
+            "title": "Skills",
+            "default": ""
+          },
+          "hours_per_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours Per Week"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gallery_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gallery Urls",
+            "default": []
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          },
           "status": {
             "$ref": "#/components/schemas/ListingStatus"
           },
@@ -5895,6 +6337,52 @@
             "type": "string",
             "title": "Research Location"
           },
+          "outcomes": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Outcomes",
+            "default": ""
+          },
+          "skills": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Skills",
+            "default": ""
+          },
+          "hours_per_week": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 40.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours Per Week"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          },
           "publish": {
             "type": "boolean",
             "title": "Publish",
@@ -5910,6 +6398,15 @@
           "research_location"
         ],
         "title": "ListingCreate"
+      },
+      "ListingMode": {
+        "type": "string",
+        "enum": [
+          "on_site",
+          "hybrid",
+          "remote"
+        ],
+        "title": "ListingMode"
       },
       "ListingStatus": {
         "type": "string",
@@ -6006,6 +6503,64 @@
               }
             ],
             "title": "Research Location"
+          },
+          "outcomes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcomes"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "hours_per_week": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 40.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours Per Week"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
           },
           "publish": {
             "anyOf": [
@@ -7110,6 +7665,27 @@
           "faculty"
         ],
         "title": "SupervisorSummary"
+      },
+      "TopicGroup": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Topics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "topics"
+        ],
+        "title": "TopicGroup"
       },
       "User": {
         "properties": {

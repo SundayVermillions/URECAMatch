@@ -41,11 +41,16 @@ export class LiveClient implements ApiClient {
   browse = (f: M.ListingFilters = {}) => this.req<M.Listing[]>("GET", "/listings" + this.q(f));
   listing = (id: string) => this.req<M.Listing>("GET", `/listings/${id}`);
   supervisors = () => this.req<M.SupervisorSummary[]>("GET", "/supervisors");
+  topics = () => this.req<M.TopicGroup[]>("GET", "/catalog/topics");
+  courses = (q: string, limit?: number) => this.req<M.Course[]>("GET", "/catalog/courses" + this.q({ q, limit }));
+  coursesByCode = (codes: string[]) => (codes.length ? this.req<M.Course[]>("GET", "/catalog/courses" + this.q({ codes: codes.join(","), limit: 50 })) : Promise.resolve([]));
   myListings = () => this.req<M.Listing[]>("GET", "/supervisor/listings");
   createListing = (b: M.ListingCreate) => this.req<M.Listing>("POST", "/supervisor/listings", b);
   updateListing = (id: string, b: M.ListingUpdate) => this.req<M.Listing>("PUT", `/supervisor/listings/${id}`, b);
   closeListing = (id: string) => this.req<M.Listing>("POST", `/supervisor/listings/${id}/close`);
   uploadCover = (id: string, file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.Listing>("POST", `/supervisor/listings/${id}/cover`, undefined, f); };
+  addGalleryPhoto = (id: string, file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.Listing>("POST", `/supervisor/listings/${id}/gallery`, undefined, f); };
+  removeGalleryPhoto = (id: string, index: number) => this.req<M.Listing>("DELETE", `/supervisor/listings/${id}/gallery/${index}`);
   propose = (b: M.ProposalCreate) => this.req<M.Proposal>("POST", "/proposals", b);
   myProposals = () => this.req<M.Proposal[]>("GET", "/me/proposals");
   incomingProposals = () => this.req<M.Proposal[]>("GET", "/supervisor/proposals");

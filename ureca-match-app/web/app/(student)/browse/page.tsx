@@ -8,6 +8,7 @@ import { I } from "@/components/shell/icons";
 import { ApplicantStack, Avatar, Banner, Button, DeadlineChip, Empty, FilterSelect, Input, Loading, isHighDemand } from "@/components/ui";
 import type { Listing } from "@/lib/api/models";
 import { useApi } from "@/lib/use-api";
+import { useStanding } from "@/lib/use-standing";
 
 const SCHOOLS = ["CCDS", "EEE", "SBS", "MAE", "SPMS"];
 
@@ -26,7 +27,9 @@ export default function Browse() {
     return Array.from(new Set((all.data ?? []).map((l) => l.supervisor_name))).sort((a, b) => bare(a).localeCompare(bare(b)));
   }, [all.data]);
   const applied = (data ?? []).filter((l) => l.applied).length;
-  const canApply = me?.phase.window === "application";
+  const standing = useStanding();
+  const windowOpen = me?.phase.window === "application";
+  const canApply = windowOpen && !standing.viewOnly && !standing.loading; // placed or ineligible students browse view only
   const filtered = !!(q || school || tag || supervisor);
   const early = me?.phase.window === "before_cycle" || me?.phase.window === "pre_application"; // REQ-BROWSE-1
 
@@ -34,7 +37,12 @@ export default function Browse() {
     <>
       <PageHeader title="Browse projects" description="Find a research project that fits you. Open one to read the details and apply."
         right={me && <DeadlineChip>{me.phase.label}</DeadlineChip>} />
-      {me && !canApply && (
+      {standing.viewOnly && (
+        <div className="mb-5">
+          <Banner tone={standing.placedIn ? "good" : "warn"} title={standing.placedIn ? "You have a project." : "You cannot apply this cycle."}>{standing.reason}</Banner>
+        </div>
+      )}
+      {me && !windowOpen && !standing.viewOnly && (
         <div className="mb-5">
           {early
             ? <Banner tone="accent" title="You're early.">{me.phase.window === "pre_application" ? `${me.phase.label}.` : "No application cycle is open yet."} Browse and shortlist projects now, then come back to apply.</Banner>

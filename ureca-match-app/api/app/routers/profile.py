@@ -9,6 +9,7 @@ from fastapi import APIRouter, File, UploadFile
 from app.deps import SettingsDep, StoreDep, StudentUser
 from app.errors import invalid, not_found
 from app.models import Document, ProfileUpdate, StudentProfile
+from app.services import catalog
 from app.services.storage import get_storage
 
 router = APIRouter(tags=["profile"])
@@ -30,7 +31,8 @@ def update_profile(body: ProfileUpdate, user: StudentUser, store: StoreDep) -> S
     if p is None:
         raise not_found("Profile")
     p.school, p.cgpa, p.year_of_study = body.school, body.cgpa, body.year_of_study
-    p.completed_modules, p.research_interests = body.completed_modules, body.research_interests
+    p.completed_modules = catalog.clean_courses(body.completed_modules, "completed_modules")  # compared with prerequisites
+    p.research_interests = catalog.clean_topics(body.research_interests, "research_interests")
     p.profile_complete = True  # REQ-PROF-1
     store.save_student(p)
     return p

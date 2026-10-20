@@ -50,7 +50,7 @@ def test_REQ_PROF_1_profile_marked_complete_after_save(client_for):
         "cgpa": 4.5,
         "year_of_study": 3,
         "completed_modules": ["SC2006", "SC2001"],
-        "research_interests": ["Machine Learning", "Software Systems"],
+        "research_interests": ["Machine Learning", "Software Engineering"],
     }
     put_resp = client.put("/me/profile", json=payload)
     assert put_resp.status_code == 200
@@ -66,7 +66,7 @@ def test_REQ_PROF_2_fields_saved(client_for):
         "cgpa": 4.85,
         "year_of_study": 2,
         "completed_modules": ["SC1003", "SC1007"],
-        "research_interests": ["Algorithms", "Distributed Systems"],
+        "research_interests": ["Algorithms and Theory", "Distributed Systems"],
     }
     put_resp = client.put("/me/profile", json=payload)
     assert put_resp.status_code == 200
@@ -78,4 +78,4 @@ def test_REQ_PROF_2_fields_saved(client_for):
     assert data["cgpa"] == 4.85
     assert data["year_of_study"] == 2
     assert data["completed_modules"] == ["SC1003", "SC1007"]
-    assert data["research_interests"] == ["Algorithms", "Distributed Systems"]
+    assert data["research_interests"] == ["Algorithms and Theory", "Distributed Systems"]
