@@ -368,7 +368,10 @@ export class MockClient implements ApiClient {
     for (const s of this.db.students) {
       const d = s.documents.find((d) => d.id === id); if (!d) continue;
       // REQ-VRANK-3: owner, admins, and the supervisor of any listing the owner applied to
-      const ok = u.id === s.user_id || u.role === "admin" || (u.role === "supervisor" && this.db.applications.some((a) => a.student_id === s.user_id && this.db.listings.find((l) => l.id === a.listing_id)?.supervisor_id === u.id));
+      const applied = this.db.applications.some((a) => a.student_id === s.user_id && this.db.listings.find((l) => l.id === a.listing_id)?.supervisor_id === u.id);
+      // REQ-REVPROP-1: and the supervisor a proposal with this document attached was sent to
+      const proposed = this.db.proposals.some((p) => p.student_id === s.user_id && p.supervisor_id === u.id && (p.document_ids ?? []).includes(id));
+      const ok = u.id === s.user_id || u.role === "admin" || (u.role === "supervisor" && (applied || proposed));
       if (!ok) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
       return { ...d, url: "/sample-transcript.pdf" };
     }
