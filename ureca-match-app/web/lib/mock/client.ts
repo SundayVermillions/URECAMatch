@@ -345,6 +345,23 @@ export class MockClient implements ApiClient {
     for (const r of rows) r.rank = ranking.includes(r.application_id) ? ranking.indexOf(r.application_id) + 1 : null;
     return rows;
   }
+  /** Mirrors app/services/ai_match.py local_score: prerequisites (40) + shared interests (40) + CGPA (20). No Gemini in mock mode. */
+  async aiMatch(listingId: string): Promise<M.ApplicantScore[]> {
+    const u = this.need("supervisor"); const l = this.listingOr404(listingId);
+    if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
+    const tags = l.topic_tags.map((t) => t.toLowerCase()), text = `${l.title} ${l.description}`.toLowerCase();
+    return this.applicantRows(listingId, this.phase().round_id).map((a) => {
+      const s = a.student, met = l.prerequisites.filter((m) => s.completed_modules.includes(m));
+      const tagged = s.research_interests.filter((i) => tags.includes(i.toLowerCase()));
+      const mentioned = s.research_interests.filter((i) => !tagged.includes(i) && text.includes(i.toLowerCase()));
+      const score = (l.prerequisites.length ? 40 * met.length / l.prerequisites.length : 40)
+        + Math.min(40, 20 * tagged.length + 10 * mentioned.length) + 20 * Math.min(Math.max(s.cgpa ?? 0, 0), 5) / 5;
+      const shared = [...tagged, ...mentioned];
+      const reason = [met.length === l.prerequisites.length ? "meets prerequisites" : `missing ${l.prerequisites.filter((m) => !met.includes(m)).join(", ")}`,
+        shared.length ? `shares ${shared.join(", ")}` : "no shared interests", ...(s.cgpa != null ? [`CGPA ${s.cgpa.toFixed(2)}`] : [])].join("; ");
+      return { application_id: a.application_id, student_id: s.id, score: Math.round(score), reason: reason[0].toUpperCase() + reason.slice(1), source: "local" as const };
+    });
+  }
   async applicant(applicationId: string) {
     this.need("supervisor"); const a = this.db.applications.find((a) => a.id === applicationId);
     if (!a) throw new M.ApiError(404, "not_found", "Application was not found.");

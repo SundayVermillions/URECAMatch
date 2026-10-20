@@ -6,7 +6,16 @@ from fastapi import APIRouter
 
 from app.deps import CurrentUser, SettingsDep, StoreDep, SupervisorUser
 from app.errors import forbidden, invalid, not_found
-from app.models import Applicant, ApplicantRanking, ApplicantRankingUpdate, ApplicantStudent, ApplicationStatus, Document
+from app.models import (
+    Applicant,
+    ApplicantRanking,
+    ApplicantRankingUpdate,
+    ApplicantScore,
+    ApplicantStudent,
+    ApplicationStatus,
+    Document,
+)
+from app.services import ai_match as ai_match_service
 from app.services import windows
 from app.services.storage import get_storage
 
@@ -75,6 +84,19 @@ def applicants(
     for r in rows:
         r.rank = ranking.index(r.application_id) + 1 if r.application_id in ranking else None
     return rows
+
+
+@router.post("/supervisor/listings/{listing_id}/applicants/ai-match", response_model=list[ApplicantScore])
+def ai_match(listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> list[ApplicantScore]:
+    """Fit score and reason for each applicant this round (REQ-VRANK-1). Gemini when GEMINI_API_KEY is set, else local.
+    Only the listing's own supervisor: the scores are built from applicants' personal data (SRS 5.3.3)."""
+    lst = store.listing(listing_id)
+    if lst is None:
+        raise not_found("Project")
+    if lst.supervisor_id != user.id:
+        raise forbidden()
+    phase = windows.phase(store.cycle, settings.now())
+    return ai_match_service.score_applicants(settings, lst, _applicants(store, listing_id, phase.round_id))
 
 
 @router.get("/supervisor/applicants/{application_id}", response_model=Applicant)

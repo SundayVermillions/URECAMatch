@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from: str = "URECAMatch <onboarding@resend.dev>"
     app_url: str = "http://localhost:3000"  # base for links in e-mails
+    gemini_api_key: str = ""  # AI match (REQ-VRANK-1). Empty means local scoring only
+    gemini_model: str = "gemini-3.5-flash-lite"
     # Fixed "now" for mock mode so the demo is deterministic: inside Round 2's application window.
     demo_now: datetime = datetime(2026, 9, 7, 10, 0, tzinfo=UTC)
     # Developer tool: lets /debug/clock replace "now" so a cycle can be tested without waiting. Off unless DEBUG_CLOCK=true.

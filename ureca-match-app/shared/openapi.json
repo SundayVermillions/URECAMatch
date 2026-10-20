@@ -2257,6 +2257,85 @@
         }
       }
     },
+    "/supervisor/listings/{listing_id}/applicants/ai-match": {
+      "post": {
+        "tags": [
+          "rankings"
+        ],
+        "summary": "Ai Match",
+        "description": "Fit score and reason for each applicant this round (REQ-VRANK-1). Gemini when GEMINI_API_KEY is set, else local.\nOnly the listing's own supervisor: the scores are built from applicants' personal data (SRS 5.3.3).",
+        "operationId": "ai_match_supervisor_listings__listing_id__applicants_ai_match_post",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Listing Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApplicantScore"
+                  },
+                  "title": "Response Ai Match Supervisor Listings  Listing Id  Applicants Ai Match Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/supervisor/applicants/{application_id}": {
       "get": {
         "tags": [
@@ -5102,6 +5181,46 @@
           "application_ids"
         ],
         "title": "ApplicantRankingUpdate"
+      },
+      "ApplicantScore": {
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "title": "Application Id"
+          },
+          "student_id": {
+            "type": "string",
+            "title": "Student Id"
+          },
+          "score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "local"
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "application_id",
+          "student_id",
+          "score",
+          "reason",
+          "source"
+        ],
+        "title": "ApplicantScore",
+        "description": "AI match fit score for one applicant (REQ-VRANK-1). source says whether Gemini or the local formula scored it."
       },
       "ApplicantStudent": {
         "properties": {

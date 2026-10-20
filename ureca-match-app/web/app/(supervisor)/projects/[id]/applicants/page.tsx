@@ -7,9 +7,13 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
 import { DocumentViewer } from "@/components/supervisor/document-viewer";
-import { Avatar, Banner, Button, Chip, DeadlineChip, Drawer, Empty, IconButton, Loading, Pill, RankBadge, fmtDate } from "@/components/ui";
-import { ApiError, type Applicant, type ApplicantFilters } from "@/lib/api/models";
+import { Avatar, Banner, Button, Chip, DeadlineChip, Drawer, Empty, FilterSelect, IconButton, Loading, Pill, RankBadge, fmtDate } from "@/components/ui";
+import { ApiError, type Applicant, type ApplicantFilters, type ApplicantScore } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
+
+const SCHOOLS = ["CCDS", "EEE", "SBS", "MAE", "SPMS"];
+const CGPA_MINS = [4.0, 4.5];
+const cgpaLabel = (v: number) => `${v.toFixed(2)}+`;
 
 export default function Applicants() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +29,9 @@ export default function Applicants() {
   const [error, setError] = useState<ApiError | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [opened, setOpened] = useState<string[]>([]); // documents expanded in the drawer, loaded on first open
+  const [ai, setAi] = useState<{ listing: string; scores: Map<string, ApplicantScore> } | null>(null);
+  const [matching, setMatching] = useState(false);
+  const [sortByScore, setSortByScore] = useState(false);
   const canRank = me?.phase.window === "review" || me?.phase.window === "application";
 
   const ids = ranking.data?.application_ids ?? [];
@@ -32,7 +39,19 @@ export default function Applicants() {
   const ranked = ids.map((i) => byId.get(i)).filter(Boolean) as Applicant[];
   // Decision (guide section 10): applicants a supervisor does not rank are never matched.
   const unranked = (everyone.data ?? []).filter((r) => !ids.includes(r.application_id)).length;
-  const pool = (rows.data ?? []).filter((r) => !ids.includes(r.application_id) && (!recommendedOnly || r.recommended));
+  // AI match scores belong to one listing; keyed by it so they vanish when the supervisor opens another project.
+  const scores = ai?.listing === id ? ai.scores : null;
+  const filteredPool = (rows.data ?? []).filter((r) => !ids.includes(r.application_id) && (!recommendedOnly || r.recommended));
+  const pool = scores && sortByScore
+    ? [...filteredPool].sort((a, b) => (scores.get(b.application_id)?.score ?? -1) - (scores.get(a.application_id)?.score ?? -1))
+    : filteredPool;
+
+  async function runAiMatch() {
+    setMatching(true);
+    try { setAi({ listing: id, scores: new Map((await call((api) => api.aiMatch(id))).map((s) => [s.application_id, s])) }); setSortByScore(true); setError(null); }
+    catch (e) { setError(e as ApiError); }
+    finally { setMatching(false); }
+  }
 
   async function save(next: string[]) {
     try { ranking.setData(await call((api) => api.putRanking(id, next))); setSubmitted(true); setError(null); } catch (e) { setError(e as ApiError); }
@@ -49,31 +68,46 @@ export default function Applicants() {
       {canRank && unranked > 0 && <div className="mb-4"><Banner tone="warn" title={`${unranked} ${unranked === 1 ? "applicant is" : "applicants are"} not ranked yet.`}>Students you do not rank cannot be matched to this project. Rank them before the deadline: {me?.phase.label}.</Banner></div>}
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
       <div className="grid grid-cols-[1fr_420px] gap-5 items-start">
-        <div className="bg-surface border border-border rounded-card overflow-hidden">
-          <div className="flex items-baseline gap-2 px-[18px] pt-4 pb-2.5"><h2>Applicants</h2><span className="text-[12.5px] text-muted font-semibold">{pool.length} not ranked</span></div>
+        <div className="bg-surface border border-border rounded-card">{/* not overflow-hidden: the filter menus drop below the card */}
+          <div className="flex items-center gap-2 px-[18px] pt-4 pb-2.5">
+            <h2>Applicants</h2><span className="text-[12.5px] text-muted font-semibold">{pool.length} not ranked</span>
+            <Button size="sm" variant="soft" className="ml-auto" disabled={matching || !rows.data?.length} onClick={runAiMatch}>
+              <I.Bulb size={14} /> {matching ? "Scoring..." : scores ? "Rerun AI match" : "AI match"}
+            </Button>
+          </div>
           <div className="flex items-center gap-1.5 px-[18px] pb-3 border-b border-border flex-wrap">
-            <span className="eyebrow">CGPA</span>
-            {[undefined, 4.0, 4.5].map((v) => <Chip key={String(v)} active={filters.min_cgpa === v} onClick={() => setFilters({ ...filters, min_cgpa: v })}>{v ? `${v.toFixed(2)}+` : "Any"}</Chip>)}
-            <span className="eyebrow ml-2">School</span>
-            {[undefined, "CCDS", "EEE", "SBS", "MAE", "SPMS"].map((s) => <Chip key={String(s)} active={filters.school === s} onClick={() => setFilters({ ...filters, school: s })}>{s ?? "Any"}</Chip>)}
+            <FilterSelect label="CGPA" align="left" value={filters.min_cgpa != null ? cgpaLabel(filters.min_cgpa) : undefined} options={CGPA_MINS.map(cgpaLabel)}
+              onChange={(v) => setFilters({ ...filters, min_cgpa: CGPA_MINS.find((m) => cgpaLabel(m) === v) })} />
+            <FilterSelect label="School" align="left" value={filters.school} options={SCHOOLS} onChange={(s) => setFilters({ ...filters, school: s })} />
             <Chip active={!!filters.prerequisites_only} onClick={() => setFilters({ ...filters, prerequisites_only: !filters.prerequisites_only })}>Meets prerequisites</Chip>
             <Chip active={recommendedOnly} onClick={() => setRecommendedOnly(!recommendedOnly)}>Top 10</Chip>
+            {scores && <Chip active={sortByScore} onClick={() => setSortByScore(!sortByScore)}>Sort by AI score</Chip>}
           </div>
+          {scores && <div className="px-[18px] py-2 border-b border-border text-[11.5px] text-faint">
+            {[...scores.values()].some((s) => s.source === "ai") ? "Scored by Gemini." : "Scored locally from prerequisites, shared interests and CGPA."} A guide only: read each application before ranking.
+          </div>}
           {rows.loading && !rows.data ? <Loading /> : pool.length === 0 ? (
             <div className="p-4"><Empty title={rows.data?.length ? "Everyone shown is already ranked" : "No students have applied yet"} note={rows.data?.length ? "Clear a filter to see more." : "Applicants appear here as students apply during the round."} /></div>
-          ) : pool.map((a) => (
+          ) : pool.map((a) => {
+            const s = scores?.get(a.application_id);
+            return (
             <div key={a.application_id} className="flex items-center gap-3 px-[18px] py-2.5 border-b border-border last:border-b-0 hover:bg-sunken">
               <Avatar name={a.student.name} />
-              <button type="button" onClick={() => setDetail(a)} className="flex-1 min-w-0 text-left flex items-center gap-2">
-                <span className="text-[13.5px] font-semibold whitespace-nowrap">{a.student.name}</span>
-                {!a.meets_prerequisites && <Pill tone="warn"><I.Warn size={10} /> prerequisite</Pill>}
-                {a.recommended && <Pill tone="accent">Top 10</Pill>}
+              <button type="button" onClick={() => setDetail(a)} className="flex-1 min-w-0 text-left">
+                <span className="flex items-center gap-2">
+                  <span className="text-[13.5px] font-semibold whitespace-nowrap">{a.student.name}</span>
+                  {s && <Pill tone={s.score >= 70 ? "good" : s.score >= 40 ? "accent" : "neutral"} className="tabular">{s.score}</Pill>}
+                  {!a.meets_prerequisites && <Pill tone="warn"><I.Warn size={10} /> prerequisite</Pill>}
+                  {a.recommended && <Pill tone="accent">Top 10</Pill>}
+                </span>
+                {s && <span title={s.reason} className="block mt-0.5 text-[11.5px] text-muted truncate">{s.reason}</span>}
               </button>
               <span className="w-24 text-[12px] text-muted">{a.student.school} · Year {a.student.year_of_study}</span>
               <span className="w-11 text-right text-[13px] font-bold tabular">{a.student.cgpa?.toFixed(2)}</span>
               <Button size="sm" variant="soft" disabled={!canRank} onClick={() => add(a.application_id)}>Add</Button>
             </div>
-          ))}
+            );
+          })}
           <div className="px-[18px] py-2.5 text-[11.5px] text-faint">Click a name to read the full application and transcript.</div>
         </div>
 

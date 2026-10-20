@@ -476,6 +476,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/supervisor/listings/{listing_id}/applicants/ai-match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ai Match
+         * @description Fit score and reason for each applicant this round (REQ-VRANK-1). Gemini when GEMINI_API_KEY is set, else local.
+         *     Only the listing's own supervisor: the scores are built from applicants' personal data (SRS 5.3.3).
+         */
+        post: operations["ai_match_supervisor_listings__listing_id__applicants_ai_match_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/supervisor/applicants/{application_id}": {
         parameters: {
             query?: never;
@@ -1145,6 +1166,25 @@ export interface components {
         ApplicantRankingUpdate: {
             /** Application Ids */
             application_ids: string[];
+        };
+        /**
+         * ApplicantScore
+         * @description AI match fit score for one applicant (REQ-VRANK-1). source says whether Gemini or the local formula scored it.
+         */
+        ApplicantScore: {
+            /** Application Id */
+            application_id: string;
+            /** Student Id */
+            student_id: string;
+            /** Score */
+            score: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "ai" | "local";
         };
         /** ApplicantStudent */
         ApplicantStudent: {
@@ -3013,6 +3053,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Applicant"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ai_match_supervisor_listings__listing_id__applicants_ai_match_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicantScore"][];
                 };
             };
             /** @description Validation Error */

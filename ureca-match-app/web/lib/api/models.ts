@@ -43,6 +43,7 @@ export type ApplicationCreate = S["ApplicationCreate"];
 export type Applicant = S["Applicant"];
 export type ApplicantStudent = S["ApplicantStudent"];
 export type ApplicantRanking = S["ApplicantRanking"];
+export type ApplicantScore = S["ApplicantScore"];
 export type Proposal = S["Proposal"];
 export type ProposalCreate = S["ProposalCreate"];
 export type Match = S["Match"];
