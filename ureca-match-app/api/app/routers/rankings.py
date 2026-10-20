@@ -124,16 +124,18 @@ def put_ranking(
     )
 
 
-def _may_view(store, user, owner_id: str) -> bool:
-    """Owner, admins, and the supervisor of any listing the owner applied to (REQ-VRANK-3)."""
+def _may_view(store, user, owner_id: str, document_id: str) -> bool:
+    """Owner, admins, the supervisor of any listing the owner applied to (REQ-VRANK-3), and the
+    supervisor a proposal with this document attached was sent to (REQ-REVPROP-1). SRS 5.3.3."""
     if user.id == owner_id or user.role.value == "admin":
         return True
     if user.role.value != "supervisor":
         return False
-    return any(
+    applied = any(
         (lst := store.listing(a.listing_id)) is not None and lst.supervisor_id == user.id
         for a in store.applications_for(student_id=owner_id)
     )
+    return applied or any(document_id in p.document_ids for p in store.proposals_for(student_id=owner_id, supervisor_id=user.id))
 
 
 @router.get("/documents/{document_id}/view", response_model=Document)
@@ -143,7 +145,7 @@ def view_document(document_id: str, user: CurrentUser, store: StoreDep, settings
     for sp in store.students:
         for d in sp.documents:
             if d.id == document_id:
-                if not _may_view(store, user, sp.user_id):
+                if not _may_view(store, user, sp.user_id, d.id):
                     raise forbidden()
                 # Mock storage serves a sample PDF for every document; live storage needs the uploaded file.
                 has_file = d.storage_path is not None or settings.api_mode == "mock"

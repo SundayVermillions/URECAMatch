@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
+import { DocumentViewer } from "@/components/supervisor/document-viewer";
 import { Avatar, Banner, Button, Chip, DeadlineChip, Drawer, Empty, IconButton, Loading, Pill, RankBadge, fmtDate } from "@/components/ui";
 import { ApiError, type Applicant, type ApplicantFilters } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
@@ -140,14 +141,4 @@ export default function Applicants() {
       </Drawer>
     </>
   );
-}
-
-/** In-app PDF viewer (REQ-VRANK-3). The API returns a 10-minute signed link; the browser's own PDF viewer renders it. */
-function DocumentViewer({ id, name }: { id: string; name: string }) {
-  const doc = useApi((api) => api.documentUrl(id), [id]);
-  const box = "border-t border-border bg-sunken h-[460px] flex items-center justify-center text-[12px] text-faint px-4 text-center";
-  if (doc.loading) return <div className={box}><Loading /></div>;
-  if (doc.error) return <div className={box}>{doc.error.message}</div>;
-  if (!doc.data?.url) return <div className={box}>This file has not been uploaded yet, so it cannot be shown.</div>;
-  return <iframe src={doc.data.url} title={name} className="block w-full h-[460px] border-0 border-t border-border bg-white" />;
 }
