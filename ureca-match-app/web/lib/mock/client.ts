@@ -241,6 +241,30 @@ export class MockClient implements ApiClient {
     this.user();
     return codes.map((c) => catalog.courses.find((x) => x.code === courseCode(c))).filter((c): c is M.Course => !!c);
   }
+  /** REQ-BROWSE-4, same rules as services/recommend.py: interests 40 or 50, readiness out of 30, chance out of 20. */
+  async recommendations(limit = 6) {
+    const u = this.need("student"); const sp = this.student(u.id); await sleep(250);
+    if (!sp || !sp.research_interests.length || !sp.eligible_for_matching || this.isPlaced(u.id)) return [];
+    const rows: M.Recommendation[] = [];
+    for (const raw of this.db.listings.filter((l) => l.status === "published")) {
+      const l = this.decorate(raw, u);
+      if (l.applied || l.filled_slots >= l.available_slots) continue;
+      const shared = l.topic_tags.filter((t) => sp.research_interests.includes(t));
+      if (!shared.length) continue; // a recommendation must be about the student
+      const met = l.prerequisites.filter((p) => sp.completed_modules.includes(p));
+      const missing = l.prerequisites.filter((p) => !sp.completed_modules.includes(p));
+      const perSlot = (l.applicant_count ?? 0) / Math.max(l.available_slots - l.filled_slots, 1);
+      const parts = { interests: shared.length > 1 ? 50 : 40, readiness: l.prerequisites.length ? Math.round(30 * met.length / l.prerequisites.length) : 30, chance: Math.round(20 / (1 + perSlot / 2)) };
+      const reasons = [`Matches your interest in ${shared.slice(0, 2).join(" and ")}`];
+      const gaps: string[] = [];
+      if (met.length) reasons.push(`You have ${met.join(", ")}`); else if (!l.prerequisites.length) reasons.push("No prerequisites");
+      if (missing.length) gaps.push(`Missing ${missing.join(", ")}`);
+      if (perSlot <= 2) reasons.push(perSlot ? "Few applicants so far" : "No applicants yet");
+      else if (perSlot > 5) gaps.push(`High demand: ${Math.round(perSlot)} applicants per slot`);
+      rows.push({ listing: l, score: parts.interests + parts.readiness + parts.chance, parts, reasons, gaps });
+    }
+    return rows.sort((a, b) => b.score - a.score || a.listing.title.localeCompare(b.listing.title)).slice(0, limit);
+  }
   async myListings() { const u = this.need("supervisor"); return this.db.listings.filter((l) => l.supervisor_id === u.id).map((l) => this.decorate(l, u)); }
   /** True once the cycle closing date has passed (REQ-PROJ-1, REQ-PROJ-2), as in routers/listings.py. */
   private cycleClosed() { const c = this.activeCycle(); return !c || this.now.getTime() > Date.parse(c.closing_date); }

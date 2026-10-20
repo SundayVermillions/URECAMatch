@@ -44,6 +44,7 @@ AUTH_ONLY = {
     ("DELETE", "/debug/clock"),
 }
 STUDENT_ONLY = {
+    ("GET", "/me/recommendations"),
     ("GET", "/me/profile"),
     ("PUT", "/me/profile"),
     ("POST", "/me/documents"),

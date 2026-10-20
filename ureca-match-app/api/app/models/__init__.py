@@ -318,6 +318,22 @@ class Listing(BaseModel):
     applied_rank: int | None = None
 
 
+class FitParts(BaseModel):
+    """How a recommendation's score is made up (REQ-BROWSE-4). Maximums: 50, 30, 20."""
+
+    interests: int
+    readiness: int
+    chance: int
+
+
+class Recommendation(BaseModel):
+    listing: Listing
+    score: int  # 0-100, the sum of parts
+    parts: FitParts
+    reasons: list[str] = []  # why it fits, e.g. "Matches your interest in Machine Learning"
+    gaps: list[str] = []  # what to know, e.g. "Missing SC3020"
+
+
 class TopicGroup(BaseModel):
     name: str
     topics: list[str]

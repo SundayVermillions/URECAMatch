@@ -23,6 +23,7 @@ export interface ApiClient {
   topics(): Promise<M.TopicGroup[]>;
   courses(q: string, limit?: number): Promise<M.Course[]>;
   coursesByCode(codes: string[]): Promise<M.Course[]>;
+  recommendations(limit?: number): Promise<M.Recommendation[]>;
   myListings(): Promise<M.Listing[]>;
   createListing(body: M.ListingCreate): Promise<M.Listing>;
   updateListing(id: string, body: M.ListingUpdate): Promise<M.Listing>;
