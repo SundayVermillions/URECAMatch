@@ -38,6 +38,7 @@ export interface ApiClient {
   applicant(applicationId: string): Promise<M.Applicant>;
   getRanking(listingId: string): Promise<M.ApplicantRanking>;
   putRanking(listingId: string, applicationIds: string[]): Promise<M.ApplicantRanking>;
+  aiMatch(listingId: string): Promise<M.ApplicantScore[]>;
   documentUrl(documentId: string): Promise<M.Document>;
   // slice D
   cycle(): Promise<M.Cycle | null>;

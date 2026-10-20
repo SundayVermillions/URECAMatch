@@ -60,6 +60,7 @@ export class LiveClient implements ApiClient {
   applicant = (id: string) => this.req<M.Applicant>("GET", `/supervisor/applicants/${id}`);
   getRanking = (id: string) => this.req<M.ApplicantRanking>("GET", `/supervisor/listings/${id}/ranking`);
   putRanking = (id: string, ids: string[]) => this.req<M.ApplicantRanking>("PUT", `/supervisor/listings/${id}/ranking`, { application_ids: ids });
+  aiMatch = (id: string) => this.req<M.ApplicantScore[]>("POST", `/supervisor/listings/${id}/applicants/ai-match`);
   documentUrl = (id: string) => this.req<M.Document>("GET", `/documents/${id}/view`);
 
   cycle = () => this.req<M.Cycle | null>("GET", "/cycle");

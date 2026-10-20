@@ -47,7 +47,8 @@ def local_score(listing: Listing, a: Applicant) -> tuple[int, str]:
     if s.cgpa is not None:
         parts.append(f"CGPA {s.cgpa:.2f}")
     reason = "; ".join(parts)
-    return round(prereq_pts + interest_pts + cgpa_pts), reason[:1].upper() + reason[1:]
+    # half rounds up, like Math.round in the mock client (Python's round() would round 0.5 to even)
+    return int(prereq_pts + interest_pts + cgpa_pts + 0.5), reason[:1].upper() + reason[1:]
 
 
 def _prompt(listing: Listing, applicants: list[Applicant]) -> str:
