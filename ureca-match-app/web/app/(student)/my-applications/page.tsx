@@ -5,7 +5,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Card, DeadlineChip, Empty, IconButton, Loading, Modal, RankBadge, Status, fmtDate } from "@/components/ui";
+import { Banner, Button, Card, DeadlineChip, Empty, IconButton, Loading, Modal, RankBadge, Status, fmtDate, fmtDeadline } from "@/components/ui";
 import { ApiError } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
@@ -53,7 +53,7 @@ export default function MyApplications() {
               <div className="eyebrow mb-1">Match offer{offerRound ? ` · Round ${offerRound}` : ""}</div>
               <div className="font-display text-[17px] font-bold">{m.listing_title}</div>
               <div className="text-[13px] text-muted mt-0.5">{m.supervisor_name}{m.preference_rank ? ` · your preference ${m.preference_rank}` : ""}</div>
-              {m.status === "published" && <div className="text-[12.5px] text-muted mt-2">Respond by <strong>{fmtDate(m.offer_expires_at)}</strong>. Declining reopens the slot for others and makes you ineligible for later rounds this cycle. No response by the deadline counts as a decline.</div>}
+              {m.status === "published" && <div className="text-[12.5px] text-muted mt-2">Respond by <strong>{fmtDeadline(m.offer_expires_at)}</strong>. You cannot apply to other projects while this offer is open. Declining reopens the slot for others and makes you ineligible for later rounds this cycle. No response by the deadline counts as a decline.</div>}
               {m.status === "accepted" && <div className="mt-2"><Banner tone="good" title="Accepted.">You are registered to this project. Your other applications this cycle are withdrawn.</Banner></div>}
               {(m.status === "declined" || m.status === "timed_out") && <div className="mt-2"><Banner tone="bad" title={m.status === "declined" ? "Declined." : "Timed out."}>You are not eligible for further rounds this cycle.</Banner></div>}
             </div>

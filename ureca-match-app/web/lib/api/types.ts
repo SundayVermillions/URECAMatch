@@ -639,28 +639,12 @@ export interface paths {
         /**
          * Set Rounds
          * @description Build the rounds from their window lengths and optional start dates (REQ-ROUND-1, use case 1-2), and reject
-         *     rounds that overlap or fall outside the cycle (REQ-ROUND-3). A round without a start date opens 4 days after
-         *     the previous one ends; Round 1 opens when the pre-application window ends.
+         *     rounds that overlap or fall outside the cycle (REQ-ROUND-3). A round ends when its approval window does
+         *     (REQ-APPRV-5), and the cycle must close at least 7 days after the last one (REQ-OUTCOME-3). A round without a
+         *     start date opens 2 days after the previous one ends; Round 1 opens when the pre-application window ends.
          */
         put: operations["set_rounds_admin_cycles__cycle_id__rounds_put"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/rounds/{round_id}/execute": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Execute */
-        post: operations["execute_admin_rounds__round_id__execute_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -777,23 +761,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/rounds/{round_id}/publish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Publish */
-        post: operations["publish_admin_rounds__round_id__publish_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/admin/audit": {
         parameters: {
             query?: never;
@@ -853,7 +820,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/supervisor/matches/{match_id}/approve": {
+    "/supervisor/matches/{match_id}/decline": {
         parameters: {
             query?: never;
             header?: never;
@@ -862,25 +829,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Approve */
-        post: operations["approve_supervisor_matches__match_id__approve_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/supervisor/matches/{match_id}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reject */
-        post: operations["reject_supervisor_matches__match_id__reject_post"];
+        /**
+         * Decline Match
+         * @description REQ-APPRV-2, 4: during the approval window a supervisor may decline a student matched to their project.
+         *     Matches they leave alone are offered when the window closes; there is nothing to approve.
+         */
+        post: operations["decline_match_supervisor_matches__match_id__decline_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -949,8 +903,8 @@ export interface paths {
         put?: never;
         /**
          * Tick
-         * @description Called daily by Vercel Cron and whenever an admin opens Matching Rounds.
-         *     Advances round statuses and times out unanswered offers (REQ-OUTCOME-3, 4).
+         * @description Called daily by Vercel Cron and whenever an admin opens Matching Rounds, so the schedule also moves on a
+         *     quiet day. Unlike keep_schedule, a failing step fails this call, so the cron log shows it.
          */
         post: operations["tick_internal_tick_post"];
         delete?: never;
@@ -1744,6 +1698,11 @@ export interface components {
              * Format: date-time
              */
             review_end: string;
+            /**
+             * Approval End
+             * Format: date-time
+             */
+            approval_end: string;
             status: components["schemas"]["RoundStatus"];
             /** Executed At */
             executed_at?: string | null;
@@ -1773,6 +1732,11 @@ export interface components {
             application_days: number;
             /** Review Days */
             review_days: number;
+            /**
+             * Approval Days
+             * @default 2
+             */
+            approval_days: number;
             /** Start Date */
             start_date?: string | null;
         };
@@ -1780,7 +1744,7 @@ export interface components {
          * RoundStatus
          * @enum {string}
          */
-        RoundStatus: "scheduled" | "application_window" | "review_window" | "awaiting_publication" | "published" | "completed";
+        RoundStatus: "scheduled" | "application_window" | "review_window" | "approval_window" | "awaiting_publication" | "published" | "completed";
         /** RoundSummary */
         RoundSummary: {
             round: components["schemas"]["Round"];
@@ -1792,10 +1756,8 @@ export interface components {
             excluded: number;
             /** Avg Preference */
             avg_preference: number | null;
-            /** Approvals Done */
-            approvals_done: number;
-            /** Approvals Total */
-            approvals_total: number;
+            /** Declined */
+            declined: number;
         };
         /**
          * RoundsUpdate
@@ -1971,7 +1933,7 @@ export interface components {
          * @description What a user may do right now. Computed by services/windows.py.
          * @enum {string}
          */
-        Window: "before_cycle" | "pre_application" | "application" | "review" | "awaiting_results" | "results" | "closed";
+        Window: "before_cycle" | "pre_application" | "application" | "review" | "approval" | "awaiting_results" | "results" | "closed";
     };
     responses: never;
     parameters: never;
@@ -3444,40 +3406,6 @@ export interface operations {
             };
         };
     };
-    execute_admin_rounds__round_id__execute_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-demo-user"?: string | null;
-            };
-            path: {
-                round_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoundSummary"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     summary_admin_rounds__round_id__summary_get: {
         parameters: {
             query?: never;
@@ -3696,40 +3624,6 @@ export interface operations {
             };
         };
     };
-    publish_admin_rounds__round_id__publish_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-demo-user"?: string | null;
-            };
-            path: {
-                round_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoundSummary"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     audit_log_admin_audit_get: {
         parameters: {
             query?: {
@@ -3830,45 +3724,7 @@ export interface operations {
             };
         };
     };
-    approve_supervisor_matches__match_id__approve_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-demo-user"?: string | null;
-            };
-            path: {
-                match_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MatchDecision"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Match"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reject_supervisor_matches__match_id__reject_post: {
+    decline_match_supervisor_matches__match_id__decline_post: {
         parameters: {
             query?: never;
             header?: {

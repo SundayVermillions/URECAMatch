@@ -1,6 +1,6 @@
 """Slice B. Supervisor listings.  REQ-PROJ-1..3.
 
-Seeded cycle: opens 18 Aug 2026, closes 30 Sep 2026. Demo clock 7 Sep (inside the cycle).
+Seeded cycle: opens 18 Aug 2026, closes 2 Oct 2026. Demo clock 7 Sep (inside the cycle).
 sup-1 owns lst-1..3. lst-4 belongs to sup-2. lst-6 (sup-3) has 2 of 3 slots filled.
 """
 

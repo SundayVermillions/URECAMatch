@@ -38,7 +38,7 @@ def test_REQ_CYCLE_1_close_then_reopen_restores_active_cycle(as_admin):
 
 def test_REQ_CYCLE_1_create_rejected_when_dates_overlap(as_admin):
     assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 200
-    # Overlaps the (now closed) AY26/27 cycle, which runs 18 Aug to 30 Sep 2026.
+    # Overlaps the (now closed) AY26/27 cycle, which runs 18 Aug to 2 Oct 2026.
     r = as_admin.post(
         "/admin/cycles",
         json={
@@ -267,6 +267,86 @@ def test_REQ_CYCLE_1_phase_between_rounds_follows_the_round_just_run(as_student,
     assert as_admin.get("/admin/dashboard").json()["applications_this_round"] == 0  # Round 1 has none open
 
 
+# ---------------------------------------------------------------- REQ-APPRV-4, 5 the approval window
+
+
+def _when(iso: str):
+    from datetime import datetime
+
+    return datetime.fromisoformat(iso)
+
+
+def test_REQ_APPRV_5_admin_sets_the_approval_window_per_round(as_admin):
+    from datetime import timedelta
+
+    spec = {"application_days": 5, "review_days": 2}
+    body = {"rounds": [{"number": 1, **spec}, {"number": 2, **spec}, {"number": 3, **spec, "approval_days": 1}]}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)
+    assert r.status_code == 200
+    r3 = next(x for x in r.json()["rounds"] if x["number"] == 3)
+    assert _when(r3["approval_end"]) - _when(r3["review_end"]) == timedelta(days=1)
+
+
+def test_REQ_APPRV_5_default_window_keeps_rounds_four_days_apart(as_admin):
+    from datetime import timedelta
+
+    spec = {"application_days": 5, "review_days": 2}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json={"rounds": [{"number": n, **spec} for n in (1, 2, 3)]})
+    r2, r3 = sorted(r.json()["rounds"], key=lambda x: x["number"])[1:]
+    assert _when(r2["approval_end"]) - _when(r2["review_end"]) == timedelta(days=2)  # two days to decline
+    assert _when(r3["application_start"]) - _when(r2["review_end"]) == timedelta(days=4, seconds=1)
+
+
+def test_REQ_APPRV_5_next_round_cannot_start_inside_an_approval_window(as_admin):
+    spec = {"application_days": 5, "review_days": 2}
+    body = {"rounds": [{"number": 1, **spec}, {"number": 2, **spec}, {"number": 3, **spec, "start_date": "2026-09-13T09:00:00Z"}]}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)  # Round 2's approval window runs to 14 Sep
+    assert r.status_code == 422 and r.json()["code"] == "rounds_overlap"
+
+
+def test_REQ_APPRV_5_approval_window_must_end_before_the_cycle_closes(as_admin):
+    spec = {"application_days": 5, "review_days": 2}
+    late = {"number": 3, "application_days": 8, "review_days": 2, "approval_days": 7}  # 16 Sep + 8 + 2 + 7 days
+    body = {"rounds": [{"number": 1, **spec}, {"number": 2, **spec}, late]}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)  # would run to 3 Oct; the cycle closes 2 Oct
+    assert r.status_code == 422 and r.json()["code"] == "outside_cycle"
+
+
+# ---------------------------------------------------------------- REQ-OUTCOME-3 time to answer last-round offers
+
+
+def test_REQ_OUTCOME_3_cycle_closes_a_week_after_the_last_approval_window(as_admin):
+    spec = {"application_days": 5, "review_days": 2}
+    body = {"rounds": [{"number": 1, **spec}, {"number": 2, **spec}, {"number": 3, **spec, "approval_days": 3}]}
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)  # ends 26 Sep, so offers would have 6 days
+    assert r.status_code == 422 and r.json()["code"] == "outside_cycle"
+    assert "on or after 3 Oct, 5:00 pm SGT" in r.json()["message"]
+
+
+def test_REQ_OUTCOME_3_closing_date_cannot_cut_into_the_week_to_answer(as_admin):
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"closing_date": "2026-10-01T09:00:00Z"})  # Round 3 ends 25 Sep
+    assert r.status_code == 422 and r.json()["code"] == "outside_cycle"
+
+
+def test_REQ_OUTCOME_3_moving_the_opening_later_keeps_a_week_to_answer(as_admin, fresh_store):
+    from datetime import timedelta
+
+    c = _upcoming_cycle(fresh_store)  # 14 days between Round 3's approval window and the close
+    later = c.opening_date + timedelta(days=8)  # every round moves 8 days closer to the close
+    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"opening_date": later.isoformat()})
+    assert r.status_code == 422 and r.json()["code"] == "outside_cycle"
+
+
+def test_REQ_APPRV_4_phase_during_the_approval_window(as_student, at):
+    from tests.conftest import REVIEW_CLOSED
+
+    at(REVIEW_CLOSED)
+    phase = as_student.get("/me").json()["phase"]
+    assert phase["window"] == "approval" and phase["round_id"] == "rnd-2"
+    assert phase["window_ends_at"].startswith("2026-09-14T08:59:59")
+    assert phase["label"] == "Round 2 results out 14 Sep, 5:00 pm SGT"
+
+
 # ---------------------------------------------------------------- round start dates (use case 1-2) and moving the opening
 
 
@@ -276,15 +356,17 @@ def _upcoming_cycle(fresh_store):
 
     c = fresh_store.cycle
     shift = timedelta(days=60)
-    c.opening_date, c.closing_date = c.opening_date + shift, c.closing_date + shift
+    # a week more before the close, so tests can move the rounds later and still leave time to answer (REQ-OUTCOME-3)
+    c.opening_date, c.closing_date = c.opening_date + shift, c.closing_date + shift + timedelta(days=7)
     for r in c.rounds:
         r.application_start, r.application_end = r.application_start + shift, r.application_end + shift
-        r.review_start, r.review_end = r.review_start + shift, r.review_end + shift
+        r.review_start, r.review_end, r.approval_end = r.review_start + shift, r.review_end + shift, r.approval_end + shift
         r.status, r.executed_at, r.published_at = "scheduled", None, None
     return c
 
 
 def test_REQ_ROUND_1_explicit_start_date_is_used(as_admin):
+    assert as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"closing_date": "2026-10-15T09:00:00Z"}).status_code == 200
     spec = {"application_days": 5, "review_days": 2}
     body = {"rounds": [{"number": 1, **spec}, {"number": 2, **spec}, {"number": 3, **spec, "start_date": "2026-09-20T09:00:00Z"}]}
     r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body)

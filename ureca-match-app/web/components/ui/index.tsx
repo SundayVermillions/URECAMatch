@@ -45,11 +45,11 @@ export function Pill({ tone = "neutral", children, className = "" }: { tone?: To
 const STATUS: Record<string, { label: string; tone: Tone }> = {
   submitted: { label: "Submitted", tone: "accent" }, withdrawn: { label: "Withdrawn", tone: "neutral" }, matched: { label: "Matched", tone: "good" }, unmatched: { label: "Unmatched", tone: "neutral" },
   accepted: { label: "Accepted", tone: "good" }, declined: { label: "Declined", tone: "bad" },
-  proposed: { label: "Awaiting supervisor", tone: "warn" }, approved: { label: "Approved", tone: "good" }, rejected: { label: "Rejected", tone: "bad" },
+  proposed: { label: "Proposed", tone: "accent" }, approved: { label: "Approved", tone: "good" }, rejected: { label: "Declined by supervisor", tone: "bad" },
   reassigned: { label: "Reassigned", tone: "warn" }, published: { label: "Offer sent", tone: "accent" }, timed_out: { label: "Timed out", tone: "bad" },
   active: { label: "Active", tone: "good" }, inactive: { label: "Inactive", tone: "neutral" }, pending_verification: { label: "Unverified", tone: "warn" },
   scheduled: { label: "Scheduled", tone: "neutral" }, application_window: { label: "Applications open", tone: "accent" }, review_window: { label: "Review window", tone: "accent" },
-  awaiting_publication: { label: "Awaiting publication", tone: "warn" }, ready_for_matching: { label: "Ready for matching", tone: "warn" }, completed: { label: "Completed", tone: "good" },
+  approval_window: { label: "Approval window", tone: "accent" }, awaiting_publication: { label: "Awaiting publication", tone: "warn" }, completed: { label: "Completed", tone: "good" },
   draft: { label: "Draft", tone: "neutral" }, closed: { label: "Closed", tone: "neutral" },
 };
 /** `kind` disambiguates words shared by several entities: "published" is "Offer sent" for a match but "Published" for a round or listing. */
@@ -375,6 +375,13 @@ export function Stepper({ value, onChange, min, max, format }: { value: number; 
 export const fmtDate = (iso?: string | null, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }) =>
   iso ? new Date(iso).toLocaleDateString("en-SG", opts) : "";
 export const fmtDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("en-SG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
+/** A window's closing moment as the API words it (windows.when): "14 Sep, 5:00 pm SGT". Windows end at :59 seconds,
+ *  so that second is shown as the hour the window closes at. */
+export const fmtDeadline = (iso?: string | null) => {
+  if (!iso) return "";
+  let ms = Date.parse(iso); if (new Date(ms).getUTCSeconds() === 59) ms += 1000;
+  return `${new Date(ms).toLocaleString("en-SG", { timeZone: "Asia/Singapore", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} SGT`;
+};
 
 // ------------------------------------------------------------------ documents
 

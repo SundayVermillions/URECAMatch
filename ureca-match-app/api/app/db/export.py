@@ -107,6 +107,7 @@ def _seed_sql(d: dict) -> str:
                 "application_end",
                 "review_start",
                 "review_end",
+                "approval_end",
                 "status",
                 "executed_at",
                 "published_at",

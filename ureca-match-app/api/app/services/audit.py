@@ -1,4 +1,4 @@
-"""Audit log (REQ-AUDIT-1, 2). Owner: slice E, written by slice D.
+"""Audit log (REQ-AUDIT-1, 2, 3). Owner: slice E, written by slice D.
 
 Append only. The Supabase table has a trigger that rejects UPDATE and DELETE (supabase/schema.sql).
 """
@@ -6,13 +6,26 @@ Append only. The Supabase table has a trigger that rejects UPDATE and DELETE (su
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING, NamedTuple
 
-from app.db.store import Store
 from app.models import AuditEntry, AuditOperation, User
+
+if TYPE_CHECKING:  # the seed imports SYSTEM, and the store imports the seed
+    from app.db.store import Store
+
+
+class Actor(NamedTuple):
+    id: str
+    name: str
+
+
+# REQ-AUDIT-3: actions the system takes on its own, such as running matching when a review window ends.
+# Not a sign-in account: schema.sql adds an inactive "system" row only so audit_log.actor_id has a user to point at.
+SYSTEM = Actor("system", "System")
 
 
 def audit(
-    store: Store, actor: User, operation: AuditOperation, affected: list[str], now: datetime, note: str | None = None
+    store: Store, actor: User | Actor, operation: AuditOperation, affected: list[str], now: datetime, note: str | None = None
 ) -> AuditEntry:
     entry = AuditEntry(
         id=store.next_id("aud"),

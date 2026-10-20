@@ -1,6 +1,6 @@
 """Slice B. Self-proposed project review rules.  REQ-REVPROP-2, REQ-REVPROP-3.
 
-The seeded cycle runs 18 Aug to 30 Sep 2026. prp-2 is submitted to sup-1.
+The seeded cycle runs 18 Aug to 2 Oct 2026. prp-2 is submitted to sup-1.
 """
 
 from datetime import UTC, datetime
@@ -13,7 +13,7 @@ def _set_now(monkeypatch, when: datetime) -> None:
 
 
 def test_REQ_REVPROP_3_cannot_accept_after_cycle_closes(as_supervisor, monkeypatch):
-    _set_now(monkeypatch, datetime(2026, 10, 1, 9, tzinfo=UTC))
+    _set_now(monkeypatch, datetime(2026, 10, 3, 9, tzinfo=UTC))
     r = as_supervisor.post("/supervisor/proposals/prp-2/accept", json={})
     assert r.status_code == 422 and r.json()["code"] == "cycle_closed"
 

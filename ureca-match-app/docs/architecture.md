@@ -102,9 +102,9 @@ The steps below follow one live request: a student submits an application (`POST
 10. **Persist.** The handler builds an `Application` with `preference_rank = len(active) + 1` and `round_id` from `windows.phase()`, then calls `store.save_applications(app)`. `SupabaseStore.save_applications()` upserts the row into `listing_applications` before the response is sent (NFR 5.2).
 11. **Response.** FastAPI serialises the `Application` (`response_model`) with status 201. `LiveClient` returns it typed; on any non-2xx it throws `ApiError` with the server's code and message, which the page shows. A 401 makes `handleAuthError()` clear the session and redirect to `/sign-in?reason=session_expired`. A successful call refreshes the browser session (`touchSession()`).
 
-Submitting an application does not notify anyone or write to the audit log. Requests that do, such as publishing results (`POST /admin/rounds/{round_id}/publish`, guarded by `AdminUser`), add two steps after the state change:
+Submitting an application does not notify anyone or write to the audit log. Steps that do, such as publishing a round's results (`_publish()` in `routers/matching.py`, run by the first request after the round's approval window closes), add two steps after the state change:
 
-12. **Audit.** `audit(store, admin, AuditOperation.results_published, [round_id], now)` in `services/audit.py` appends an `AuditEntry` with the actor and time (REQ-AUDIT-1).
+12. **Audit.** `audit(store, SYSTEM, AuditOperation.results_published, [round_id], now)` in `services/audit.py` appends an `AuditEntry` with the actor and time (REQ-AUDIT-1). An admin action passes the admin; what the system does on its own passes `SYSTEM`, shown as "System" (REQ-AUDIT-3).
 13. **Notify.** `notify(store, user_ids, NotificationEvent.offer_received, title, message, now, link)` in `services/notify.py` builds one `Notification` per recipient, stores them with `store.save_notifications()`, then calls `email.send_for()`, which sends them through Resend according to `EMAIL_MODE` (REQ-PUB-2, NFR 5.1.2). No other code inserts notifications or audit rows.
 
 ## 4. Design patterns
@@ -143,9 +143,9 @@ Submitting an application does not notify anyone or write to the audit log. Requ
 
 ### 5.3 Global control flow
 
-The system is event-driven at the tier boundary and procedure-driven inside each request. Every user action is one synchronous HTTP request and response; there are no background workers, queues or threads. Long steps also run inside a request: the matching run is executed inside `POST /admin/rounds/{round_id}/execute`, and e-mails are handed to Resend inside the request that created the notification.
+The system is event-driven at the tier boundary and procedure-driven inside each request. Every user action is one synchronous HTTP request and response; there are no background workers, queues or threads. Long steps also run inside a request: the matching run is executed inside the first request that arrives after a round's review window closes, and e-mails are handed to Resend inside the request that created the notification.
 
-Time-based changes are driven by a daily timer. `api/vercel.json` registers a Vercel Cron job for `/internal/tick` at `0 16 * * *` (16:00 UTC, midnight in Singapore). Vercel Cron calls it with `GET` and `Authorization: Bearer <CRON_SECRET>`. `tick()` in `routers/matching.py` moves round statuses into their application or review window and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). The admin Matching Rounds screen (`web/app/(admin)/rounds/page.tsx`) also calls `tick()` with `POST` and the admin's session when it opens. Most window logic does not depend on the cron at all, because guards compute the phase from dates on every request through `windows.phase()`.
+Time-based changes happen on the first request after they fall due. `main.py` registers `keep_schedule` as an app-wide dependency, so before any handler runs, `advance()` in `routers/matching.py` goes through the active cycle's rounds in order: it runs matching for a round whose review window has closed (REQ-EXEC-4), publishes a round whose approval window has closed (REQ-PUB-3), keeps round statuses current, and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). Each step runs once, under a lock, so a second request changes nothing. Nobody has to be online when a window closes. As a backstop for quiet days, `api/vercel.json` registers a Vercel Cron job for `/internal/tick` at `0 16 * * *` (16:00 UTC, midnight in Singapore), called with `GET` and `Authorization: Bearer <CRON_SECRET>`; the admin Matching Rounds screen (`web/app/(admin)/rounds/page.tsx`) also calls it with `POST` and the admin's session. Most window logic does not depend on either, because guards compute the phase from dates on every request through `windows.phase()`.
 
 ### 5.4 Boundary conditions
 
@@ -193,9 +193,9 @@ Continuous integration runs on every pull request and every push to `main` (`.gi
 
 ## 8. Open items
 
-- `SupabaseStore` does not yet persist cycles, rounds and matches (owner: slice D), audit entries or verification codes. In Supabase mode these live in process memory and return to the seed when an instance restarts, so whatever `tick()`, `execute()` or `publish()` changes is lost then.
+- `SupabaseStore` does not yet persist cycles, rounds and matches (owner: slice D), audit entries or verification codes. In Supabase mode these live in process memory and return to the seed when an instance restarts, so whatever the scheduler (`advance()`) changes is lost then. Worse, the first request to a restarted instance runs matching and publishing again on the seed for every window that has closed, and those steps save application outcomes, student eligibility and notifications to the database. Keep the automatic runs out of Supabase mode until rounds and matches are persisted.
 - The admin and supervisor dashboards (`admin_dashboard()`, `supervisor_dashboard()` in `routers/notifications.py`) count from the in-memory lists `store.users`, `store.students`, `store.listings`, `store.applications`, `store.proposals` and `store.matches`. In Supabase mode these are the seed, not the database. Owners: slice E, with slice D for matches.
-- The live cycle is the seeded AY26/27 Semester 1 cycle, which closed on 30 Sep 2026. Production uses the real clock, so every window on the live site is closed until an admin creates a new cycle, and that cycle is not persisted (first item).
+- The live cycle is the seeded AY26/27 Semester 1 cycle, which closed on 2 Oct 2026. Production uses the real clock, so every window on the live site is closed until an admin creates a new cycle, and that cycle is not persisted (first item).
 - Until a sender domain is verified in Resend, e-mail can only come from `onboarding@resend.dev`, which delivers only to the Resend account owner.
 - `supabase/policies.sql` (RLS and storage policies) is applied in Supabase; PR #27 pending merge. Until then `supabase/schema.sql` refers to a file that is not on `main`.
 - The planned GitHub Actions deploy workflow does not exist yet.

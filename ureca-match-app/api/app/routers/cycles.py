@@ -1,4 +1,4 @@
-"""Slice D: application cycle and matching rounds.  REQ-CYCLE-1..3, REQ-ROUND-1..3."""
+"""Slice D: application cycle and matching rounds.  REQ-CYCLE-1..3, REQ-ROUND-1..3, REQ-APPRV-5."""
 
 from __future__ import annotations
 
@@ -164,6 +164,7 @@ def _shifted(r: Round, by: timedelta) -> Round:
             "application_end": r.application_end + by,
             "review_start": r.review_start + by,
             "review_end": r.review_end + by,
+            "approval_end": r.approval_end + by,
         }
     )
 
@@ -183,31 +184,49 @@ def _check_new_dates(store, c: Cycle, body: CycleUpdate, opening, closing, pre_d
     if not rounds:
         return
     first = min(rounds, key=lambda r: r.application_start)
-    last = max(rounds, key=lambda r: r.review_end)
+    last = max(rounds, key=lambda r: r.approval_end)
     if first.application_start < opening + timedelta(days=pre_days):
         raise invalid(
             "outside_cycle",
             f"Round {first.number} starts {first.application_start:%d %b}, before the pre-application window ends. "
             "Change the rounds first.",
         )
-    if last.review_end > closing:
+    if last.approval_end > closing:
         raise invalid(
             "outside_cycle",
-            f"Round {last.number} ends {last.review_end:%d %b}, after this closing date. "
+            f"Round {last.number} ends {last.approval_end:%d %b}, after this closing date. "
             "Pick a later date or shorten the rounds first.",
             "closing_date",
         )
+    _check_time_to_respond(rounds, closing)  # moving the opening date later moves the rounds closer to the close
 
 
-GAP = timedelta(days=4)  # default gap between rounds when no start date is given
+GAP = timedelta(days=2)  # default gap after a round's approval window when the next round has no start date
 SECOND = timedelta(seconds=1)  # windows end one second before the hour, so the next start adds it back
+RESPOND = timedelta(days=7)  # REQ-OUTCOME-3: last-round offers are open until the cycle closes, so leave time to answer
+
+
+def _check_time_to_respond(rounds: list[Round], closing: datetime) -> None:
+    """REQ-OUTCOME-3: the cycle closes at least RESPOND after the last approval window, so students offered a place
+    in the last round have time to answer before their offers lapse at the close."""
+    if not rounds:
+        return
+    last = max(rounds, key=lambda r: r.approval_end)
+    if last.approval_end + RESPOND > closing:
+        raise invalid(
+            "outside_cycle",
+            f"Round {last.number}'s approval window ends {when(last.approval_end)}. Students need {RESPOND.days} days "
+            f"after that to answer their offers, so the cycle must close on or after {when(last.approval_end + RESPOND)}.",
+            "closing_date",
+        )
 
 
 @router.put("/admin/cycles/{cycle_id}/rounds", response_model=Cycle)
 def set_rounds(cycle_id: str, body: RoundsUpdate, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Cycle:
     """Build the rounds from their window lengths and optional start dates (REQ-ROUND-1, use case 1-2), and reject
-    rounds that overlap or fall outside the cycle (REQ-ROUND-3). A round without a start date opens 4 days after
-    the previous one ends; Round 1 opens when the pre-application window ends."""
+    rounds that overlap or fall outside the cycle (REQ-ROUND-3). A round ends when its approval window does
+    (REQ-APPRV-5), and the cycle must close at least 7 days after the last one (REQ-OUTCOME-3). A round without a
+    start date opens 2 days after the previous one ends; Round 1 opens when the pre-application window ends."""
     c = store.cycle_by_id(cycle_id)
     if c is None:
         raise not_found("Cycle")
@@ -226,7 +245,7 @@ def set_rounds(cycle_id: str, body: RoundsUpdate, admin: AdminUser, store: Store
         old = existing.get(spec.number)
         if old and old.application_start <= now:  # REQ-ROUND-2: only future rounds change
             rounds.append(old)
-            cursor, prev = old.review_end + SECOND + GAP, old
+            cursor, prev = old.approval_end + SECOND + GAP, old
             continue
         app_start = cursor
         if spec.start_date is not None:
@@ -237,16 +256,17 @@ def set_rounds(cycle_id: str, body: RoundsUpdate, admin: AdminUser, store: Store
             raise invalid(
                 "outside_cycle", f"Round {spec.number} would start before the pre-application window ends on {earliest:%d %b}."
             )
-        if prev is not None and app_start <= prev.review_end:  # REQ-ROUND-3: rounds must not overlap
+        if prev is not None and app_start <= prev.approval_end:  # REQ-ROUND-3: rounds must not overlap
             raise invalid(
                 "rounds_overlap",
-                f"Round {spec.number} would start before Round {prev.number} ends on {prev.review_end:%d %b}.",
+                f"Round {spec.number} would start before Round {prev.number} ends on {prev.approval_end:%d %b}.",
                 "rounds",
             )
         app_end = app_start + timedelta(days=spec.application_days) - timedelta(seconds=1)
         rev_start = app_start + timedelta(days=spec.application_days)
         rev_end = rev_start + timedelta(days=spec.review_days) - timedelta(seconds=1)
-        if rev_end > c.closing_date:  # REQ-ROUND-3
+        approval_end = rev_end + timedelta(days=spec.approval_days)  # REQ-APPRV-5
+        if approval_end > c.closing_date:  # REQ-ROUND-3
             raise invalid("outside_cycle", f"Round {spec.number} would end after the cycle closes on {c.closing_date:%d %b}.")
         prev = Round(
             id=old.id if old else store.next_id("rnd"),
@@ -256,10 +276,12 @@ def set_rounds(cycle_id: str, body: RoundsUpdate, admin: AdminUser, store: Store
             application_end=app_end,
             review_start=rev_start,
             review_end=rev_end,
+            approval_end=approval_end,
             status=RoundStatus.scheduled,
         )
         rounds.append(prev)
-        cursor = rev_end + SECOND + GAP
+        cursor = approval_end + SECOND + GAP
+    _check_time_to_respond(rounds, c.closing_date)
     c.rounds = rounds
     c.rollover_unmatched = body.rollover_unmatched  # REQ-EXEC-3
     audit(store, admin, AuditOperation.cycle_updated, [c.id], now, "rounds configured")

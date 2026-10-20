@@ -189,13 +189,13 @@ insert into supporting_documents (id, owner_id, file_name, file_format, file_siz
 on conflict (id) do nothing;
 
 insert into application_cycles (id, academic_year, opening_date, closing_date, pre_application_days, status) values
-('cyc-2627s1', 'AY26/27 Semester 1', '2026-08-18T09:00:00+00:00', '2026-09-30T09:00:00+00:00', 7, 'in_progress')
+('cyc-2627s1', 'AY26/27 Semester 1', '2026-08-18T09:00:00+00:00', '2026-10-02T09:00:00+00:00', 7, 'in_progress')
 on conflict (id) do nothing;
 
-insert into matching_rounds (id, cycle_id, number, application_start, application_end, review_start, review_end, status, executed_at, published_at) values
-('rnd-1', 'cyc-2627s1', 1, '2026-08-25T09:00:00+00:00', '2026-08-30T08:59:59+00:00', '2026-08-30T09:00:00+00:00', '2026-09-01T08:59:59+00:00', 'published', '2026-09-01T10:59:59+00:00', '2026-09-01T16:59:59+00:00'),
-('rnd-2', 'cyc-2627s1', 2, '2026-09-05T09:00:00+00:00', '2026-09-10T08:59:59+00:00', '2026-09-10T09:00:00+00:00', '2026-09-12T08:59:59+00:00', 'application_window', null, null),
-('rnd-3', 'cyc-2627s1', 3, '2026-09-16T09:00:00+00:00', '2026-09-21T08:59:59+00:00', '2026-09-21T09:00:00+00:00', '2026-09-23T08:59:59+00:00', 'scheduled', null, null)
+insert into matching_rounds (id, cycle_id, number, application_start, application_end, review_start, review_end, approval_end, status, executed_at, published_at) values
+('rnd-1', 'cyc-2627s1', 1, '2026-08-25T09:00:00+00:00', '2026-08-30T08:59:59+00:00', '2026-08-30T09:00:00+00:00', '2026-09-01T08:59:59+00:00', '2026-09-03T08:59:59+00:00', 'published', '2026-09-01T09:00:00+00:00', '2026-09-03T09:00:00+00:00'),
+('rnd-2', 'cyc-2627s1', 2, '2026-09-05T09:00:00+00:00', '2026-09-10T08:59:59+00:00', '2026-09-10T09:00:00+00:00', '2026-09-12T08:59:59+00:00', '2026-09-14T08:59:59+00:00', 'application_window', null, null),
+('rnd-3', 'cyc-2627s1', 3, '2026-09-16T09:00:00+00:00', '2026-09-21T08:59:59+00:00', '2026-09-21T09:00:00+00:00', '2026-09-23T08:59:59+00:00', '2026-09-25T08:59:59+00:00', 'scheduled', null, null)
 on conflict (id) do nothing;
 
 insert into project_listings (id, supervisor_id, title, description, prerequisites, topic_tags, available_slots, filled_slots, offering_faculty, research_location, cover_url, status, created_at) values
@@ -333,27 +333,27 @@ insert into self_proposed_applications (id, student_id, supervisor_id, title, de
 on conflict (id) do nothing;
 
 insert into match_results (id, round_id, student_id, listing_id, status, preference_rank, supervisor_decided_at, published_at, offer_expires_at, student_responded_at, original_listing_id, justification) values
-('mt-1', 'rnd-1', 'stu-33', 'lst-1', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
-('mt-2', 'rnd-1', 'stu-34', 'lst-4', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
-('mt-3', 'rnd-1', 'stu-35', 'lst-6', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
-('mt-4', 'rnd-1', 'stu-36', 'lst-6', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
-('mt-5', 'rnd-1', 'stu-37', 'lst-9', 'accepted', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null),
-('mt-6', 'rnd-1', 'stu-38', 'lst-2', 'declined', 1, '2026-08-31T14:00:00+00:00', '2026-08-31T17:00:00+00:00', '2026-09-10T09:00:00+00:00', '2026-09-01T10:00:00+00:00', null, null)
+('mt-1', 'rnd-1', 'stu-33', 'lst-1', 'accepted', 1, null, '2026-09-03T09:00:00+00:00', '2026-09-10T08:59:59+00:00', '2026-09-04T10:00:00+00:00', null, null),
+('mt-2', 'rnd-1', 'stu-34', 'lst-4', 'accepted', 1, null, '2026-09-03T09:00:00+00:00', '2026-09-10T08:59:59+00:00', '2026-09-04T10:00:00+00:00', null, null),
+('mt-3', 'rnd-1', 'stu-35', 'lst-6', 'accepted', 1, null, '2026-09-03T09:00:00+00:00', '2026-09-10T08:59:59+00:00', '2026-09-04T10:00:00+00:00', null, null),
+('mt-4', 'rnd-1', 'stu-36', 'lst-6', 'accepted', 1, null, '2026-09-03T09:00:00+00:00', '2026-09-10T08:59:59+00:00', '2026-09-04T10:00:00+00:00', null, null),
+('mt-5', 'rnd-1', 'stu-37', 'lst-9', 'accepted', 1, null, '2026-09-03T09:00:00+00:00', '2026-09-10T08:59:59+00:00', '2026-09-04T10:00:00+00:00', null, null),
+('mt-6', 'rnd-1', 'stu-38', 'lst-2', 'declined', 1, null, '2026-09-03T09:00:00+00:00', '2026-09-10T08:59:59+00:00', '2026-09-04T10:00:00+00:00', null, null)
 on conflict (id) do nothing;
 
 insert into notifications (id, user_id, event, title, message, created_at, read, link) values
-('ntf-1', 'stu-1', 'round_opened', 'Round 2 is open', 'Apply and rank your projects before 9 Sep.', '2026-09-05T08:00:00+00:00', true, '/browse'),
-('ntf-2', 'stu-1', 'cycle_changed', 'Round 2 closes in 3 days', 'Applications and rankings close on 9 Sep at 23:59.', '2026-09-06T09:00:00+00:00', false, '/my-applications'),
-('ntf-3', 'stu-33', 'offer_received', 'You have a match offer', 'Deep Learning for Early Detection of Diabetic Retinopathy. Respond by 10 Sep.', '2026-08-31T17:00:00+00:00', false, '/my-applications'),
+('ntf-1', 'stu-1', 'round_opened', 'Round 2 is open', 'Apply and rank your projects by 10 Sep, 5:00 pm SGT.', '2026-09-05T08:00:00+00:00', true, '/browse'),
+('ntf-2', 'stu-1', 'cycle_changed', 'Round 2 closes in 4 days', 'Applications close on 10 Sep at 5:00 pm SGT. Set your preference order in My applications before then.', '2026-09-06T09:00:00+00:00', false, '/my-applications'),
+('ntf-3', 'stu-33', 'offer_received', 'You have a match offer', 'Deep Learning for Early Detection of Diabetic Retinopathy. Respond by 10 Sep, 5:00 pm SGT.', '2026-09-03T09:00:00+00:00', false, '/my-applications'),
 ('ntf-4', 'sup-1', 'proposal_decided', 'New proposal from Aisha Rahman', 'Self-Supervised Pretraining for Retinal OCT is waiting for your decision.', '2026-09-06T15:00:00+00:00', false, '/proposals'),
-('ntf-5', 'sup-1', 'round_opened', 'Round 2 review window opens 10 Sep', 'Rank your applicants between 10 and 11 Sep.', '2026-09-05T08:00:00+00:00', false, '/projects'),
-('ntf-6', 'adm-1', 'results_published', 'Round 1 results published', '3,912 students notified. 372 declined so far.', '2026-08-31T17:00:00+00:00', true, '/rounds')
+('ntf-5', 'sup-1', 'round_opened', 'Round 2 review window opens 10 Sep', 'Rankings are due 12 Sep, 5:00 pm SGT. You can start ranking applicants now.', '2026-09-05T08:00:00+00:00', false, '/projects'),
+('ntf-6', 'adm-1', 'results_published', 'Round 1 results published', '3,912 students notified. 372 declined so far.', '2026-09-03T09:00:00+00:00', true, '/rounds')
 on conflict (id) do nothing;
 
 insert into audit_log (id, operation, actor_id, timestamp, affected_records, note) values
-('aud-1', 'matching_executed', 'adm-1', '2026-08-31T11:00:00+00:00', array['rnd-1']::text[], 'Round 1 matching, 3.1 s'),
-('aud-2', 'manual_reassignment', 'adm-1', '2026-08-31T15:00:00+00:00', array['mt-4']::text[], 'Supervisor rejected; reassigned to second preference'),
-('aud-3', 'results_published', 'adm-1', '2026-08-31T17:00:00+00:00', array['rnd-1']::text[], null),
+('aud-1', 'matching_executed', 'system', '2026-09-01T09:00:00+00:00', array['rnd-1']::text[], 'Round 1 matching, 3.1 s'),
+('aud-2', 'manual_reassignment', 'adm-1', '2026-09-02T07:00:00+00:00', array['mt-4']::text[], 'Supervisor declined; reassigned to second preference'),
+('aud-3', 'results_published', 'system', '2026-09-03T09:00:00+00:00', array['rnd-1']::text[], null),
 ('aud-4', 'user_deactivated', 'adm-2', '2026-09-02T10:00:00+00:00', array['stu-40']::text[], 'Withdrew from programme')
 on conflict (id) do nothing;
 

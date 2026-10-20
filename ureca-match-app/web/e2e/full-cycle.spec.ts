@@ -1,12 +1,16 @@
 /**
- * Full-cycle journey: the demo in the Development Guide, section 2, on a fresh live seed.
- * Needs E2E_BASE_URL (the Vercel preview) and a live API whose clock moves through the round windows.
- * Not passing yet: it depends on slices A to D going live. Skipped in CI and when E2E_BASE_URL is unset.
+ * Full-cycle journey: the demo in the Development Guide, section 2, on a fresh seed.
+ * The test moves the clock through Round 2's windows with the debug clock, so it needs DEBUG_CLOCK=true on the API
+ * and NEXT_PUBLIC_DEBUG_CLOCK=true on the web app, in live mode. Run it against one freshly started API process
+ * (for example `uv run fastapi dev app/main.py` locally): the clock override, rounds and matches live in that
+ * process's memory, so a Vercel preview with several instances cannot pass it until rounds and matches are saved in
+ * Supabase. Skipped in CI and when E2E_BASE_URL is unset.
  */
 import { expect, test, type Page } from "@playwright/test";
 
-test.skip(!!process.env.CI, "Full cycle runs manually against the preview until every slice is live.");
-test.skip(!process.env.E2E_BASE_URL, "Set E2E_BASE_URL to the deployment to test.");
+test.skip(!!process.env.CI, "Full cycle runs manually against a single API process until every slice is live.");
+test.skip(!process.env.E2E_BASE_URL, "Set E2E_BASE_URL to the web app to test.");
+test.use({ timezoneId: "Asia/Singapore" }); // the debug clock's date and time box reads local time
 
 const PASSWORD = "password";
 const CODE = "000000";
@@ -28,6 +32,27 @@ async function signIn(page: Page, email: string) {
   await page.getByRole("button", { name: /sign in/i }).click();
   await expect(page).not.toHaveURL(/sign-in/);
 }
+
+/** Sets the API clock with the debug clock (Singapore time, "YYYY-MM-DDTHH:mm"). Matching and publishing run on the
+ *  next request after a window closes (REQ-EXEC-4, REQ-PUB-3), and the debug clock sends one straight away. */
+async function setClock(page: Page, local: string) {
+  await page.getByRole("button", { name: "Debug clock" }).click();
+  await page.locator('input[type="datetime-local"]').fill(local);
+  const ticked = page.waitForResponse((r) => r.url().includes("/internal/tick"));
+  await page.getByRole("button", { name: "Set this time" }).click();
+  await ticked;
+  await page.reload();
+}
+
+test.afterEach(async ({ page }) => {
+  // The override applies to the whole API, so put the real clock back even when a step failed.
+  await page.goto("/notifications").catch(() => {});
+  const clock = page.getByRole("button", { name: "Debug clock" });
+  if (await clock.isVisible().catch(() => false)) {
+    await clock.click();
+    await page.getByRole("button", { name: "Back to the real clock" }).click({ timeout: 5_000 }).catch(() => {});
+  }
+});
 
 async function expectNotification(page: Page, text: RegExp) {
   await page.goto("/notifications");
@@ -56,6 +81,7 @@ test("one URECA cycle end to end", async ({ page }) => {
 
   await test.step("2. supervisor publishes a listing with a cover; student finds it by tag and school (slice B)", async () => {
     await signIn(page, SUPERVISOR);
+    await setClock(page, "2026-09-07T10:00"); // Round 2's application window
     await page.goto("/projects/new");
     await page.getByLabel("Title").fill(listingTitle);
     await page.getByLabel("Description").fill("End-to-end test listing for the full-cycle journey.");
@@ -88,25 +114,27 @@ test("one URECA cycle end to end", async ({ page }) => {
     await page.getByRole("button", { name: /submit ranking|save ranking/i }).click();
   });
 
-  await test.step("4. admin executes, supervisor approves, admin reassigns and publishes (slice D)", async () => {
-    // Needs the live clock past the review window. On a fresh seed, set the round dates first.
-    await signIn(page, ADMIN);
-    await page.goto("/rounds");
-    await page.getByRole("button", { name: "Run matching" }).click();
-
-    await signIn(page, SUPERVISOR);
+  await test.step("4. matching runs by itself; supervisor declines the student; admin reassigns them; results publish (slice D)", async () => {
+    await setClock(page, "2026-09-12T17:01"); // Round 2's review window has closed, so matching runs (REQ-EXEC-4)
     await page.goto("/approvals");
-    await page.getByRole("button", { name: "Approve" }).first().click();
+    await expect(page.getByText(/Approval window open until/)).toBeVisible();
+    const row = page.getByRole("listitem").filter({ hasText: newStudent.name });
+    await row.getByRole("button", { name: "Decline" }).click();
+    await page.getByLabel("Reason for the URECA office").fill("E2E: lab is full this term.");
+    await page.getByRole("button", { name: "Decline" }).last().click(); // the modal's confirm
+    await expect(row.getByText(/Declined by you/)).toBeVisible();
 
     await signIn(page, ADMIN);
     await page.goto("/rounds");
     await page.getByRole("button", { name: "Review matches" }).click();
+    await page.getByRole("button", { name: "Declined by supervisor" }).click(); // only the student just declined
     await page.getByRole("button", { name: "Reassign" }).first().click();
     await page.getByLabel("Move to project").selectOption({ index: 1 });
-    await page.getByLabel("Justification").fill("E2E: moved to balance supervisor load.");
+    await page.getByLabel("Justification").fill("E2E: supervisor declined; moved to another project.");
     await page.getByRole("button", { name: "Reassign" }).last().click();
-    await page.getByRole("button", { name: "Publish results" }).click();
-    await page.getByRole("button", { name: "Publish", exact: true }).click();
+
+    await setClock(page, "2026-09-14T17:01"); // the approval window has closed, so results publish (REQ-PUB-3)
+    await page.goto("/rounds");
     await expect(page.getByText("Results published.")).toBeVisible();
   });
 
@@ -122,6 +150,7 @@ test("one URECA cycle end to end", async ({ page }) => {
   });
 
   await test.step("6. a second student proposes a project; supervisor accepts and registers them (slice B)", async () => {
+    await setClock(page, "2026-09-16T10:00"); // Round 3's application window: proposals are open (REQ-PROPOSE-3)
     await signIn(page, STUDENT_2);
     await page.goto("/propose");
     await page.getByPlaceholder("Search by name or school").fill("Daniel Ho");

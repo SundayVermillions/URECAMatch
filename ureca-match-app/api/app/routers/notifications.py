@@ -40,7 +40,7 @@ def admin_dashboard(admin: AdminUser, store: StoreDep, settings: SettingsDep) ->
     pending = sum(1 for m in store.matches if m.status == MatchStatus.proposed)
     alerts = []
     if pending:
-        alerts.append(f"{pending} proposed matches await supervisor approval")
+        alerts.append(f"{pending} matched students are in the approval window")  # REQ-APPRV-4
     incomplete = sum(1 for s in store.students if not s.profile_complete)
     if incomplete:
         alerts.append(f"{incomplete} students have not completed their profile")

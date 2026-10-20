@@ -1,75 +1,89 @@
 "use client";
-/** ApproveMatchingResults (4.17). REQ-APPRV-1..3. Screen: MatchApprovalsPage.
- *  Use case 3-3 step 3: selecting a proposed match opens the student's profile and application in a drawer. */
+/** ApproveMatchingResults (4.17). REQ-APPRV-1..4. Screen: MatchApprovalsPage.
+ *  Students the matching places on a supervisor's projects are accepted by default: during the approval window the
+ *  supervisor may only decline (REQ-APPRV-4). Use case 3-3 step 3: a match opens the student's profile in a drawer.
+ *  Matches are grouped by round, so a student stays on screen, marked declined, after the supervisor declines them. */
 import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
-import { Avatar, Banner, Button, Drawer, Empty, Field, Loading, Modal, PdfViewer, Pill, Status, Textarea, fmtDate } from "@/components/ui";
+import { Avatar, Banner, Button, Drawer, Empty, Field, Loading, Modal, PdfViewer, Pill, Status, Textarea, fmtDate, fmtDeadline } from "@/components/ui";
 import { ApiError, type Match } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
 export default function Approvals() {
-  const { me } = useMe();
+  const { me, refresh } = useMe();
   const call = useCall();
   const { data, loading, reload } = useApi((api) => api.supervisorMatches(), []);
-  const [reject, setReject] = useState<Match | null>(null);
+  const [decline, setDecline] = useState<Match | null>(null);
   const [profile, setProfile] = useState<Match | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
-  async function decide(m: Match, approve: boolean, note?: string) {
-    try { await call((api) => api.decideMatch(m.id, approve, note)); reload(); } catch (e) { setError(e as ApiError); } finally { setReject(null); setReason(""); }
+  const phase = me?.phase;
+  const open = phase?.window === "approval"; // REQ-APPRV-4: declining is only possible while the window is open
+  const canDecline = (m: Match) => open && phase?.round_id === m.round_id && m.status === "proposed";
+  async function confirmDecline(m: Match) {
+    setError(null);
+    try { await call((api) => api.declineMatch(m.id, reason)); reload(); refresh(); }
+    catch (e) {
+      setError(e as ApiError);
+      if ((e as ApiError).code === "approval_closed") { reload(); refresh(); } // the window closed while the page was open
+    } finally { setDecline(null); setReason(""); }
   }
-  const pending = (data ?? []).filter((m) => m.status === "proposed");
-  const rest = (data ?? []).filter((m) => m.status !== "proposed");
+  const thisRound = (data ?? []).filter((m) => m.round_id === phase?.round_id);
+  const earlier = (data ?? []).filter((m) => m.round_id !== phase?.round_id);
+  const note = (m: Match) =>
+    m.status === "rejected" ? `Declined by you${m.supervisor_note ? `: "${m.supervisor_note}"` : ""}`
+      : m.status === "reassigned" ? "Placed by the URECA office, so it cannot be declined" : null;
   return (
     <>
-      <PageHeader title="Match approvals" description="Approve or reject each student the matching proposed for your projects. Rejecting returns the slot to the pool." />
+      <PageHeader title="Match approvals" description="Students the matching places on your projects are offered a place when the approval window closes. Decline any student you cannot take before then." />
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
-      {loading && !data ? <Loading /> : pending.length === 0 ? (
-        <Empty title="Nothing to approve" note={me?.phase.window === "awaiting_results" ? "Nothing is waiting for you. If matching has not run yet, proposed matches appear here as soon as it does." : "Proposed matches appear here as soon as the admin runs matching for the round."} />
+      {open && <div className="mb-4"><Banner tone="accent" title={`Approval window open until ${fmtDeadline(phase?.window_ends_at)}.`}>You do not need to approve anyone. Students you leave are offered a place when the window closes.</Banner></div>}
+      {loading && !data ? <Loading /> : thisRound.length === 0 ? (
+        <Empty title="No students to review" note={open ? "The matching did not place any students on your projects this round." : "Students matched to your projects appear here when matching runs, as soon as the review window closes."} />
       ) : (
-        <div className="flex flex-col gap-2">
-          {pending.map((m) => (
-            <div key={m.id} className="bg-surface border border-border rounded-row flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3">
-              <Avatar name={m.student_name} size={32} tone="navy" />
+        <ul className="flex flex-col gap-2">
+          {thisRound.map((m) => (
+            <li key={m.id} className="bg-surface border border-border rounded-row flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3">
+              <Avatar name={m.student_name} size={32} tone={m.status === "rejected" ? "neutral" : "navy"} />
               {/* On narrow screens the actions wrap below instead of squeezing the name. */}
               <div className="flex-1 min-w-[220px]">
                 <div className="text-[13.5px] font-semibold truncate">{m.student_name}</div>
                 <div className="text-[12.5px] text-muted truncate">→ <strong className="text-text">{m.listing_title}</strong>{m.preference_rank ? ` · their preference ${m.preference_rank}` : ""}</div>
+                {note(m) && <div className={`text-[11.5px] mt-0.5 ${m.status === "rejected" ? "text-bad-ink" : "text-muted"}`}>{note(m)}</div>}
                 <button type="button" onClick={() => setProfile(m)} className="text-[12.5px] font-medium text-accent hover:text-accent-ink mt-0.5">View profile</button>
               </div>
               <div className="flex items-center gap-2 ml-auto shrink-0">
-                <Status value={m.status} />
-                <Button size="sm" onClick={() => decide(m, true)}>Approve</Button>
-                <Button size="sm" variant="secondary" onClick={() => setReject(m)}>Reject</Button>
+                {m.status !== "rejected" && <Status value={m.status} />}
+                {canDecline(m) && <Button size="sm" variant="secondary" onClick={() => setDecline(m)}>Decline</Button>}
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-      {rest.length > 0 && (
+      {earlier.length > 0 && (
         <>
-          <h2 className="mt-7 mb-3">Decided</h2>
-          <div className="flex flex-col gap-2">
-            {rest.map((m) => (
-              <div key={m.id} className="bg-surface border border-border rounded-row flex items-center gap-3.5 px-4 py-3">
+          <h2 className="mt-7 mb-3">Earlier rounds</h2>
+          <ul className="flex flex-col gap-2">
+            {earlier.map((m) => (
+              <li key={m.id} className="bg-surface border border-border rounded-row flex items-center gap-3.5 px-4 py-3">
                 <Avatar name={m.student_name} size={32} />
                 <div className="flex-1 min-w-0"><div className="text-[13.5px] font-semibold">{m.student_name}</div><div className="text-[12.5px] text-muted truncate">→ {m.listing_title}</div></div>
                 <Status value={m.status} />
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </>
       )}
-      <Drawer open={!!profile} onClose={() => setProfile(null)} title="Proposed match"
-        footer={profile && <><Button variant="secondary" onClick={() => { setReject(profile); setProfile(null); }}>Reject</Button><Button onClick={() => { decide(profile, true); setProfile(null); }}>Approve</Button></>}>
+      <Drawer open={!!profile} onClose={() => setProfile(null)} title="Matched student"
+        footer={profile && canDecline(profile) ? <Button variant="secondary" onClick={() => { setDecline(profile); setProfile(null); }}>Decline</Button> : undefined}>
         {profile && <StudentBehindMatch m={profile} />}
       </Drawer>
-      <Modal open={!!reject} onClose={() => { setReject(null); setReason(""); }} title="Reject this match?" footer={<><Button variant="secondary" onClick={() => { setReject(null); setReason(""); }}>Cancel</Button><Button variant="destructive" onClick={() => reject && decide(reject, false, reason)}>Reject</Button></>}>
+      <Modal open={!!decline} onClose={() => { setDecline(null); setReason(""); }} title="Decline this student?" footer={<><Button variant="secondary" onClick={() => { setDecline(null); setReason(""); }}>Cancel</Button><Button variant="destructive" onClick={() => decline && confirmDecline(decline)}>Decline</Button></>}>
         <div className="flex flex-col gap-3">
-          <div>{reject?.student_name} will not be placed on {reject?.listing_title}. The slot returns to the pool and the admin is notified for review.</div>
-          <Field label="Reason for the admin" hint="Optional. Helps the admin decide where to reassign the student.">
-            <Textarea id="reject-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="w-full" />
+          <div>{decline?.student_name} will not be offered {decline?.listing_title}. The slot returns to the pool, and the student is unmatched for this round. This cannot be undone.</div>
+          <Field label="Reason for the URECA office" hint="Optional. Kept with the match, where the URECA office can see it.">
+            <Textarea id="decline-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="w-full" />
           </Field>
         </div>
       </Modal>

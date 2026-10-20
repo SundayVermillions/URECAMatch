@@ -1,26 +1,18 @@
 """Slice D. Offer outcomes, audit trail, and the review listing.
-REQ-OUTCOME-1..4, REQ-AUDIT-1..2, REQ-REV-1."""
+REQ-OUTCOME-1..4, REQ-AUDIT-1..3, REQ-REV-1."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
-from app.settings import get_settings
+from tests.conftest import APPROVAL_CLOSED, REVIEW_CLOSED
 
-AFTER_R2_REVIEW = datetime(2026, 9, 12, 9, tzinfo=UTC)  # Round 2 review window has closed
 SCHEMA = Path(__file__).resolve().parents[2] / "supabase" / "schema.sql"
 
 
-def _set_now(monkeypatch, when: datetime):
-    monkeypatch.setattr(get_settings(), "demo_now", when)
-
-
-def _execute_approve_publish(as_admin, monkeypatch, client_for):
-    """Run round 2 to publication and return the published matches."""
-    _set_now(monkeypatch, AFTER_R2_REVIEW)
-    assert as_admin.post("/admin/rounds/rnd-2/execute").status_code == 200
-    for m in as_admin.get("/admin/rounds/rnd-2/matches").json():
-        assert client_for(m["supervisor_id"]).post(f"/supervisor/matches/{m['id']}/approve", json={}).status_code == 200
-    assert as_admin.post("/admin/rounds/rnd-2/publish").status_code == 200
+def _run_round_2(as_admin, at):
+    """Let the clock run Round 2 to publication and return the published matches."""
+    at(REVIEW_CLOSED)
+    at(APPROVAL_CLOSED)
     return as_admin.get("/admin/rounds/rnd-2/matches", params={"status": "published"}).json()
 
 
@@ -39,8 +31,8 @@ def test_REQ_REV_1_matches_filter_by_status(as_admin):
 # ---------------------------------------------------------------- OUTCOME
 
 
-def test_REQ_OUTCOME_1_student_can_accept_offer(as_admin, monkeypatch, client_for):
-    published = _execute_approve_publish(as_admin, monkeypatch, client_for)
+def test_REQ_OUTCOME_1_student_can_accept_offer(as_admin, client_for, at):
+    published = _run_round_2(as_admin, at)
     assert published, "round 2 should produce at least one published offer"
     m = published[0]
     student = client_for(m["student_id"])
@@ -51,12 +43,11 @@ def test_REQ_OUTCOME_1_student_can_accept_offer(as_admin, monkeypatch, client_fo
     assert student.get("/me").json()["student"]["eligible_for_matching"] is False
 
 
-def test_REQ_OUTCOME_3_unanswered_offer_times_out(as_admin, monkeypatch, client_for):
-    published = _execute_approve_publish(as_admin, monkeypatch, client_for)
+def test_REQ_OUTCOME_3_unanswered_offer_times_out(as_admin, client_for, at):
+    published = _run_round_2(as_admin, at)
     m = published[0]
     expires = datetime.fromisoformat(m["offer_expires_at"])
-    _set_now(monkeypatch, expires + timedelta(days=1))
-    assert as_admin.post("/internal/tick").status_code == 200
+    at(expires + timedelta(days=1))
     student = client_for(m["student_id"])
     assert student.get("/me/match").json()["status"] == "timed_out"  # REQ-OUTCOME-3
     assert student.get("/me").json()["student"]["eligible_for_matching"] is False  # REQ-OUTCOME-4
@@ -65,20 +56,29 @@ def test_REQ_OUTCOME_3_unanswered_offer_times_out(as_admin, monkeypatch, client_
 # ---------------------------------------------------------------- AUDIT
 
 
-def test_REQ_AUDIT_1_execute_and_publish_write_audit(as_admin, monkeypatch, client_for):
-    _set_now(monkeypatch, AFTER_R2_REVIEW)
+def test_REQ_AUDIT_3_system_runs_and_publishes_are_audited_as_system(as_admin, at):
     # The seed already holds Round 1 audit rows, so assert the NEW entry this round writes, not mere presence.
     before = {e["id"] for e in as_admin.get("/admin/audit").json()}
-    as_admin.post("/admin/rounds/rnd-2/execute")
+    at(REVIEW_CLOSED)
     new = [e for e in as_admin.get("/admin/audit").json() if e["id"] not in before]
-    assert any(e["operation"] == "matching_executed" and "rnd-2" in e["affected_records"] for e in new)
+    assert [(e["operation"], e["actor_name"]) for e in new if "rnd-2" in e["affected_records"]] == [
+        ("matching_executed", "System")
+    ]
 
     before = {e["id"] for e in as_admin.get("/admin/audit").json()}
-    for m in as_admin.get("/admin/rounds/rnd-2/matches").json():
-        client_for(m["supervisor_id"]).post(f"/supervisor/matches/{m['id']}/approve", json={})
-    as_admin.post("/admin/rounds/rnd-2/publish")
+    at(APPROVAL_CLOSED)
     new = [e for e in as_admin.get("/admin/audit").json() if e["id"] not in before]
-    assert any(e["operation"] == "results_published" and "rnd-2" in e["affected_records"] for e in new)
+    assert [(e["operation"], e["actor_id"]) for e in new if "rnd-2" in e["affected_records"]] == [("results_published", "system")]
+
+
+def test_REQ_AUDIT_3_schema_has_a_system_user_for_the_audit_log():
+    # audit_log.actor_id references users(id), so the System actor needs a row nobody can sign in as.
+    schema = SCHEMA.read_text()
+    assert "'system', 'system@urecamatch.app', 'System', 'admin', 'inactive'" in schema
+
+
+def test_REQ_AUDIT_3_nobody_can_act_as_the_system_user(client_for):
+    assert client_for("system").get("/me").status_code == 401
 
 
 def test_REQ_AUDIT_1_audit_is_read_only_and_newest_first(as_admin):

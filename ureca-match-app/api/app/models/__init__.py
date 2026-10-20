@@ -38,6 +38,7 @@ class RoundStatus(str, Enum):
     scheduled = "scheduled"
     application_window = "application_window"
     review_window = "review_window"
+    approval_window = "approval_window"  # matching has run; supervisors may decline until approval_end (REQ-APPRV-4)
     awaiting_publication = "awaiting_publication"
     published = "published"
     completed = "completed"
@@ -50,6 +51,7 @@ class Window(str, Enum):
     pre_application = "pre_application"
     application = "application"
     review = "review"
+    approval = "approval"  # supervisors may decline matched students (REQ-APPRV-4)
     awaiting_results = "awaiting_results"
     results = "results"
     closed = "closed"
@@ -75,9 +77,9 @@ class ProposalStatus(str, Enum):
 
 
 class MatchStatus(str, Enum):
-    proposed = "proposed"  # produced by the algorithm, awaiting supervisor
-    approved = "approved"  # supervisor approved
-    rejected = "rejected"  # supervisor rejected, slot returned (REQ-APPRV-2)
+    proposed = "proposed"  # produced by the algorithm; offered at the end of the approval window unless declined
+    approved = "approved"  # supervisor approved (older rounds; supervisors now only decline)
+    rejected = "rejected"  # supervisor declined in the approval window, slot returned (REQ-APPRV-2)
     reassigned = "reassigned"  # admin manual override (REQ-ASSIGN-1)
     published = "published"  # offer visible to student (REQ-PUB-1)
     accepted = "accepted"  # student accepted (REQ-OUTCOME-1)
@@ -91,7 +93,7 @@ class NotificationEvent(str, Enum):
     results_published = "results_published"
     offer_received = "offer_received"
     proposal_decided = "proposal_decided"
-    matches_proposed = "matches_proposed"  # execute produced matches; supervisors must review
+    matches_proposed = "matches_proposed"  # matching ran; supervisors may decline until the approval window ends
     match_approved = "match_approved"
     match_rejected = "match_rejected"
     account_changed = "account_changed"
@@ -235,6 +237,7 @@ class Round(BaseModel):
     application_end: datetime
     review_start: datetime
     review_end: datetime
+    approval_end: datetime  # REQ-APPRV-4: the approval window runs from review_end to here
     status: RoundStatus
     executed_at: datetime | None = None
     published_at: datetime | None = None
@@ -271,7 +274,8 @@ class RoundSpec(BaseModel):
     number: int = Field(ge=1, le=3)
     application_days: int = Field(ge=1, le=14)
     review_days: int = Field(ge=1, le=7)
-    start_date: datetime | None = None  # use case 1-2: the admin picks the start; empty means 4 days after the last round
+    approval_days: int = Field(default=2, ge=1, le=7)  # REQ-APPRV-5: the admin sets how long supervisors have to decline
+    start_date: datetime | None = None  # use case 1-2: the admin picks the start; empty means 2 days after the last round
 
 
 class RoundsUpdate(BaseModel):
@@ -456,12 +460,11 @@ class Match(BaseModel):
 
 class RoundSummary(BaseModel):
     round: Round
-    matched: int
+    matched: int  # students the round places; a student a supervisor declined counts as unmatched until placed again
     unmatched: int
     excluded: int
     avg_preference: float | None
-    approvals_done: int
-    approvals_total: int
+    declined: int  # matches a supervisor declined in this round and nobody has reassigned since (REQ-APPRV-2)
 
 
 class ReassignRequest(BaseModel):

@@ -1,4 +1,4 @@
-"""Slice C: student applications and preference ranking.  REQ-APPLY-1..2, REQ-SRANK-1..2."""
+"""Slice C: student applications and preference ranking.  REQ-APPLY-1..3, REQ-SRANK-1..2."""
 
 from __future__ import annotations
 
@@ -6,7 +6,15 @@ from fastapi import APIRouter
 
 from app.deps import SettingsDep, StoreDep, StudentUser
 from app.errors import conflict, invalid, not_found
-from app.models import Application, ApplicationCreate, ApplicationStatus, ListingStatus, Ok, PreferenceRankingUpdate
+from app.models import (
+    Application,
+    ApplicationCreate,
+    ApplicationStatus,
+    ListingStatus,
+    MatchStatus,
+    Ok,
+    PreferenceRankingUpdate,
+)
 from app.services import windows
 
 router = APIRouter(tags=["applications"])
@@ -39,6 +47,8 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
         raise conflict("profile_incomplete", "Complete your profile before applying. Go to My Profile to finish it.")
     if sp and not sp.eligible_for_matching:
         raise conflict("not_eligible", "You declined an earlier offer, so you cannot apply again this cycle.")
+    if any(m.student_id == user.id and m.status == MatchStatus.published for m in store.matches):  # REQ-APPLY-3
+        raise conflict("offer_open", "You have a project offer to answer, so you cannot apply this round. See My Applications.")
     if lst.filled_slots >= lst.available_slots:
         raise conflict("fully_allocated", "All slots on this project are filled.")
     own = {d.id for d in (sp.documents if sp else [])}
