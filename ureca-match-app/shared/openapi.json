@@ -806,6 +806,18 @@
             }
           },
           {
+            "name": "confirm_cleanup",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview.",
+              "default": false,
+              "title": "Confirm Cleanup"
+            },
+            "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview."
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,
@@ -859,6 +871,16 @@
               }
             }
           },
+          "409": {
+            "description": "Last active admin, or the user has open items to clean up first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupWarning"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -888,6 +910,18 @@
               "type": "string",
               "title": "User Id"
             }
+          },
+          {
+            "name": "confirm_cleanup",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview.",
+              "default": false,
+              "title": "Confirm Cleanup"
+            },
+            "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview."
           },
           {
             "name": "authorization",
@@ -929,6 +963,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Last active admin, or the user has open items to clean up first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupWarning"
                 }
               }
             }
@@ -5590,6 +5634,44 @@
         ],
         "title": "AccountStatus"
       },
+      "ActiveItem": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ActiveItemKind"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "title"
+        ],
+        "title": "ActiveItem",
+        "description": "Something that is still open for a user, shown before an admin deactivates them or changes their role."
+      },
+      "ActiveItemKind": {
+        "type": "string",
+        "enum": [
+          "listing",
+          "proposal",
+          "application",
+          "match"
+        ],
+        "title": "ActiveItemKind"
+      },
       "AdminDashboard": {
         "properties": {
           "cycle": {
@@ -6117,6 +6199,44 @@
           "file"
         ],
         "title": "Body_upload_document_me_documents_post"
+      },
+      "CleanupWarning": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActiveItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "items"
+        ],
+        "title": "CleanupWarning",
+        "description": "The 409 `has_active_items` body: nothing was changed. Resend with confirm_cleanup=true to close these first."
       },
       "ClockSet": {
         "properties": {

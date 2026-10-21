@@ -241,6 +241,28 @@ class UserUpdate(BaseModel):
     status: AccountStatus | None = None
 
 
+class ActiveItemKind(str, Enum):
+    listing = "listing"
+    proposal = "proposal"
+    application = "application"
+    match = "match"
+
+
+class ActiveItem(BaseModel):
+    """Something that is still open for a user, shown before an admin deactivates them or changes their role."""
+
+    kind: ActiveItemKind
+    id: str
+    title: str
+    detail: str = ""  # who else is involved, e.g. "Student: Aisha Rahman"
+
+
+class CleanupWarning(ErrorBody):
+    """The 409 `has_active_items` body: nothing was changed. Resend with confirm_cleanup=true to close these first."""
+
+    items: list[ActiveItem]
+
+
 class UserListItem(BaseModel):
     user: User
     school: str | None = None

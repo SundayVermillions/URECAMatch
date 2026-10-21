@@ -237,16 +237,101 @@ export class MockClient implements ApiClient {
     this.passwords[b.email.toLowerCase()] = "password"; this.audit(a, "user_updated", [u.id], "created");
     return u;
   }
-  async updateUser(id: string, b: M.UserUpdate) {
+  async updateUser(id: string, b: M.UserUpdate, confirmCleanup = false) {
     const a = this.need("admin"); const u = this.db.users.find((u) => u.id === id);
     if (!u) throw new M.ApiError(404, "not_found", "User was not found.");
-    if (b.name) u.name = b.name; if (b.role) u.role = b.role; if (b.status) u.status = b.status;
-    this.audit(a, "user_updated", [u.id]); return u;
+    const roleChanging = !!b.role && b.role !== u.role;
+    const deactivating = b.status === "inactive" && u.status !== "inactive";
+    const leavingAdmin = roleChanging || (!!b.status && b.status !== "active");
+    this.guardAccountChange(u, leavingAdmin, deactivating, roleChanging, confirmCleanup, a, deactivating ? "deactivated" : `changed to ${b.role}`);
+    const changes: string[] = [];
+    if (b.name && b.name !== u.name) { u.name = b.name; changes.push(`name is now ${b.name}`); }
+    if (b.role && b.role !== u.role) { u.role = b.role; changes.push(`role is now ${b.role}`); }
+    if (b.status && b.status !== u.status) { u.status = b.status; changes.push(`status is now ${b.status.replace("_", " ")}`); }
+    this.audit(a, "user_updated", [u.id]);
+    if (changes.length) this.notify([u.id], "account_changed", "Your account was updated", `An administrator changed your account: ${changes.join("; ")}.`);
+    return u;
   }
-  async deactivateUser(id: string) {
+  async deactivateUser(id: string, confirmCleanup = false) {
     const a = this.need("admin"); const u = this.db.users.find((u) => u.id === id);
     if (!u) throw new M.ApiError(404, "not_found", "User was not found.");
+    this.guardAccountChange(u, false, true, false, confirmCleanup, a, "deactivated");
+    const wasActive = u.status !== "inactive";
     u.status = "inactive"; this.audit(a, "user_deactivated", [u.id]);
+    if (wasActive) this.notify([u.id], "account_changed", "Your account was deactivated", "An administrator deactivated your URECAMatch account, so you can no longer sign in.");
+  }
+  /** Same rules as routers/users.py: the last active admin is a hard block, other users get a preview until confirmed. */
+  private guardAccountChange(u: M.User, leavingAdmin: boolean, deactivating: boolean, roleChanging: boolean, confirm: boolean, admin: M.User, reason: string) {
+    const admins = this.db.users.filter((x) => x.role === "admin" && x.status === "active");
+    if ((leavingAdmin || deactivating) && u.role === "admin" && u.status === "active" && admins.length === 1 && admins[0].id === u.id)
+      throw new M.ApiError(409, "last_admin", "This is the only active administrator. Make another user an active admin first.");
+    if (!deactivating && !roleChanging) return;
+    const items = this.activeItems(u);
+    if (!items.length) return;
+    if (!confirm) throw new M.ApiError(409, "has_active_items", `${u.name} still has ${this.summarise(items)}. Confirm to close them and notify the people involved.`, null, items);
+    this.cleanUp(admin, u, items, reason);
+  }
+  private summarise(items: M.ActiveItem[]) {
+    return (["listing", "proposal", "application", "match"] as const)
+      .map((k) => [k, items.filter((i) => i.kind === k).length] as const).filter(([, n]) => n)
+      .map(([k, n]) => `${n} ${k}${n === 1 ? "" : "s"}`).join(", ");
+  }
+  private activeItems(u: M.User): M.ActiveItem[] {
+    const items: M.ActiveItem[] = [];
+    for (const l of this.db.listings.filter((x) => x.supervisor_id === u.id && x.status === "published")) {
+      const n = this.db.applications.filter((a) => a.listing_id === l.id && a.status === "submitted").length;
+      items.push({ kind: "listing", id: l.id, title: l.title, detail: `${n} open applications` });
+    }
+    for (const p of this.db.proposals.filter((x) => x.status === "submitted" && (x.student_id === u.id || x.supervisor_id === u.id)))
+      items.push({ kind: "proposal", id: p.id, title: p.title, detail: p.student_id === u.id ? `Supervisor: ${p.supervisor_name}` : `Student: ${p.student_name}` });
+    for (const a of this.db.applications.filter((x) => x.student_id === u.id && x.status === "submitted"))
+      items.push({ kind: "application", id: a.id, title: a.listing_title, detail: `Supervisor: ${a.supervisor_name}` });
+    for (const m of this.db.matches.filter((x) => x.student_id === u.id && ["proposed", "approved", "reassigned", "published", "accepted"].includes(x.status)))
+      items.push({ kind: "match", id: m.id, title: m.listing_title, detail: `Supervisor: ${m.supervisor_name}` });
+    for (const m of this.db.matches.filter((x) => x.supervisor_id === u.id && ["proposed", "approved", "reassigned", "published"].includes(x.status)))
+      items.push({ kind: "match", id: m.id, title: m.listing_title, detail: `Student: ${m.student_name}` });
+    return items;
+  }
+  private cleanUp(admin: M.User, u: M.User, items: M.ActiveItem[], reason: string) {
+    const told = new Map<string, string[]>();
+    const tell = (uid: string, line: string) => told.set(uid, [...(told.get(uid) ?? []), line]);
+    const ids = (k: M.ActiveItemKind) => new Set(items.filter((i) => i.kind === k).map((i) => i.id));
+    const matchIds = ids("match");
+    for (const m of this.db.matches.filter((x) => matchIds.has(x.id))) {
+      if (m.student_id === u.id) {
+        if (m.status === "accepted") { const l = this.db.listings.find((x) => x.id === m.listing_id); if (l && l.filled_slots > 0) l.filled_slots -= 1; }
+        m.status = "declined"; m.student_responded_at = this.iso();
+        tell(m.supervisor_id, `${m.student_name}'s match to ${m.listing_title} was cancelled.`);
+      } else {
+        this.db.applications.filter((a) => a.student_id === m.student_id && a.round_id === m.round_id && a.listing_id === m.listing_id && a.status === "matched").forEach((a) => (a.status = "unmatched"));
+        m.status = "rejected"; m.supervisor_decided_at = this.iso();
+        tell(m.student_id, `Your match to ${m.listing_title} was cancelled.`);
+      }
+    }
+    const touched = new Set<string>();
+    for (const l of this.db.listings.filter((x) => ids("listing").has(x.id))) {
+      l.status = "closed";
+      for (const a of this.db.applications.filter((x) => x.listing_id === l.id && x.status === "submitted")) {
+        a.status = "withdrawn"; a.preference_rank = null; touched.add(`${a.student_id}|${a.round_id}`);
+        tell(a.student_id, `${l.title} was closed, so your application was withdrawn.`);
+      }
+    }
+    for (const a of this.db.applications.filter((x) => ids("application").has(x.id))) {
+      a.status = "withdrawn"; a.preference_rank = null;
+      const l = this.db.listings.find((x) => x.id === a.listing_id); if (l) tell(l.supervisor_id, `${u.name} withdrew their application to ${a.listing_title}.`);
+    }
+    for (const key of touched) {
+      const [sid, rid] = key.split("|");
+      this.db.applications.filter((x) => x.student_id === sid && x.round_id === rid && x.status === "submitted")
+        .sort((x, y) => (x.preference_rank ?? 99) - (y.preference_rank ?? 99)).forEach((x, i) => (x.preference_rank = i + 1));
+    }
+    for (const p of this.db.proposals.filter((x) => ids("proposal").has(x.id))) {
+      p.status = "declined"; p.decided_at = this.iso();
+      if (p.student_id === u.id) tell(p.supervisor_id, `${p.student_name}'s proposal ${p.title} was withdrawn.`);
+      else tell(p.student_id, `Your proposal ${p.title} to ${p.supervisor_name} was declined.`);
+    }
+    for (const [uid, lines] of told) if (uid && uid !== u.id) this.notify([uid], "account_changed", "Your items were updated by an administrator", `${u.name}'s account was ${reason}. ${lines.join(" ")}`);
+    this.audit(admin, "user_updated", [u.id], `Cleanup before account ${reason}: closed ${this.summarise(items)}`);
   }
 
   // ---- slice B
