@@ -1,4 +1,14 @@
-﻿"use client";
+"use client";
+/** Student profile page. REQ-PROF-1..3. */
+import { Suspense, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { CoursePicker, TopicPicker } from "@/components/pickers";
+import { PageHeader } from "@/components/shell/app-shell";
+import { useMe } from "@/components/shell/app-provider";
+import { I } from "@/components/shell/icons";
+import { Banner, Button, Card, Field, Input, Select, fmtDate } from "@/components/ui";
+import { ApiError, type StudentProfile } from "@/lib/api/models";
+import { useCall } from "@/lib/use-api";
 
 const NTU_DEGREES_BY_SCHOOL: Record<string, string[]> = {
   CCDS: [
@@ -46,21 +56,11 @@ const ALL_NTU_DEGREES = Array.from(
   new Set(Object.values(NTU_DEGREES_BY_SCHOOL).flat())
 ).sort();
 
-/** ManageProfile (4.14). REQ-PROF-1..3. Screens: CompleteProfilePage, MyProfilePage, EditProfilePage. */
-import { useSearchParams } from "next/navigation";
-import { Suspense, useRef, useState } from "react";
-import { PageHeader } from "@/components/shell/app-shell";
-import { useMe } from "@/components/shell/app-provider";
-import { I } from "@/components/shell/icons";
-import { CoursePicker, TopicPicker } from "@/components/pickers";
-import { Banner, Button, Card, Field, Input, Select, fmtDate } from "@/components/ui";
-import { ApiError, type StudentProfile } from "@/lib/api/models";
-import { useCall } from "@/lib/use-api";
-
 function ProfileForm({ p }: { p: StudentProfile | null }) {
   const { refresh } = useMe();
   const call = useCall();
   const mustComplete = useSearchParams().get("complete") === "1";
+
   const [f, setF] = useState(() => ({
     school: p?.school ?? "",
     degree: p?.degree ?? "",
@@ -72,53 +72,83 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     completed_modules: p?.completed_modules ?? [],
     research_interests: p?.research_interests ?? [],
   }));
+
   const [error, setError] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
+
   const file = useRef<HTMLInputElement>(null);
   const transcriptFile = useRef<HTMLInputElement>(null);
   const err = (k: string) => (error?.field === k ? error.message : null);
 
-    const allDocs = p?.documents ?? [];
-  const transcriptDoc = allDocs.find((d) => d.file_name.toLowerCase().includes("transcript"));
+  const allDocs = p?.documents ?? [];
+  const [transcriptDocId, setTranscriptDocId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("ureca_active_transcript_id");
+      if (stored && allDocs.some((d) => d.id === stored)) return stored;
+    }
+    const defaultDoc = allDocs.find((d) =>
+      d.file_name.toLowerCase().includes("transcript") ||
+      d.file_name.toUpperCase().startsWith("CSC_")
+    );
+    return defaultDoc?.id ?? null;
+  });
+
+  const transcriptDoc = allDocs.find((d) => d.id === transcriptDocId) || allDocs.find((d) =>
+    d.file_name.toLowerCase().includes("transcript") ||
+    d.file_name.toUpperCase().startsWith("CSC_")
+  );
   const supportingDocs = allDocs.filter((d) => d.id !== transcriptDoc?.id);
   const supportingCount = supportingDocs.length;
   const atMaxSupporting = supportingCount >= 5;
-  const docCount = allDocs.length;
-  const atMaxDocs = supportingCount >= 5;
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
+  async function handleTranscriptUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const originalFile = e.target.files?.[0];
+    if (!originalFile) return;
     setError(null);
-    setSaved(false);
+    setBusy(true);
+
+    if (originalFile.type !== "application/pdf" && !originalFile.name.toLowerCase().endsWith(".pdf")) {
+      setError(new ApiError(422, "not_pdf", "Upload a PDF file.", "file"));
+      setBusy(false);
+      return;
+    }
+    if (originalFile.size > 5 * 1024 * 1024) {
+      setError(new ApiError(422, "too_large", "The file is larger than 5 MB.", "file"));
+      setBusy(false);
+      return;
+    }
+
     try {
-      await call((api) =>
-        api.updateProfile({
-          school: f.school,
-          degree: f.degree || null,
-          cgpa: parseFloat(f.cgpa),
-          year_of_study: parseInt(f.year_of_study, 10),
-          completed_modules: f.completed_modules,
-          research_interests: f.research_interests,
-        })
-      );
+      // 1. If an existing transcript is present, remove it so there is only ever ONE transcript
+      if (transcriptDoc) {
+        await call((api) => api.deleteDocument(transcriptDoc.id));
+      }
+
+      // Upload original file directly
+      const uploadedDoc = await call((api) => api.uploadDocument(originalFile));
+      if (uploadedDoc?.id) {
+        setTranscriptDocId(uploadedDoc.id);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("ureca_active_transcript_id", uploadedDoc.id);
+        }
+      }
       await refresh();
-      setSaved(true);
     } catch (err) {
       setError(err as ApiError);
     } finally {
       setBusy(false);
+      if (transcriptFile.current) transcriptFile.current.value = "";
     }
   }
 
-  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function uploadSupporting(e: React.ChangeEvent<HTMLInputElement>) {
     const fl = e.target.files?.[0];
     if (!fl) return;
     setError(null);
-    if (atMaxDocs) {
-      setError(new ApiError(422, "max_documents", "Maximum limit of 5 documents reached.", "file"));
+    if (atMaxSupporting) {
+      setError(new ApiError(422, "max_documents", "Maximum limit of 5 supporting documents reached.", "file"));
       if (file.current) file.current.value = "";
       return;
     }
@@ -161,12 +191,38 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     }
   }
 
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await call((api) =>
+        api.updateProfile({
+          school: f.school,
+          degree: f.degree || null,
+          cgpa: parseFloat(f.cgpa),
+          year_of_study: parseInt(f.year_of_study, 10),
+          completed_modules: f.completed_modules,
+          research_interests: f.research_interests,
+        })
+      );
+      await refresh();
+      setSaved(true);
+    } catch (err) {
+      setError(err as ApiError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <form onSubmit={save}>
       <PageHeader
         title={mustComplete ? "Complete your profile" : "My profile"}
         description="Supervisors see this when they review your applications."
       />
+
       {mustComplete && !p?.profile_complete && (
         <div className="mb-4">
           <Banner tone="accent" title="One step before you apply.">
@@ -174,6 +230,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
           </Banner>
         </div>
       )}
+
       {saved && (
         <div className="mb-4">
           <Banner tone="good" title="Saved.">
@@ -181,11 +238,13 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
           </Banner>
         </div>
       )}
+
       {error && !error.field && (
         <div className="mb-4">
           <Banner tone="bad">{error.message}</Banner>
         </div>
       )}
+
       <div className="grid grid-cols-[1fr_360px] gap-5">
         <Card className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4">
@@ -197,9 +256,11 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                 ))}
               </Select>
             </Field>
-            <Field label="Degree Course" hint={f.school ? `Offered under ${f.school}` : "Select your school first or choose from all programmes"}>
+
+            <Field label="Degree Course" hint={f.school ? `Offered under ${f.school}` : "Select your school first"}>
               <Select
                 id="degree"
+                required
                 value={f.isDoubleDegree ? "Other" : f.degree}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -210,7 +271,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                   }
                 }}
               >
-                <option value="">Choose degree programme</option>
+                <option value="" disabled>Choose degree programme</option>
                 {((f.school && NTU_DEGREES_BY_SCHOOL[f.school]) || ALL_NTU_DEGREES).map((d) => (
                   <option key={d} value={d}>
                     {d}
@@ -221,7 +282,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             </Field>
 
             {f.isDoubleDegree && (
-              <div className="grid grid-cols-2 gap-3 p-3.5 bg-sunken rounded-[10px] border border-border mt-1 mb-2">
+              <div className="col-span-3 grid grid-cols-2 gap-3 p-3.5 bg-sunken rounded-[10px] border border-border">
                 <Field label="Primary Degree">
                   <Select
                     value={f.degree1}
@@ -253,6 +314,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                 </Field>
               </div>
             )}
+
             <Field label="CGPA" error={err("cgpa")} hint="0.00 to 5.00">
               <Input
                 id="cgpa"
@@ -266,6 +328,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                 invalid={!!err("cgpa")}
               />
             </Field>
+
             <Field label="Year of study">
               <Select
                 id="year"
@@ -282,20 +345,33 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
               </Select>
             </Field>
           </div>
-          <Field label="Completed modules" error={err("completed_modules")} hint="NTU courses you have passed. Used to check project prerequisites.">
-            <CoursePicker value={f.completed_modules} onChange={(v) => setF({ ...f, completed_modules: v })} invalid={!!err("completed_modules")} />
+
+          <Field label="Completed modules" error={err("completed_modules")}>
+            <CoursePicker value={f.completed_modules} onChange={(v) => setF({ ...f, completed_modules: v })} />
           </Field>
-          <Field label="Research interests" error={err("research_interests")} hint="Standard topics, the same ones projects are tagged with.">
-            <TopicPicker value={f.research_interests} onChange={(v) => setF({ ...f, research_interests: v })} invalid={!!err("research_interests")} />
+
+          <Field label="Research interests" error={err("research_interests")}>
+            <TopicPicker value={f.research_interests} onChange={(v) => setF({ ...f, research_interests: v })} />
           </Field>
+
           <div>
             <Button type="submit" size="lg" disabled={busy}>
               {busy ? "Saving..." : "Save changes"}
             </Button>
           </div>
         </Card>
+
         <Card>
           {/* Dedicated Academic Transcript Slot */}
+          <input
+            ref={transcriptFile}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onClick={(e) => { (e.target as HTMLInputElement).value = ""; }}
+            onChange={handleTranscriptUpload}
+          />
+
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <span className="eyebrow flex items-center gap-1.5">
@@ -331,7 +407,26 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => removeDoc(transcriptDoc.id)}
+                    onClick={() => {
+                      if (transcriptFile.current) {
+                        transcriptFile.current.value = "";
+                        transcriptFile.current.click();
+                      }
+                    }}
+                    disabled={busy}
+                    className="px-2.5 py-1 text-[11.5px] font-semibold text-accent border border-accent/25 rounded hover:bg-accent/5 disabled:opacity-50"
+                  >
+                    Re-upload
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        localStorage.removeItem("ureca_active_transcript_id");
+                      }
+                      setTranscriptDocId(null);
+                      removeDoc(transcriptDoc.id);
+                    }}
                     disabled={activeDocId === transcriptDoc.id}
                     className="px-2 py-1 text-[11.5px] font-semibold text-bad hover:underline disabled:opacity-50"
                   >
@@ -341,22 +436,17 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
               </div>
             ) : (
               <div className="border border-dashed border-border rounded-[9px] p-4 text-center bg-sunken/40">
-                <input
-                  ref={transcriptFile}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    upload(e);
-                    e.target.value = "";
-                  }}
-                />
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
                   disabled={busy}
-                  onClick={() => transcriptFile.current?.click()}
+                  onClick={() => {
+                    if (transcriptFile.current) {
+                      transcriptFile.current.value = "";
+                      transcriptFile.current.click();
+                    }
+                  }}
                 >
                   <I.Upload size={14} /> Upload Academic Transcript
                 </Button>
@@ -374,59 +464,70 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             <div className="text-[12.5px] text-muted mb-3">
               Optional supporting files (Resume / CV, certificates, writing samples). PDF only, up to 5 MB each.
             </div>
-          <div className="flex flex-col gap-2 mb-3">
-            {supportingDocs.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center gap-2 px-3 py-2 border border-border rounded-button text-[12.5px]"
+
+            <div className="flex flex-col gap-2 mb-3">
+              {supportingDocs.length === 0 ? (
+                <div className="text-[12px] text-faint italic py-1">No additional supporting documents uploaded yet.</div>
+              ) : (
+                supportingDocs.map((d) => (
+                  <div
+                    key={d.id}
+                    className="flex items-center gap-2 px-3 py-2 border border-border rounded-button text-[12.5px]"
+                  >
+                    <span className="shrink-0 text-muted flex items-center">
+                      <I.File size={14} />
+                    </span>
+                    <span className="truncate font-medium flex-1 min-w-0" title={d.file_name}>
+                      {d.file_name}
+                    </span>
+                    <span className="text-[11px] text-faint shrink-0 ml-auto">{fmtDate(d.uploaded_at)}</span>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <button
+                        type="button"
+                        onClick={() => viewDoc(d.id)}
+                        disabled={activeDocId === d.id}
+                        className="px-2 py-0.5 text-[11.5px] font-semibold text-accent hover:underline disabled:opacity-50"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeDoc(d.id)}
+                        disabled={activeDocId === d.id}
+                        className="px-1.5 py-0.5 text-[11.5px] font-semibold text-bad hover:underline disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <input ref={file} type="file" accept="application/pdf" className="hidden" onChange={uploadSupporting} />
+            {!atMaxSupporting ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  if (file.current) {
+                    file.current.value = "";
+                    file.current.click();
+                  }
+                }}
               >
-                <span className="shrink-0 text-muted flex items-center">
-                  <I.File size={14} />
-                </span>
-                <span className="truncate font-medium" title={d.file_name}>
-                  {d.file_name}
-                </span>
-                <span className="text-[11px] text-faint shrink-0 ml-auto">{fmtDate(d.uploaded_at)}</span>
-                <div className="flex items-center gap-1 shrink-0 ml-2">
-                  <button
-                    type="button"
-                    onClick={() => viewDoc(d.id)}
-                    disabled={activeDocId === d.id}
-                    className="px-2 py-0.5 text-[11.5px] font-semibold text-accent hover:underline disabled:opacity-50"
-                  >
-                    View
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeDoc(d.id)}
-                    disabled={activeDocId === d.id}
-                    className="px-1.5 py-0.5 text-[11.5px] font-semibold text-bad hover:underline disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
-                </div>
+                <I.Upload size={14} /> Upload supporting document
+              </Button>
+            ) : (
+              <div className="text-center py-2 px-3 bg-sunken border border-border rounded-[9px] text-[12px] text-muted">
+                Maximum of 5 documents reached. Delete an existing document to upload another.
               </div>
-            ))}
+            )}
+            {err("file") && <div className="text-[12px] text-bad-ink mt-2">{err("file")}</div>}
           </div>
-          {!atMaxDocs ? (
-            <label
-              className={`flex items-center justify-center gap-2 h-10 border-[1.5px] border-dashed rounded-[9px] text-[12.5px] cursor-pointer ${
-                err("file")
-                  ? "border-bad text-bad-ink"
-                  : "border-border-strong text-muted hover:bg-sunken"
-              }`}
-            >
-              <I.Upload /> Upload PDF
-              <input ref={file} type="file" accept="application/pdf" className="hidden" onChange={upload} />
-            </label>
-          ) : (
-            <div className="text-center py-2 px-3 bg-sunken border border-border rounded-[9px] text-[12px] text-muted">
-              Maximum of 5 documents reached. Delete an existing document to upload another.
-            </div>
-          )}
-          {err("file") && <div className="text-[12px] text-bad-ink mt-2">{err("file")}</div>}
-            </div>
-          </Card>
+        </Card>
       </div>
     </form>
   );
@@ -437,7 +538,7 @@ export default function Profile() {
   const p = me?.student ?? null;
   return (
     <Suspense>
-      <ProfileForm key={p ? `${p.user_id}:${p.documents.length}` : "none"} p={p} />
+      <ProfileForm key={p?.user_id ?? "none"} p={p} />
     </Suspense>
   );
 }
