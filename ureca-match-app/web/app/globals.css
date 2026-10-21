@@ -29,6 +29,21 @@
   --bad-ink: #c2000b;
   --bad-soft: #ffeeed;
   --neutral-soft: #f0f0f2;
+
+  /* Applicants and ranking page palette (2026-10), used under .ap-theme: the app's own neutrals and blue accent. */
+  --ap-bg: #f5f5f7;
+  --ap-card: #ffffff;
+  --ap-ink: #1d1d1f;
+  --ap-muted: #6e6e73;
+  --ap-line: #e8e8ed;
+  --ap-accent: #0071e3;
+  --ap-accent-ink: #0066cc;
+  --ap-soft: #eaf3fd;
+  --ap-hover: #fbfbfd;
+  --ap-panel: #ffffff;
+  --ap-rank: #0066cc;
+  --ap-warn: #c77700;
+  --ap-good: #1a7431;
 }
 
 @theme inline {
@@ -55,6 +70,19 @@
   --color-bad-ink: var(--bad-ink);
   --color-bad-soft: var(--bad-soft);
   --color-neutral-soft: var(--neutral-soft);
+  --color-ap-bg: var(--ap-bg);
+  --color-ap-card: var(--ap-card);
+  --color-ap-ink: var(--ap-ink);
+  --color-ap-muted: var(--ap-muted);
+  --color-ap-line: var(--ap-line);
+  --color-ap-accent: var(--ap-accent);
+  --color-ap-accent-ink: var(--ap-accent-ink);
+  --color-ap-soft: var(--ap-soft);
+  --color-ap-hover: var(--ap-hover);
+  --color-ap-panel: var(--ap-panel);
+  --color-ap-rank: var(--ap-rank);
+  --color-ap-warn: var(--ap-warn);
+  --color-ap-good: var(--ap-good);
 
   /* One family, like SF Pro on Apple platforms. Hierarchy comes from size and weight. */
   --font-display: var(--font-inter), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -111,6 +139,31 @@
    utility draws a line above the text, which is what produced the stray lines. */
 .eyebrow { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--faint); }
 .tabular { font-variant-numeric: tabular-nums; }
+
+/* Applicants and ranking page scope. Remaps the shared roles so shared components (FilterSelect, Tip...)
+   inside it take the page palette, and squares off pill shapes to 6px. */
+.ap-theme {
+  --accent: var(--ap-accent);
+  --accent-ink: var(--ap-accent-ink);
+  --accent-soft: var(--ap-soft);
+  --accent-border: #cde2fa;
+  --border: var(--ap-line);
+  --border-strong: var(--ap-line);
+  --text: var(--ap-ink);
+  --muted: var(--ap-muted);
+  --faint: var(--ap-muted);
+  --surface: var(--ap-card);
+  --sunken: var(--ap-bg);
+  color: var(--ap-ink);
+}
+/* The shell caps pages at 1080px; this page needs the width for the list beside the ranking. */
+div:has(> .ap-theme) { max-width: 1600px; }
+.ap-theme .rounded-pill, .ap-theme .rounded-button { border-radius: 6px; }
+.ap-theme h1, .ap-theme h2 { font-weight: 600; letter-spacing: -0.02em; }
+.ap-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ap-muted); }
+.ap-link { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ap-muted); }
+.ap-link:hover { color: var(--ap-ink); }
+.ap-skeleton { background: linear-gradient(90deg, var(--ap-line) 0%, var(--ap-bg) 50%, var(--ap-line) 100%); background-size: 480px 100%; animation: uri-shimmer 1.2s linear infinite; border-radius: 4px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
