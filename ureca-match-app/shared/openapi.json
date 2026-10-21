@@ -6011,6 +6011,15 @@
             "type": "string",
             "contentMediaType": "application/octet-stream",
             "title": "File"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "transcript",
+              "supporting"
+            ],
+            "title": "Kind",
+            "default": "supporting"
           }
         },
         "type": "object",
@@ -6250,6 +6259,15 @@
             "type": "string",
             "title": "File Format",
             "default": "pdf"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "transcript",
+              "supporting"
+            ],
+            "title": "Kind",
+            "default": "supporting"
           },
           "file_size": {
             "type": "integer",
