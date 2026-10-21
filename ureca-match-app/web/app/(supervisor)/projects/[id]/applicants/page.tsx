@@ -148,7 +148,12 @@ export default function Applicants() {
           <>
             <div className="flex items-center gap-3.5">
               <Avatar name={detail.student.name} size={48} tone="navy" />
-              <div><div className="font-display text-[18px] font-bold">{detail.student.name}</div><div className="text-[12.5px] text-muted">{detail.student.school} · Year {detail.student.year_of_study} · applied {fmtDate(detail.submitted_at)}</div></div>
+              <div><div className="font-display text-[18px] font-bold">{detail.student.name}</div><div className="text-[12.5px] text-muted">{detail.student.school} · Year {detail.student.year_of_study} · applied {fmtDate(detail.submitted_at)}</div>
+                <div className="text-[12.5px] text-accent mt-0.5">
+                  <a href={`mailto:${detail.student.email || `${detail.student.id}@e.ntu.edu.sg`}`} className="hover:underline">
+                    {detail.student.email || `${detail.student.id}@e.ntu.edu.sg`}
+                  </a>
+                </div></div>
               <span className="ml-auto">{ids.includes(detail.application_id) ? <Pill tone="accent">Ranked #{ids.indexOf(detail.application_id) + 1}</Pill> : <Pill>Not ranked</Pill>}</span>
             </div>
             <div className="grid grid-cols-2 gap-2.5">

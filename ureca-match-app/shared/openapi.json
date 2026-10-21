@@ -5719,6 +5719,11 @@
       },
       "ApplicantStudent": {
         "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "default": ""
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -6316,6 +6321,11 @@
       },
       "Listing": {
         "properties": {
+          "supervisor_email": {
+            "type": "string",
+            "title": "Supervisor Email",
+            "default": ""
+          },
           "id": {
             "type": "string",
             "title": "Id"

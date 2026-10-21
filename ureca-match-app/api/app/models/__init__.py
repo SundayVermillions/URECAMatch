@@ -292,6 +292,7 @@ class RoundsUpdate(BaseModel):
 
 
 class Listing(BaseModel):
+    supervisor_email: str = ""
     id: str
     supervisor_id: str
     supervisor_name: str
@@ -422,6 +423,7 @@ class PreferenceRankingUpdate(BaseModel):
 
 
 class ApplicantStudent(BaseModel):
+    email: str = ""
     id: str
     name: str
     school: str
