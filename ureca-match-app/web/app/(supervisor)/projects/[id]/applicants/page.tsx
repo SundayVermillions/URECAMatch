@@ -2,7 +2,7 @@
 /** ReviewAndRankStudentApplications (4.16). REQ-VRANK-1..3. Screen: ApplicantAndRankingsPage.
  *  Left: applicants with search, filters and sort. Right: the ranking. Drawer: full application with PDF viewer.
  *  Filtering and sorting run here over the one list the API returns; filter state lives in the URL query string.
- *  Page palette (.ap-theme in globals.css): slate neutrals with an indigo accent. */
+ *  Page palette (.ap-theme in globals.css): the app's neutrals with its blue accent. */
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -246,11 +246,11 @@ export default function Applicants() {
                     </span>
                   )}
                   <span className="flex flex-col items-end leading-none w-12 shrink-0">
-                    <span className={`text-[16px] font-semibold tabular ${cgpa != null && cgpa >= 4.5 ? "text-ap-good" : ""}`}>{cgpa?.toFixed(2) ?? "–"}</span>
+                    <span className={`text-[16px] font-semibold tabular ${cgpa != null && cgpa >= 4.5 ? "text-ap-good" : cgpa != null && cgpa >= 4.0 ? "text-ap-accent-ink" : ""}`}>{cgpa?.toFixed(2) ?? "–"}</span>
                     <span className="text-[10.5px] text-ap-muted mt-1 uppercase tracking-[0.08em]">CGPA</span>
                   </span>
                   <button type="button" disabled={added || !canRank} onClick={() => add(a.application_id)} aria-label={added ? `${a.student.name} added to ranking` : `Add ${a.student.name} to ranking`}
-                    className={`relative z-10 w-9 h-9 shrink-0 rounded-[6px] flex items-center justify-center transition-colors duration-150 ${added ? "bg-ap-accent text-white" : "bg-ap-card border border-ap-line hover:border-ap-accent hover:text-ap-accent-ink disabled:opacity-50"}`}>
+                    className={`relative z-10 w-9 h-9 shrink-0 rounded-[6px] flex items-center justify-center transition-colors duration-150 ${added ? "bg-ap-accent text-white" : "bg-ap-soft border border-ap-soft text-ap-accent-ink hover:border-ap-accent disabled:opacity-50"}`}>
                     {added ? <I.Tick size={15} /> : <I.Plus size={15} />}
                   </button>
                 </div>
@@ -259,40 +259,40 @@ export default function Applicants() {
           </div>
         </section>
 
-        <aside className="lg:sticky lg:top-6 bg-ap-panel text-white rounded-[12px] p-5">
+        <aside className="lg:sticky lg:top-6 bg-ap-panel border border-[#cde2fa] text-ap-ink rounded-[12px] p-5">
           <div className="flex items-baseline gap-2">
             <div className="ap-eyebrow text-ap-rank!">Your ranking</div>
-            <span className="ml-auto text-[12px] text-white/60 tabular">{ranked.length} ranked</span>
+            <span className="ml-auto text-[12px] text-ap-muted tabular">{ranked.length} ranked</span>
           </div>
-          <p className="text-[12.5px] text-white/65 mt-1.5">Best first. Only ranked applicants can be matched. Drag to reorder.</p>
+          <p className="text-[12.5px] text-ap-muted mt-1.5">Best first. Only ranked applicants can be matched. Drag to reorder.</p>
           <ol className="mt-3 flex flex-col">
             {ranked.length === 0 && (
-              <li className="border border-dashed border-white/20 rounded-[10px] px-5 py-7 text-center">
+              <li className="border border-dashed border-ap-line rounded-[10px] px-5 py-7 text-center">
                 <div className="text-[15px] font-semibold">No one ranked yet</div>
-                <div className="text-[13px] text-white/65 mt-1">Add applicants from the list.</div>
+                <div className="text-[13px] text-ap-muted mt-1">Add applicants from the list.</div>
               </li>
             )}
             {ranked.map((a, i) => (
               <li key={a.application_id} draggable={canRank}
                 onDragStart={() => setDragging(a.application_id)} onDragEnd={() => setDragging(null)}
                 onDragOver={(e) => e.preventDefault()} onDrop={() => dropOn(a.application_id)}
-                className={`group flex items-center gap-2.5 py-2.5 border-b border-white/[0.08] last:border-0 ${dragging === a.application_id ? "opacity-40" : ""}`}>
-                <span aria-hidden className="text-white/30 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity duration-150">⋮⋮</span>
+                className={`group flex items-center gap-2.5 py-2.5 border-b border-ap-line last:border-0 ${dragging === a.application_id ? "opacity-40" : ""}`}>
+                <span aria-hidden className="text-ap-muted cursor-grab opacity-0 group-hover:opacity-100 transition-opacity duration-150">⋮⋮</span>
                 <span className="text-[13px] font-semibold text-ap-rank tabular w-6">{pad(i + 1)}</span>
                 <button type="button" onClick={() => setDetail(a)} className="flex-1 min-w-0 text-left">
                   <div className="text-[14.5px] font-semibold truncate">{a.student.name}</div>
-                  <div className="text-[12px] text-white/60 tabular">{a.student.school} · CGPA {a.student.cgpa?.toFixed(2) ?? "–"}</div>
+                  <div className="text-[12px] text-ap-muted tabular">{a.student.school} · CGPA {a.student.cgpa?.toFixed(2) ?? "–"}</div>
                 </button>
                 {/* Arrows keep reordering possible from the keyboard; they show on hover or focus. */}
                 <span className="flex gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
-                  <button type="button" aria-label={`Move ${a.student.name} up`} disabled={!canRank || i === 0} onClick={() => move(a.application_id, -1)} className="w-7 h-7 rounded-[6px] flex items-center justify-center hover:bg-white/10 disabled:opacity-30"><I.ArrowUp size={14} /></button>
-                  <button type="button" aria-label={`Move ${a.student.name} down`} disabled={!canRank || i === ranked.length - 1} onClick={() => move(a.application_id, 1)} className="w-7 h-7 rounded-[6px] flex items-center justify-center hover:bg-white/10 disabled:opacity-30"><I.ArrowDown size={14} /></button>
-                  <button type="button" aria-label={`Remove ${a.student.name} from ranking`} disabled={!canRank} onClick={() => remove(a.application_id)} className="w-7 h-7 rounded-[6px] flex items-center justify-center hover:bg-white/10 disabled:opacity-30"><I.X size={14} /></button>
+                  <button type="button" aria-label={`Move ${a.student.name} up`} disabled={!canRank || i === 0} onClick={() => move(a.application_id, -1)} className="w-7 h-7 rounded-[6px] flex items-center justify-center hover:bg-ap-soft disabled:opacity-30"><I.ArrowUp size={14} /></button>
+                  <button type="button" aria-label={`Move ${a.student.name} down`} disabled={!canRank || i === ranked.length - 1} onClick={() => move(a.application_id, 1)} className="w-7 h-7 rounded-[6px] flex items-center justify-center hover:bg-ap-soft disabled:opacity-30"><I.ArrowDown size={14} /></button>
+                  <button type="button" aria-label={`Remove ${a.student.name} from ranking`} disabled={!canRank} onClick={() => remove(a.application_id)} className="w-7 h-7 rounded-[6px] flex items-center justify-center hover:bg-ap-soft disabled:opacity-30"><I.X size={14} /></button>
                 </span>
               </li>
             ))}
           </ol>
-          <div className="mt-3 pt-3 border-t border-white/[0.08] flex items-center gap-1.5 text-[12px] text-white/60"><I.Tick size={13} /> Changes save automatically</div>
+          <div className="mt-3 pt-3 border-t border-ap-line flex items-center gap-1.5 text-[12px] text-ap-muted"><I.Tick size={13} /> Changes save automatically</div>
         </aside>
       </div>
 

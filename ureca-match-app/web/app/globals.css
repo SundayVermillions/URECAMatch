@@ -30,20 +30,20 @@
   --bad-soft: #ffeeed;
   --neutral-soft: #f0f0f2;
 
-  /* Applicants and ranking page palette (2026-10), used under .ap-theme: slate neutrals, indigo accent. */
-  --ap-bg: #f8fafc;
+  /* Applicants and ranking page palette (2026-10), used under .ap-theme: the app's own neutrals and blue accent. */
+  --ap-bg: #f5f5f7;
   --ap-card: #ffffff;
-  --ap-ink: #0f172a;
-  --ap-muted: #64748b;
-  --ap-line: #e2e8f0;
-  --ap-accent: #4f46e5;
-  --ap-accent-ink: #4338ca;
-  --ap-soft: #eef2ff;
-  --ap-hover: #f5f7ff;
-  --ap-panel: #1e1b4b;
-  --ap-rank: #a5b4fc;
-  --ap-warn: #d97706;
-  --ap-good: #047857;
+  --ap-ink: #1d1d1f;
+  --ap-muted: #6e6e73;
+  --ap-line: #e8e8ed;
+  --ap-accent: #0071e3;
+  --ap-accent-ink: #0066cc;
+  --ap-soft: #eaf3fd;
+  --ap-hover: #fbfbfd;
+  --ap-panel: #ffffff;
+  --ap-rank: #0066cc;
+  --ap-warn: #c77700;
+  --ap-good: #1a7431;
 }
 
 @theme inline {
@@ -146,7 +146,7 @@
   --accent: var(--ap-accent);
   --accent-ink: var(--ap-accent-ink);
   --accent-soft: var(--ap-soft);
-  --accent-border: #c7d2fe;
+  --accent-border: #cde2fa;
   --border: var(--ap-line);
   --border-strong: var(--ap-line);
   --text: var(--ap-ink);
