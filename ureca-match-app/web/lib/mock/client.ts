@@ -390,7 +390,7 @@ export class MockClient implements ApiClient {
         name: su.name,
         email: su.email,
         school: sp?.school || "CCDS",
-        degree: (sp as any)?.degree ?? "Computer Science",
+        degree: sp?.degree ?? "Computer Science",
         year_of_study: sp?.year_of_study ?? 2,
         cgpa: sp?.cgpa ?? null,
         completed_modules: sp?.completed_modules ?? [],
@@ -470,7 +470,7 @@ export class MockClient implements ApiClient {
     return this.db.applications.filter((a) => a.listing_id === listingId && a.status === "submitted" && (!roundId || a.round_id === roundId)).flatMap((a) => {
       const u = this.db.users.find((u) => u.id === a.student_id), sp = this.student(a.student_id);
       if (!u || !sp) return [];
-      return [{ application_id: a.id, student: { id: u.id, name: u.name, email: u.email, school: sp.school, degree: (sp as any).degree ?? "Computer Science", year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
+      return [{ application_id: a.id, student: { id: u.id, name: u.name, email: u.email, school: sp.school, degree: sp.degree ?? "Computer Science", year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
         statement: a.statement, submitted_at: a.submitted_at, documents: sp.documents, meets_prerequisites: l.prerequisites.every((m) => sp.completed_modules.includes(m)), recommended: false, rank: null }];
     });
   }
@@ -875,7 +875,7 @@ export class MockClient implements ApiClient {
     if (!su || !sp) throw new M.ApiError(404, "not_found", "Student was not found.");
     const own = this.db.applications.find((x) => x.student_id === m.student_id && x.round_id === m.round_id && x.listing_id === m.listing_id);
     const l = this.db.listings.find((x) => x.id === m.listing_id); const ranking = this.db.applicant_rankings[`${m.listing_id}:${m.round_id}`] ?? [];
-    return { application_id: own?.id ?? "", student: { id: su.id, name: su.name, email: su.email, school: sp.school, degree: (sp as any).degree ?? "Computer Science", year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
+    return { application_id: own?.id ?? "", student: { id: su.id, name: su.name, email: su.email, school: sp.school, degree: sp.degree ?? "Computer Science", year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
       statement: own?.statement ?? "", submitted_at: own?.submitted_at ?? m.published_at ?? su.created_at, documents: sp.documents.filter((d) => own?.document_ids.includes(d.id)),
       meets_prerequisites: (l?.prerequisites ?? []).every((p) => sp.completed_modules.includes(p)), recommended: false, rank: own && ranking.includes(own.id) ? ranking.indexOf(own.id) + 1 : null };
   }
