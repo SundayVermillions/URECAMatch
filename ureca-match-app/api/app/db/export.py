@@ -95,7 +95,9 @@ def _seed_sql(d: dict) -> str:
         )
     )
     docs = [doc.model_dump() for s in d["students"] for doc in s.documents]
-    out.append(_rows("supporting_documents", ["id", "owner_id", "file_name", "file_format", "file_size", "uploaded_at"], docs))
+    out.append(
+        _rows("supporting_documents", ["id", "owner_id", "file_name", "file_format", "kind", "file_size", "uploaded_at"], docs)
+    )
     c = d["cycle"]
     out.append(
         _rows(

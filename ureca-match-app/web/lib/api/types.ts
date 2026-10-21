@@ -1417,6 +1417,12 @@ export interface components {
         Body_upload_document_me_documents_post: {
             /** File */
             file: string;
+            /**
+             * Kind
+             * @default supporting
+             * @enum {string}
+             */
+            kind: "transcript" | "supporting";
         };
         /** ClockSet */
         ClockSet: {
@@ -1537,6 +1543,12 @@ export interface components {
              * @default pdf
              */
             file_format: string;
+            /**
+             * Kind
+             * @default supporting
+             * @enum {string}
+             */
+            kind: "transcript" | "supporting";
             /** File Size */
             file_size: number;
             /**

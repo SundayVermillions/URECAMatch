@@ -129,6 +129,7 @@ class Document(BaseModel):
     owner_id: str
     file_name: str
     file_format: str = "pdf"
+    kind: Literal["transcript", "supporting"] = "supporting"  # which profile slot owns the file (REQ-PROF-3)
     file_size: int
     uploaded_at: datetime
     url: str | None = None  # signed URL for in-app viewing (REQ-VRANK-3)

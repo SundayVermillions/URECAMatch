@@ -446,7 +446,7 @@
     {
       "user_id": "stu-1",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 3.99,
       "year_of_study": 2,
       "completed_modules": [
@@ -467,6 +467,7 @@
           "owner_id": "stu-1",
           "file_name": "Transcript_WeiLingTan.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 644726,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -477,6 +478,7 @@
           "owner_id": "stu-1",
           "file_name": "CV_WeiLingTan.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 232751,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -487,7 +489,7 @@
     {
       "user_id": "stu-2",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 3.69,
       "year_of_study": 4,
       "completed_modules": [
@@ -506,6 +508,7 @@
           "owner_id": "stu-2",
           "file_name": "Transcript_BryanKoh.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 513023,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -516,6 +519,7 @@
           "owner_id": "stu-2",
           "file_name": "CV_BryanKoh.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 360285,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -526,7 +530,7 @@
     {
       "user_id": "stu-3",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.82,
       "year_of_study": 2,
       "completed_modules": [
@@ -546,6 +550,7 @@
           "owner_id": "stu-3",
           "file_name": "Transcript_AishaRahman.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 361764,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -556,6 +561,7 @@
           "owner_id": "stu-3",
           "file_name": "CV_AishaRahman.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 295152,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -566,7 +572,7 @@
     {
       "user_id": "stu-4",
       "school": "EEE",
-      "degree": "Electrical & Electronic Engineering",
+      "degree": null,
       "cgpa": 4.68,
       "year_of_study": 4,
       "completed_modules": [
@@ -587,6 +593,7 @@
           "owner_id": "stu-4",
           "file_name": "Transcript_DanielNg.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 593107,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -597,6 +604,7 @@
           "owner_id": "stu-4",
           "file_name": "CV_DanielNg.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 397460,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -607,7 +615,7 @@
     {
       "user_id": "stu-5",
       "school": "SBS",
-      "degree": "Biological Sciences",
+      "degree": null,
       "cgpa": 4.41,
       "year_of_study": 4,
       "completed_modules": [
@@ -626,6 +634,7 @@
           "owner_id": "stu-5",
           "file_name": "Transcript_PriyaMenon.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 392655,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -636,6 +645,7 @@
           "owner_id": "stu-5",
           "file_name": "CV_PriyaMenon.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 357442,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -646,7 +656,7 @@
     {
       "user_id": "stu-6",
       "school": "MAE",
-      "degree": "Mechanical Engineering",
+      "degree": null,
       "cgpa": 4.09,
       "year_of_study": 4,
       "completed_modules": [
@@ -665,6 +675,7 @@
           "owner_id": "stu-6",
           "file_name": "Transcript_JasonLim.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 719285,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -675,6 +686,7 @@
           "owner_id": "stu-6",
           "file_name": "CV_JasonLim.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 172736,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -685,7 +697,7 @@
     {
       "user_id": "stu-7",
       "school": "SPMS",
-      "degree": "Mathematical Sciences",
+      "degree": null,
       "cgpa": 4.65,
       "year_of_study": 3,
       "completed_modules": [
@@ -704,6 +716,7 @@
           "owner_id": "stu-7",
           "file_name": "Transcript_HuiMinChua.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 764039,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -714,6 +727,7 @@
           "owner_id": "stu-7",
           "file_name": "CV_HuiMinChua.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 318534,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -724,7 +738,7 @@
     {
       "user_id": "stu-8",
       "school": "NBS",
-      "degree": "Business",
+      "degree": null,
       "cgpa": 4.17,
       "year_of_study": 3,
       "completed_modules": [
@@ -744,6 +758,7 @@
           "owner_id": "stu-8",
           "file_name": "Transcript_ArjunPatel.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 289289,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -754,6 +769,7 @@
           "owner_id": "stu-8",
           "file_name": "CV_ArjunPatel.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 347232,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -764,7 +780,7 @@
     {
       "user_id": "stu-9",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.32,
       "year_of_study": 4,
       "completed_modules": [
@@ -785,6 +801,7 @@
           "owner_id": "stu-9",
           "file_name": "Transcript_ChloeLim.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 666168,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -795,6 +812,7 @@
           "owner_id": "stu-9",
           "file_name": "CV_ChloeLim.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 363643,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -805,7 +823,7 @@
     {
       "user_id": "stu-10",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.18,
       "year_of_study": 3,
       "completed_modules": [
@@ -825,6 +843,7 @@
           "owner_id": "stu-10",
           "file_name": "Transcript_KelvinOng.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 897300,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -835,6 +854,7 @@
           "owner_id": "stu-10",
           "file_name": "CV_KelvinOng.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 344205,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -845,7 +865,7 @@
     {
       "user_id": "stu-11",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 3.46,
       "year_of_study": 3,
       "completed_modules": [
@@ -865,6 +885,7 @@
           "owner_id": "stu-11",
           "file_name": "Transcript_NurulAisyah.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 227901,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -875,6 +896,7 @@
           "owner_id": "stu-11",
           "file_name": "CV_NurulAisyah.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 235632,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -885,7 +907,7 @@
     {
       "user_id": "stu-12",
       "school": "EEE",
-      "degree": "Electrical & Electronic Engineering",
+      "degree": null,
       "cgpa": 3.74,
       "year_of_study": 4,
       "completed_modules": [
@@ -904,6 +926,7 @@
           "owner_id": "stu-12",
           "file_name": "Transcript_MarcusLee.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 329322,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -914,6 +937,7 @@
           "owner_id": "stu-12",
           "file_name": "CV_MarcusLee.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 181556,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -924,7 +948,7 @@
     {
       "user_id": "stu-13",
       "school": "SBS",
-      "degree": "Biological Sciences",
+      "degree": null,
       "cgpa": 4.08,
       "year_of_study": 4,
       "completed_modules": [
@@ -944,6 +968,7 @@
           "owner_id": "stu-13",
           "file_name": "Transcript_RachelOng.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 236525,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -954,6 +979,7 @@
           "owner_id": "stu-13",
           "file_name": "CV_RachelOng.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 262312,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -964,7 +990,7 @@
     {
       "user_id": "stu-14",
       "school": "MAE",
-      "degree": "Mechanical Engineering",
+      "degree": null,
       "cgpa": 3.57,
       "year_of_study": 4,
       "completed_modules": [
@@ -983,6 +1009,7 @@
           "owner_id": "stu-14",
           "file_name": "Transcript_EthanWong.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 406770,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -993,6 +1020,7 @@
           "owner_id": "stu-14",
           "file_name": "CV_EthanWong.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 209647,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -1003,7 +1031,7 @@
     {
       "user_id": "stu-15",
       "school": "SPMS",
-      "degree": "Mathematical Sciences",
+      "degree": null,
       "cgpa": 3.57,
       "year_of_study": 2,
       "completed_modules": [
@@ -1022,6 +1050,7 @@
           "owner_id": "stu-15",
           "file_name": "Transcript_SitiNurhaliza.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 440611,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -1032,6 +1061,7 @@
           "owner_id": "stu-15",
           "file_name": "CV_SitiNurhaliza.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 163410,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -1042,7 +1072,7 @@
     {
       "user_id": "stu-16",
       "school": "NBS",
-      "degree": "Business",
+      "degree": null,
       "cgpa": 4.73,
       "year_of_study": 3,
       "completed_modules": [
@@ -1061,6 +1091,7 @@
           "owner_id": "stu-16",
           "file_name": "Transcript_RyanTeo.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 202264,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -1071,6 +1102,7 @@
           "owner_id": "stu-16",
           "file_name": "CV_RyanTeo.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 158239,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -1081,7 +1113,7 @@
     {
       "user_id": "stu-17",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.61,
       "year_of_study": 3,
       "completed_modules": [
@@ -1102,6 +1134,7 @@
           "owner_id": "stu-17",
           "file_name": "Transcript_XinYiChen.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 667211,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -1112,6 +1145,7 @@
           "owner_id": "stu-17",
           "file_name": "CV_XinYiChen.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 391576,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -1122,7 +1156,7 @@
     {
       "user_id": "stu-18",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.59,
       "year_of_study": 3,
       "completed_modules": [
@@ -1141,6 +1175,7 @@
           "owner_id": "stu-18",
           "file_name": "Transcript_DarrenGoh.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 410090,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -1151,6 +1186,7 @@
           "owner_id": "stu-18",
           "file_name": "CV_DarrenGoh.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 263547,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -1161,7 +1197,7 @@
     {
       "user_id": "stu-19",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.64,
       "year_of_study": 4,
       "completed_modules": [
@@ -1182,6 +1218,7 @@
           "owner_id": "stu-19",
           "file_name": "Transcript_FarahIsmail.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 232056,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -1192,6 +1229,7 @@
           "owner_id": "stu-19",
           "file_name": "CV_FarahIsmail.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 374874,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -1202,7 +1240,7 @@
     {
       "user_id": "stu-20",
       "school": "EEE",
-      "degree": "Electrical & Electronic Engineering",
+      "degree": null,
       "cgpa": 3.98,
       "year_of_study": 3,
       "completed_modules": [
@@ -1222,6 +1260,7 @@
           "owner_id": "stu-20",
           "file_name": "Transcript_IsaacLoh.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 308334,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -1232,6 +1271,7 @@
           "owner_id": "stu-20",
           "file_name": "CV_IsaacLoh.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 389701,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -1242,7 +1282,7 @@
     {
       "user_id": "stu-21",
       "school": "SBS",
-      "degree": "Biological Sciences",
+      "degree": null,
       "cgpa": 3.79,
       "year_of_study": 2,
       "completed_modules": [
@@ -1262,6 +1302,7 @@
           "owner_id": "stu-21",
           "file_name": "Transcript_MeiLingYeo.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 755948,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -1272,6 +1313,7 @@
           "owner_id": "stu-21",
           "file_name": "CV_MeiLingYeo.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 248203,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -1282,7 +1324,7 @@
     {
       "user_id": "stu-22",
       "school": "MAE",
-      "degree": "Mechanical Engineering",
+      "degree": null,
       "cgpa": 3.54,
       "year_of_study": 3,
       "completed_modules": [
@@ -1302,6 +1344,7 @@
           "owner_id": "stu-22",
           "file_name": "Transcript_ZhiHaoZhang.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 358473,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -1312,6 +1355,7 @@
           "owner_id": "stu-22",
           "file_name": "CV_ZhiHaoZhang.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 212027,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -1322,7 +1366,7 @@
     {
       "user_id": "stu-23",
       "school": "SPMS",
-      "degree": "Mathematical Sciences",
+      "degree": null,
       "cgpa": 4.12,
       "year_of_study": 3,
       "completed_modules": [
@@ -1342,6 +1386,7 @@
           "owner_id": "stu-23",
           "file_name": "Transcript_AnanyaSharma.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 365006,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -1352,6 +1397,7 @@
           "owner_id": "stu-23",
           "file_name": "CV_AnanyaSharma.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 366126,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -1362,7 +1408,7 @@
     {
       "user_id": "stu-24",
       "school": "NBS",
-      "degree": "Business",
+      "degree": null,
       "cgpa": 4.82,
       "year_of_study": 3,
       "completed_modules": [
@@ -1382,6 +1428,7 @@
           "owner_id": "stu-24",
           "file_name": "Transcript_JoelLau.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 610706,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -1392,6 +1439,7 @@
           "owner_id": "stu-24",
           "file_name": "CV_JoelLau.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 80569,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -1402,7 +1450,7 @@
     {
       "user_id": "stu-25",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.42,
       "year_of_study": 4,
       "completed_modules": [
@@ -1422,6 +1470,7 @@
           "owner_id": "stu-25",
           "file_name": "Transcript_NadiaHassan.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 282039,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -1432,6 +1481,7 @@
           "owner_id": "stu-25",
           "file_name": "CV_NadiaHassan.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 169074,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -1442,7 +1492,7 @@
     {
       "user_id": "stu-26",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.79,
       "year_of_study": 3,
       "completed_modules": [
@@ -1463,6 +1513,7 @@
           "owner_id": "stu-26",
           "file_name": "Transcript_KaiWenSim.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 697615,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -1473,6 +1524,7 @@
           "owner_id": "stu-26",
           "file_name": "CV_KaiWenSim.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 227347,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -1483,7 +1535,7 @@
     {
       "user_id": "stu-27",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.11,
       "year_of_study": 2,
       "completed_modules": [
@@ -1504,6 +1556,7 @@
           "owner_id": "stu-27",
           "file_name": "Transcript_ShreyaIyer.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 238526,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -1514,6 +1567,7 @@
           "owner_id": "stu-27",
           "file_name": "CV_ShreyaIyer.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 274442,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -1524,7 +1578,7 @@
     {
       "user_id": "stu-28",
       "school": "EEE",
-      "degree": "Electrical & Electronic Engineering",
+      "degree": null,
       "cgpa": 4.63,
       "year_of_study": 2,
       "completed_modules": [
@@ -1545,6 +1599,7 @@
           "owner_id": "stu-28",
           "file_name": "Transcript_TimothyChan.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 582829,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -1555,6 +1610,7 @@
           "owner_id": "stu-28",
           "file_name": "CV_TimothyChan.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 375091,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -1565,7 +1621,7 @@
     {
       "user_id": "stu-29",
       "school": "SBS",
-      "degree": "Biological Sciences",
+      "degree": null,
       "cgpa": 3.55,
       "year_of_study": 3,
       "completed_modules": [
@@ -1584,6 +1640,7 @@
           "owner_id": "stu-29",
           "file_name": "Transcript_YiXuanToh.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 276382,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -1594,6 +1651,7 @@
           "owner_id": "stu-29",
           "file_name": "CV_YiXuanToh.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 382919,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -1604,7 +1662,7 @@
     {
       "user_id": "stu-30",
       "school": "MAE",
-      "degree": "Mechanical Engineering",
+      "degree": null,
       "cgpa": 4.22,
       "year_of_study": 4,
       "completed_modules": [
@@ -1623,6 +1681,7 @@
           "owner_id": "stu-30",
           "file_name": "Transcript_AmirAbdullah.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 187327,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -1633,6 +1692,7 @@
           "owner_id": "stu-30",
           "file_name": "CV_AmirAbdullah.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 293328,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -1643,7 +1703,7 @@
     {
       "user_id": "stu-31",
       "school": "SPMS",
-      "degree": "Mathematical Sciences",
+      "degree": null,
       "cgpa": 4.13,
       "year_of_study": 4,
       "completed_modules": [
@@ -1662,6 +1722,7 @@
           "owner_id": "stu-31",
           "file_name": "Transcript_CherylLow.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 480693,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -1672,6 +1733,7 @@
           "owner_id": "stu-31",
           "file_name": "CV_CherylLow.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 216070,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -1682,7 +1744,7 @@
     {
       "user_id": "stu-32",
       "school": "NBS",
-      "degree": "Business",
+      "degree": null,
       "cgpa": 4.68,
       "year_of_study": 3,
       "completed_modules": [
@@ -1701,6 +1763,7 @@
           "owner_id": "stu-32",
           "file_name": "Transcript_JunJieHeng.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 345713,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -1711,6 +1774,7 @@
           "owner_id": "stu-32",
           "file_name": "CV_JunJieHeng.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 172672,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -1721,7 +1785,7 @@
     {
       "user_id": "stu-33",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.16,
       "year_of_study": 2,
       "completed_modules": [
@@ -1740,6 +1804,7 @@
           "owner_id": "stu-33",
           "file_name": "Transcript_DivyaNair.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 622911,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -1750,6 +1815,7 @@
           "owner_id": "stu-33",
           "file_name": "CV_DivyaNair.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 249014,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -1760,7 +1826,7 @@
     {
       "user_id": "stu-34",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 4.08,
       "year_of_study": 4,
       "completed_modules": [
@@ -1781,6 +1847,7 @@
           "owner_id": "stu-34",
           "file_name": "Transcript_LucasHo.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 555900,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -1791,6 +1858,7 @@
           "owner_id": "stu-34",
           "file_name": "CV_LucasHo.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 200761,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -1801,7 +1869,7 @@
     {
       "user_id": "stu-35",
       "school": "CCDS",
-      "degree": "Computer Science",
+      "degree": null,
       "cgpa": 3.75,
       "year_of_study": 3,
       "completed_modules": [
@@ -1821,6 +1889,7 @@
           "owner_id": "stu-35",
           "file_name": "Transcript_HannahSeah.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 246244,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -1831,6 +1900,7 @@
           "owner_id": "stu-35",
           "file_name": "CV_HannahSeah.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 153160,
           "uploaded_at": "2026-08-16T09:00:00Z",
           "url": null,
@@ -1841,7 +1911,7 @@
     {
       "user_id": "stu-36",
       "school": "EEE",
-      "degree": "Electrical & Electronic Engineering",
+      "degree": null,
       "cgpa": 4.33,
       "year_of_study": 2,
       "completed_modules": [
@@ -1860,6 +1930,7 @@
           "owner_id": "stu-36",
           "file_name": "Transcript_WenJunFoo.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 189342,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -1870,6 +1941,7 @@
           "owner_id": "stu-36",
           "file_name": "CV_WenJunFoo.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 142505,
           "uploaded_at": "2026-08-17T09:00:00Z",
           "url": null,
@@ -1880,7 +1952,7 @@
     {
       "user_id": "stu-37",
       "school": "SBS",
-      "degree": "Biological Sciences",
+      "degree": null,
       "cgpa": 4.67,
       "year_of_study": 4,
       "completed_modules": [
@@ -1900,6 +1972,7 @@
           "owner_id": "stu-37",
           "file_name": "Transcript_KavyaReddy.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 428437,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -1910,6 +1983,7 @@
           "owner_id": "stu-37",
           "file_name": "CV_KavyaReddy.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 397408,
           "uploaded_at": "2026-08-12T09:00:00Z",
           "url": null,
@@ -1920,7 +1994,7 @@
     {
       "user_id": "stu-38",
       "school": "MAE",
-      "degree": "Mechanical Engineering",
+      "degree": null,
       "cgpa": 4.55,
       "year_of_study": 3,
       "completed_modules": [
@@ -1940,6 +2014,7 @@
           "owner_id": "stu-38",
           "file_name": "Transcript_GabrielYap.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 675582,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -1950,6 +2025,7 @@
           "owner_id": "stu-38",
           "file_name": "CV_GabrielYap.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 119729,
           "uploaded_at": "2026-08-13T09:00:00Z",
           "url": null,
@@ -1960,7 +2036,7 @@
     {
       "user_id": "stu-39",
       "school": "SPMS",
-      "degree": "Mathematical Sciences",
+      "degree": null,
       "cgpa": 4.32,
       "year_of_study": 3,
       "completed_modules": [
@@ -1980,6 +2056,7 @@
           "owner_id": "stu-39",
           "file_name": "Transcript_LiTingPoh.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 667601,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -1990,6 +2067,7 @@
           "owner_id": "stu-39",
           "file_name": "CV_LiTingPoh.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 190186,
           "uploaded_at": "2026-08-14T09:00:00Z",
           "url": null,
@@ -2000,7 +2078,7 @@
     {
       "user_id": "stu-40",
       "school": "NBS",
-      "degree": "Business",
+      "degree": null,
       "cgpa": 3.93,
       "year_of_study": 4,
       "completed_modules": [
@@ -2019,6 +2097,7 @@
           "owner_id": "stu-40",
           "file_name": "Transcript_AdamHalim.pdf",
           "file_format": "pdf",
+          "kind": "transcript",
           "file_size": 320444,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,
@@ -2029,6 +2108,7 @@
           "owner_id": "stu-40",
           "file_name": "CV_AdamHalim.pdf",
           "file_format": "pdf",
+          "kind": "supporting",
           "file_size": 124093,
           "uploaded_at": "2026-08-15T09:00:00Z",
           "url": null,

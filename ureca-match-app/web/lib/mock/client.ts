@@ -201,16 +201,17 @@ export class MockClient implements ApiClient {
     s.documents = s.documents.filter((d) => d.id !== id);
   }
 
-  async uploadDocument(file: File): Promise<M.Document> {
+  async uploadDocument(file: File, kind: M.Document["kind"] = "supporting"): Promise<M.Document> {
     const u = this.need("student");
     const st = this.student(u.id)!;
-    if (st.documents.length >= 5) throw new M.ApiError(422, "max_documents", "Maximum limit of 5 documents reached.", "file");
+    if (kind === "supporting" && st.documents.filter((d) => d.kind === "supporting").length >= 5) throw new M.ApiError(422, "max_documents", "Maximum limit of 5 supporting documents reached.", "file");
     if (file.type !== "application/pdf" || !file.name.toLowerCase().endsWith(".pdf")) throw new M.ApiError(422, "not_pdf", "Upload a PDF file.", "file");
     if (file.size > 5 * 1024 * 1024) throw new M.ApiError(422, "too_large", "The file is larger than 5 MB.", "file");
     const docId = this.id("doc");
     const url = typeof window !== "undefined" && typeof URL !== "undefined" ? URL.createObjectURL(file) : null;
     if (url) mockFileUrls.set(docId, url);
-    const d: M.Document = { id: docId, owner_id: u.id, file_name: file.name, file_format: "pdf", file_size: file.size, uploaded_at: this.iso(), url };
+    const d: M.Document = { id: docId, owner_id: u.id, file_name: file.name, file_format: "pdf", kind, file_size: file.size, uploaded_at: this.iso(), url };
+    if (kind === "transcript") st.documents = st.documents.filter((x) => x.kind !== "transcript"); // one transcript only
     st.documents.push(d);
     return d;
   }

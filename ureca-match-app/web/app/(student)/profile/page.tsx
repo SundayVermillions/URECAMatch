@@ -82,24 +82,10 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   const transcriptFile = useRef<HTMLInputElement>(null);
   const err = (k: string) => (error?.field === k ? error.message : null);
 
+  // The server tags every file with a slot (`kind`), so the split never depends on the file name.
   const allDocs = p?.documents ?? [];
-  const [transcriptDocId, setTranscriptDocId] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("ureca_active_transcript_id");
-      if (stored && allDocs.some((d) => d.id === stored)) return stored;
-    }
-    const defaultDoc = allDocs.find((d) =>
-      d.file_name.toLowerCase().includes("transcript") ||
-      d.file_name.toUpperCase().startsWith("CSC_")
-    );
-    return defaultDoc?.id ?? null;
-  });
-
-  const transcriptDoc = allDocs.find((d) => d.id === transcriptDocId) || allDocs.find((d) =>
-    d.file_name.toLowerCase().includes("transcript") ||
-    d.file_name.toUpperCase().startsWith("CSC_")
-  );
-  const supportingDocs = allDocs.filter((d) => d.id !== transcriptDoc?.id);
+  const transcriptDoc = allDocs.find((d) => d.kind === "transcript");
+  const supportingDocs = allDocs.filter((d) => d.kind !== "transcript");
   const supportingCount = supportingDocs.length;
   const atMaxSupporting = supportingCount >= 5;
 
@@ -121,19 +107,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     }
 
     try {
-      // 1. If an existing transcript is present, remove it so there is only ever ONE transcript
-      if (transcriptDoc) {
-        await call((api) => api.deleteDocument(transcriptDoc.id));
-      }
-
-      // Upload original file directly
-      const uploadedDoc = await call((api) => api.uploadDocument(originalFile));
-      if (uploadedDoc?.id) {
-        setTranscriptDocId(uploadedDoc.id);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("ureca_active_transcript_id", uploadedDoc.id);
-        }
-      }
+      await call((api) => api.uploadDocument(originalFile, "transcript")); // replaces any existing transcript
       await refresh();
     } catch (err) {
       setError(err as ApiError);
@@ -153,7 +127,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
       return;
     }
     try {
-      await call((api) => api.uploadDocument(fl));
+      await call((api) => api.uploadDocument(fl, "supporting"));
       await refresh();
     } catch (err) {
       setError(err as ApiError);
@@ -420,13 +394,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (typeof window !== "undefined") {
-                        localStorage.removeItem("ureca_active_transcript_id");
-                      }
-                      setTranscriptDocId(null);
-                      removeDoc(transcriptDoc.id);
-                    }}
+                    onClick={() => removeDoc(transcriptDoc.id)}
                     disabled={activeDocId === transcriptDoc.id}
                     className="px-2 py-1 text-[11.5px] font-semibold text-bad hover:underline disabled:opacity-50"
                   >

@@ -32,7 +32,7 @@ export class LiveClient implements ApiClient {
   me = () => this.req<M.Me>("GET", "/me");
   getProfile = () => this.req<M.StudentProfile>("GET", "/me/profile");
   updateProfile = (b: M.ProfileUpdate) => this.req<M.StudentProfile>("PUT", "/me/profile", b);
-  uploadDocument = (file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.Document>("POST", "/me/documents", undefined, f); };
+  uploadDocument = (file: File, kind: M.Document["kind"] = "supporting") => { const f = new FormData(); f.append("file", file); f.append("kind", kind); return this.req<M.Document>("POST", "/me/documents", undefined, f); };
   deleteDocument = (id: string) => this.req<void>("DELETE", `/me/documents/${id}`);
   listUsers = (f: M.UserFilters = {}) => this.req<M.UserListItem[]>("GET", "/admin/users" + this.q(f));
   createUser = (b: M.UserCreate) => this.req<M.User>("POST", "/admin/users", b);
