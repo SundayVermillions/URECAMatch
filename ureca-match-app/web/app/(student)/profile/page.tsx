@@ -63,7 +63,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
 
   const [f, setF] = useState(() => ({
     school: p?.school ?? "",
-    degree: p?.degree ?? "",
+    degree: p?.degree || (p?.school ? (NTU_DEGREES_BY_SCHOOL[p.school]?.[0] ?? "Computer Science") : ""),
     isDoubleDegree: (p?.degree?.includes("(Double Degree)") || p?.degree?.includes(" & ")) ?? false,
     degree1: p?.degree?.split(" & ")[0] ?? "",
     degree2: p?.degree?.split(" & ")[1]?.replace(" (Double Degree)", "") ?? "",
