@@ -446,6 +446,7 @@
     {
       "user_id": "stu-1",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 3.99,
       "year_of_study": 2,
       "completed_modules": [
@@ -486,6 +487,7 @@
     {
       "user_id": "stu-2",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 3.69,
       "year_of_study": 4,
       "completed_modules": [
@@ -524,6 +526,7 @@
     {
       "user_id": "stu-3",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.82,
       "year_of_study": 2,
       "completed_modules": [
@@ -563,6 +566,7 @@
     {
       "user_id": "stu-4",
       "school": "EEE",
+      "degree": null,
       "cgpa": 4.68,
       "year_of_study": 4,
       "completed_modules": [
@@ -603,6 +607,7 @@
     {
       "user_id": "stu-5",
       "school": "SBS",
+      "degree": null,
       "cgpa": 4.41,
       "year_of_study": 4,
       "completed_modules": [
@@ -641,6 +646,7 @@
     {
       "user_id": "stu-6",
       "school": "MAE",
+      "degree": null,
       "cgpa": 4.09,
       "year_of_study": 4,
       "completed_modules": [
@@ -679,6 +685,7 @@
     {
       "user_id": "stu-7",
       "school": "SPMS",
+      "degree": null,
       "cgpa": 4.65,
       "year_of_study": 3,
       "completed_modules": [
@@ -717,6 +724,7 @@
     {
       "user_id": "stu-8",
       "school": "NBS",
+      "degree": null,
       "cgpa": 4.17,
       "year_of_study": 3,
       "completed_modules": [
@@ -756,6 +764,7 @@
     {
       "user_id": "stu-9",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.32,
       "year_of_study": 4,
       "completed_modules": [
@@ -796,6 +805,7 @@
     {
       "user_id": "stu-10",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.18,
       "year_of_study": 3,
       "completed_modules": [
@@ -835,6 +845,7 @@
     {
       "user_id": "stu-11",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 3.46,
       "year_of_study": 3,
       "completed_modules": [
@@ -874,6 +885,7 @@
     {
       "user_id": "stu-12",
       "school": "EEE",
+      "degree": null,
       "cgpa": 3.74,
       "year_of_study": 4,
       "completed_modules": [
@@ -912,6 +924,7 @@
     {
       "user_id": "stu-13",
       "school": "SBS",
+      "degree": null,
       "cgpa": 4.08,
       "year_of_study": 4,
       "completed_modules": [
@@ -951,6 +964,7 @@
     {
       "user_id": "stu-14",
       "school": "MAE",
+      "degree": null,
       "cgpa": 3.57,
       "year_of_study": 4,
       "completed_modules": [
@@ -989,6 +1003,7 @@
     {
       "user_id": "stu-15",
       "school": "SPMS",
+      "degree": null,
       "cgpa": 3.57,
       "year_of_study": 2,
       "completed_modules": [
@@ -1027,6 +1042,7 @@
     {
       "user_id": "stu-16",
       "school": "NBS",
+      "degree": null,
       "cgpa": 4.73,
       "year_of_study": 3,
       "completed_modules": [
@@ -1065,6 +1081,7 @@
     {
       "user_id": "stu-17",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.61,
       "year_of_study": 3,
       "completed_modules": [
@@ -1105,6 +1122,7 @@
     {
       "user_id": "stu-18",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.59,
       "year_of_study": 3,
       "completed_modules": [
@@ -1143,6 +1161,7 @@
     {
       "user_id": "stu-19",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.64,
       "year_of_study": 4,
       "completed_modules": [
@@ -1183,6 +1202,7 @@
     {
       "user_id": "stu-20",
       "school": "EEE",
+      "degree": null,
       "cgpa": 3.98,
       "year_of_study": 3,
       "completed_modules": [
@@ -1222,6 +1242,7 @@
     {
       "user_id": "stu-21",
       "school": "SBS",
+      "degree": null,
       "cgpa": 3.79,
       "year_of_study": 2,
       "completed_modules": [
@@ -1261,6 +1282,7 @@
     {
       "user_id": "stu-22",
       "school": "MAE",
+      "degree": null,
       "cgpa": 3.54,
       "year_of_study": 3,
       "completed_modules": [
@@ -1300,6 +1322,7 @@
     {
       "user_id": "stu-23",
       "school": "SPMS",
+      "degree": null,
       "cgpa": 4.12,
       "year_of_study": 3,
       "completed_modules": [
@@ -1339,6 +1362,7 @@
     {
       "user_id": "stu-24",
       "school": "NBS",
+      "degree": null,
       "cgpa": 4.82,
       "year_of_study": 3,
       "completed_modules": [
@@ -1378,6 +1402,7 @@
     {
       "user_id": "stu-25",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.42,
       "year_of_study": 4,
       "completed_modules": [
@@ -1417,6 +1442,7 @@
     {
       "user_id": "stu-26",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.79,
       "year_of_study": 3,
       "completed_modules": [
@@ -1457,6 +1483,7 @@
     {
       "user_id": "stu-27",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.11,
       "year_of_study": 2,
       "completed_modules": [
@@ -1497,6 +1524,7 @@
     {
       "user_id": "stu-28",
       "school": "EEE",
+      "degree": null,
       "cgpa": 4.63,
       "year_of_study": 2,
       "completed_modules": [
@@ -1537,6 +1565,7 @@
     {
       "user_id": "stu-29",
       "school": "SBS",
+      "degree": null,
       "cgpa": 3.55,
       "year_of_study": 3,
       "completed_modules": [
@@ -1575,6 +1604,7 @@
     {
       "user_id": "stu-30",
       "school": "MAE",
+      "degree": null,
       "cgpa": 4.22,
       "year_of_study": 4,
       "completed_modules": [
@@ -1613,6 +1643,7 @@
     {
       "user_id": "stu-31",
       "school": "SPMS",
+      "degree": null,
       "cgpa": 4.13,
       "year_of_study": 4,
       "completed_modules": [
@@ -1651,6 +1682,7 @@
     {
       "user_id": "stu-32",
       "school": "NBS",
+      "degree": null,
       "cgpa": 4.68,
       "year_of_study": 3,
       "completed_modules": [
@@ -1689,6 +1721,7 @@
     {
       "user_id": "stu-33",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.16,
       "year_of_study": 2,
       "completed_modules": [
@@ -1727,6 +1760,7 @@
     {
       "user_id": "stu-34",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 4.08,
       "year_of_study": 4,
       "completed_modules": [
@@ -1767,6 +1801,7 @@
     {
       "user_id": "stu-35",
       "school": "CCDS",
+      "degree": null,
       "cgpa": 3.75,
       "year_of_study": 3,
       "completed_modules": [
@@ -1806,6 +1841,7 @@
     {
       "user_id": "stu-36",
       "school": "EEE",
+      "degree": null,
       "cgpa": 4.33,
       "year_of_study": 2,
       "completed_modules": [
@@ -1844,6 +1880,7 @@
     {
       "user_id": "stu-37",
       "school": "SBS",
+      "degree": null,
       "cgpa": 4.67,
       "year_of_study": 4,
       "completed_modules": [
@@ -1883,6 +1920,7 @@
     {
       "user_id": "stu-38",
       "school": "MAE",
+      "degree": null,
       "cgpa": 4.55,
       "year_of_study": 3,
       "completed_modules": [
@@ -1922,6 +1960,7 @@
     {
       "user_id": "stu-39",
       "school": "SPMS",
+      "degree": null,
       "cgpa": 4.32,
       "year_of_study": 3,
       "completed_modules": [
@@ -1961,6 +2000,7 @@
     {
       "user_id": "stu-40",
       "school": "NBS",
+      "degree": null,
       "cgpa": 3.93,
       "year_of_study": 4,
       "completed_modules": [

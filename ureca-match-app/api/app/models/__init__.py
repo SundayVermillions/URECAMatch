@@ -151,6 +151,8 @@ class User(BaseModel):
 class StudentProfile(BaseModel):
     user_id: str
     school: str
+    degree: str | None = None
+    degree: str | None = None
     cgpa: float | None = Field(default=None, ge=0, le=5)
     year_of_study: int | None = Field(default=None, ge=1, le=5)
     completed_modules: list[str] = []
@@ -208,6 +210,8 @@ class Session(BaseModel):
 
 class ProfileUpdate(BaseModel):
     school: str
+    degree: str | None = None
+    degree: str | None = None
     cgpa: float = Field(ge=0, le=5)
     year_of_study: int = Field(ge=1, le=5)
     completed_modules: list[str]
