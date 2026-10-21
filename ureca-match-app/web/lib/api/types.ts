@@ -1313,6 +1313,8 @@ export interface components {
             name: string;
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Year Of Study */
             year_of_study: number | null;
             /** Cgpa */

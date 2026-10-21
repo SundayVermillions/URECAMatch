@@ -41,6 +41,7 @@ def _applicants(store, listing_id: str, round_id: str | None) -> list[Applicant]
                     id=u.id,
                     name=u.name,
                     school=sp.school,
+                    degree=sp.degree,
                     year_of_study=sp.year_of_study,
                     cgpa=sp.cgpa,
                     completed_modules=sp.completed_modules,

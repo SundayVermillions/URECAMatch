@@ -148,7 +148,7 @@ export default function Applicants() {
           <>
             <div className="flex items-center gap-3.5">
               <Avatar name={detail.student.name} size={48} tone="navy" />
-              <div><div className="font-display text-[18px] font-bold">{detail.student.name}</div><div className="text-[12.5px] text-muted">{detail.student.school} · Year {detail.student.year_of_study} · applied {fmtDate(detail.submitted_at)}</div>
+              <div><div className="font-display text-[18px] font-bold">{detail.student.name}</div><div className="text-[12.5px] text-muted">{detail.student.school}{detail.student.degree ? ` · ${detail.student.degree}` : ''} · Year {detail.student.year_of_study} · applied {fmtDate(detail.submitted_at)}</div>
                 <div className="text-[12.5px] text-accent mt-0.5">
                   <a href={`mailto:${detail.student.email || `${detail.student.id}@e.ntu.edu.sg`}`} className="hover:underline">
                     {detail.student.email || `${detail.student.id}@e.ntu.edu.sg`}

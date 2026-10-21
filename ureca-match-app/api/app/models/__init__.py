@@ -431,6 +431,7 @@ class ApplicantStudent(BaseModel):
     id: str
     name: str
     school: str
+    degree: str | None = None
     year_of_study: int | None
     cgpa: float | None
     completed_modules: list[str]

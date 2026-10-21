@@ -5736,6 +5736,17 @@
             "type": "string",
             "title": "School"
           },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
+          },
           "year_of_study": {
             "anyOf": [
               {
