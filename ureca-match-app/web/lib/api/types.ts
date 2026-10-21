@@ -107,6 +107,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/transcript/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Transcript
+         * @description Read CGPA, programme, year and passed modules from a transcript to prefill the profile form. Saves nothing.
+         */
+        post: operations["parse_transcript_me_transcript_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/documents": {
         parameters: {
             query?: never;
@@ -1413,6 +1433,11 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_parse_transcript_me_transcript_parse_post */
+        Body_parse_transcript_me_transcript_parse_post: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_document_me_documents_post */
         Body_upload_document_me_documents_post: {
             /** File */
@@ -2189,6 +2214,31 @@ export interface components {
             /** Topics */
             topics: string[];
         };
+        /**
+         * TranscriptParse
+         * @description What was read from an uploaded transcript. Empty values mean not found; nothing is saved (REQ-PROF-1).
+         */
+        TranscriptParse: {
+            /** Cgpa */
+            cgpa?: number | null;
+            /**
+             * School
+             * @default
+             */
+            school: string;
+            /**
+             * Degree
+             * @default
+             */
+            degree: string;
+            /** Year Of Study */
+            year_of_study?: number | null;
+            /**
+             * Completed Modules
+             * @default []
+             */
+            completed_modules: string[];
+        };
         /** User */
         User: {
             /** Id */
@@ -2491,6 +2541,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StudentProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_transcript_me_transcript_parse_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_parse_transcript_me_transcript_parse_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranscriptParse"];
                 };
             };
             /** @description Validation Error */

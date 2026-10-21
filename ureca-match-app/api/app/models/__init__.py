@@ -219,6 +219,16 @@ class ProfileUpdate(BaseModel):
     research_interests: list[str]
 
 
+class TranscriptParse(BaseModel):
+    """What was read from an uploaded transcript. Empty values mean not found; nothing is saved (REQ-PROF-1)."""
+
+    cgpa: float | None = None
+    school: str = ""
+    degree: str = ""
+    year_of_study: int | None = None
+    completed_modules: list[str] = []
+
+
 class UserCreate(BaseModel):
     name: str
     email: EmailStr

@@ -26,6 +26,7 @@ export type VerifyRequest = S["VerifyRequest"];
 export type SignInRequest = S["SignInRequest"];
 export type Session = S["Session"];
 export type ProfileUpdate = S["ProfileUpdate"];
+export type TranscriptParse = S["TranscriptParse"];
 export type UserCreate = S["UserCreate"];
 export type UserUpdate = S["UserUpdate"];
 export type UserListItem = S["UserListItem"];

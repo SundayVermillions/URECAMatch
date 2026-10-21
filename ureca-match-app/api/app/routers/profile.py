@@ -8,9 +8,10 @@ from fastapi import APIRouter, File, Form, UploadFile
 
 from app.deps import SettingsDep, StoreDep, StudentUser
 from app.errors import invalid, not_found
-from app.models import Document, Ok, ProfileUpdate, StudentProfile
+from app.models import Document, Ok, ProfileUpdate, StudentProfile, TranscriptParse
 from app.services import catalog
 from app.services.storage import get_storage
+from app.services.transcript_parser import parse_transcript_pdf
 
 router = APIRouter(tags=["profile"])
 
@@ -39,6 +40,28 @@ def update_profile(body: ProfileUpdate, user: StudentUser, store: StoreDep) -> S
     return p
 
 
+async def _pdf_bytes(file: UploadFile) -> bytes:
+    if (file.content_type or "") != "application/pdf" or not (file.filename or "").lower().endswith(".pdf"):
+        raise invalid("not_pdf", "Upload a PDF file.", "file")
+    data = await file.read()
+    if len(data) > MAX_PDF_BYTES:
+        raise invalid("too_large", "The file is larger than 5 MB.", "file")
+    return data
+
+
+@router.post("/me/transcript/parse", response_model=TranscriptParse)
+async def parse_transcript(user: StudentUser, file: Annotated[UploadFile, File()]) -> TranscriptParse:
+    """Read CGPA, programme, year and passed modules from a transcript to prefill the profile form. Saves nothing."""
+    data = await _pdf_bytes(file)
+    try:
+        found = parse_transcript_pdf(data)
+    except ValueError as exc:
+        raise invalid("unreadable_transcript", str(exc), "file") from exc
+    known = catalog.courses()  # saving refuses codes outside the catalog, so only offer ones it accepts
+    found["completed_modules"] = [c for c in found["completed_modules"] if c in known]
+    return TranscriptParse(**found)
+
+
 @router.post("/me/documents", response_model=Document, status_code=201)
 async def upload_document(
     user: StudentUser,
@@ -47,11 +70,7 @@ async def upload_document(
     file: Annotated[UploadFile, File()],
     kind: Annotated[Literal["transcript", "supporting"], Form()] = "supporting",
 ) -> Document:
-    if (file.content_type or "") != "application/pdf" or not (file.filename or "").lower().endswith(".pdf"):
-        raise invalid("not_pdf", "Upload a PDF file.", "file")
-    data = await file.read()
-    if len(data) > MAX_PDF_BYTES:
-        raise invalid("too_large", "The file is larger than 5 MB.", "file")
+    data = await _pdf_bytes(file)
 
     p = store.student(user.id)
     if kind == "supporting" and p and sum(d.kind == "supporting" for d in p.documents) >= MAX_SUPPORTING:

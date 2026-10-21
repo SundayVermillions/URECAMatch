@@ -77,6 +77,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
+  const [prefill, setPrefill] = useState<"filled" | "none" | null>(null);
 
   const file = useRef<HTMLInputElement>(null);
   const transcriptFile = useRef<HTMLInputElement>(null);
@@ -88,6 +89,29 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   const supportingDocs = allDocs.filter((d) => d.kind !== "transcript");
   const supportingCount = supportingDocs.length;
   const atMaxSupporting = supportingCount >= 5;
+
+  /** Fill the form from the transcript. Only fields that were found are changed, and nothing is saved until the student presses Save. */
+  async function prefillFromTranscript(pdf: File) {
+    setSaved(false);
+    try {
+      const t = await call((api) => api.parseTranscript(pdf));
+      const school = t.school in NTU_DEGREES_BY_SCHOOL ? t.school : "";
+      const found = !!(t.cgpa != null || school || t.year_of_study || t.completed_modules.length);
+      setF((cur) => ({
+        ...cur,
+        school: school || cur.school,
+        ...(school && NTU_DEGREES_BY_SCHOOL[school].includes(t.degree)
+          ? { degree: t.degree, isDoubleDegree: false, degree1: "", degree2: "" }
+          : {}),
+        cgpa: t.cgpa != null ? t.cgpa.toFixed(2) : cur.cgpa,
+        year_of_study: t.year_of_study ? String(t.year_of_study) : cur.year_of_study,
+        completed_modules: t.completed_modules.length ? t.completed_modules : cur.completed_modules,
+      }));
+      setPrefill(found ? "filled" : "none");
+    } catch {
+      setPrefill("none"); // the upload itself worked, so a transcript we cannot read is not an error
+    }
+  }
 
   async function handleTranscriptUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const originalFile = e.target.files?.[0];
@@ -108,6 +132,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
 
     try {
       await call((api) => api.uploadDocument(originalFile, "transcript")); // replaces any existing transcript
+      await prefillFromTranscript(originalFile);
       await refresh();
     } catch (err) {
       setError(err as ApiError);
@@ -202,6 +227,20 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
           <Banner tone="accent" title="One step before you apply.">
             Fill in your academic details and upload your transcript.
           </Banner>
+        </div>
+      )}
+
+      {prefill && (
+        <div className="mb-4">
+          {prefill === "filled" ? (
+            <Banner tone="accent" title="Filled in from your transcript.">
+              Check CGPA, school, degree, year and modules, then press Save changes.
+            </Banner>
+          ) : (
+            <Banner tone="warn" title="We could not read details from this transcript.">
+              Your file is uploaded. Fill in the details below by hand.
+            </Banner>
+          )}
         </div>
       )}
 
