@@ -1236,6 +1236,27 @@ export interface components {
          * @enum {string}
          */
         AccountStatus: "pending_verification" | "active" | "inactive";
+        /**
+         * ActiveItem
+         * @description Something that is still open for a user, shown before an admin deactivates them or changes their role.
+         */
+        ActiveItem: {
+            kind: components["schemas"]["ActiveItemKind"];
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+        };
+        /**
+         * ActiveItemKind
+         * @enum {string}
+         */
+        ActiveItemKind: "listing" | "proposal" | "application" | "match";
         /** AdminDashboard */
         AdminDashboard: {
             cycle: components["schemas"]["Cycle"] | null;
@@ -1448,6 +1469,20 @@ export interface components {
              * @enum {string}
              */
             kind: "transcript" | "supporting";
+        };
+        /**
+         * CleanupWarning
+         * @description The 409 `has_active_items` body: nothing was changed. Resend with confirm_cleanup=true to close these first.
+         */
+        CleanupWarning: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Field */
+            field?: string | null;
+            /** Items */
+            items: components["schemas"]["ActiveItem"][];
         };
         /** ClockSet */
         ClockSet: {
@@ -2734,7 +2769,10 @@ export interface operations {
     };
     update_user_admin_users__user_id__patch: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Close the user's open items first. Without it, a user with open items gets a 409 preview. */
+                confirm_cleanup?: boolean;
+            };
             header?: {
                 authorization?: string | null;
                 "x-demo-user"?: string | null;
@@ -2759,6 +2797,15 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
+            /** @description Last active admin, or the user has open items to clean up first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupWarning"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2772,7 +2819,10 @@ export interface operations {
     };
     deactivate_admin_users__user_id__deactivate_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Close the user's open items first. Without it, a user with open items gets a 409 preview. */
+                confirm_cleanup?: boolean;
+            };
             header?: {
                 authorization?: string | null;
                 "x-demo-user"?: string | null;
@@ -2791,6 +2841,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Last active admin, or the user has open items to clean up first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupWarning"];
                 };
             };
             /** @description Validation Error */

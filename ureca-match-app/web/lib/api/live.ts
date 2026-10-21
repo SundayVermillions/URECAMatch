@@ -15,7 +15,7 @@ export class LiveClient implements ApiClient {
     const res = await fetch(this.base + path, { method, headers, body: form ?? (body !== undefined ? JSON.stringify(body) : undefined) });
     if (res.status === 204) return undefined as T;
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new M.ApiError(res.status, data.code ?? "error", data.message ?? "Something went wrong.", data.field);
+    if (!res.ok) throw new M.ApiError(res.status, data.code ?? "error", data.message ?? "Something went wrong.", data.field, data.items);
     return data as T;
   }
   private q(params: Record<string, unknown>) {
@@ -37,8 +37,8 @@ export class LiveClient implements ApiClient {
   parseTranscript = (file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.TranscriptParse>("POST", "/me/transcript/parse", undefined, f); };
   listUsers = (f: M.UserFilters = {}) => this.req<M.UserListItem[]>("GET", "/admin/users" + this.q(f));
   createUser = (b: M.UserCreate) => this.req<M.User>("POST", "/admin/users", b);
-  updateUser = (id: string, b: M.UserUpdate) => this.req<M.User>("PATCH", `/admin/users/${id}`, b);
-  deactivateUser = (id: string) => this.req<void>("POST", `/admin/users/${id}/deactivate`);
+  updateUser = (id: string, b: M.UserUpdate, confirmCleanup = false) => this.req<M.User>("PATCH", `/admin/users/${id}` + this.q({ confirm_cleanup: confirmCleanup || undefined }), b);
+  deactivateUser = (id: string, confirmCleanup = false) => this.req<void>("POST", `/admin/users/${id}/deactivate` + this.q({ confirm_cleanup: confirmCleanup || undefined }));
 
   browse = (f: M.ListingFilters = {}) => this.req<M.Listing[]>("GET", "/listings" + this.q(f));
   listing = (id: string) => this.req<M.Listing>("GET", `/listings/${id}`);

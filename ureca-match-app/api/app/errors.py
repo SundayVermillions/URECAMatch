@@ -6,8 +6,8 @@ from fastapi import HTTPException
 
 
 class ApiError(HTTPException):
-    def __init__(self, status: int, code: str, message: str, field: str | None = None):
-        super().__init__(status_code=status, detail={"code": code, "message": message, "field": field})
+    def __init__(self, status: int, code: str, message: str, field: str | None = None, extra: dict | None = None):
+        super().__init__(status_code=status, detail={"code": code, "message": message, "field": field, **(extra or {})})
 
 
 def not_found(what: str) -> ApiError:
