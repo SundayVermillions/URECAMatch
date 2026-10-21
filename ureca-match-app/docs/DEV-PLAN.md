@@ -7,7 +7,7 @@ Full guide: `docs/URECAMatch-Development-Guide.docx` (v2.0, 18 Sep 2026). It has
 | Slice | Owner | Routers | Screens | REQ-IDs |
 |---|---|---|---|---|
 | A Accounts and profile | Edwin | auth, profile, users, services/storage | (auth)/*, (student)/profile, (admin)/users | REG-1..3, AUTH-1..3, PROF-1..3, USER-1..3 |
-| B Projects and proposals | Robin | listings, proposals | browse, projects/[id], propose, (supervisor)/projects/*, proposals | BROWSE-1..3, PROJ-1..3, PROPOSE-1..3, REVPROP-1..3 |
+| B Projects and proposals | Robin | listings, proposals | browse, projects/[id], propose, (supervisor)/projects/*, proposals | BROWSE-1..4, PROJ-1..3, PROPOSE-1..3, REVPROP-1..3 |
 | C Applications and rankings | Ian | applications, rankings | apply/[id], my-applications, projects/[id]/applicants | APPLY-1..2, SRANK-1..2, VRANK-1..3 |
 | D Cycle, rounds, matching | Nicholas | cycles, matching, services/windows, services/matching | rounds, rounds/[id]/matches, approvals, audit, offer card | CYCLE-1..3, ROUND-1..3, EXEC-1..3, REV-1, PUB-1..2, ASSIGN-1..3, APPRV-1..3, OUTCOME-1..4, AUDIT-1..2 |
 | E Platform | Benjamin | notifications, services/notify, services/audit, Supabase, Vercel, CI | notifications, dashboard, components/ui | NOTIF-1..2, CYCLE-3, PUB-2, NFR 5.1, 5.3, 5.4 |
@@ -30,7 +30,7 @@ Order for going live: E provisions Supabase, then A (sign-in and JWT), then B an
 | Slice | Stage 0 | Stage 1 | Stage 2 | Stage 3 | REQ-IDs with a test |
 |---|---|---|---|---|---|
 | A Edwin | | 3 / 12 | | | REG-1, REG-3, AUTH-2 |
-| B Robin | done | 12 / 12 | | | all 12: BROWSE-1..3, PROJ-1..3, PROPOSE-1..3, REVPROP-1..3 |
+| B Robin | done | 13 / 13 | | | all 13: BROWSE-1..4, PROJ-1..3, PROPOSE-1..3, REVPROP-1..3 |
 | C Ian | | 3 / 7 | | | APPLY-2, SRANK-2, VRANK-1 |
 | D Nicholas | | 4 / 24 | | | EXEC-1, EXEC-2, EXEC-3, ASSIGN-2 |
 | E Benjamin | | 2 / 2 | | | NOTIF-1, NOTIF-2; NFR 5.1.2 e-mail; NFR 5.3.2 role matrix |
@@ -74,6 +74,10 @@ Stage 1
 - [x] PROPOSE-1..3: interests required, word limits, own documents only, active supervisors only; propose page redesigned with searchable picker
 - [x] Close-listing confirmation; all B rows `mock`
 - [x] UI pass on Project detail (student view): hero band and balanced detail cards
+- [x] REVPROP-2, OUTCOME-1, APPLY: one project per cycle. A placed student cannot apply, propose or accept another; accepting withdraws open offers and pending proposals; student screens become view only
+- [x] PROJ-1, PROF-1, PROPOSE-1: topics and NTU courses come from fixed lists (`GET /catalog/topics`, `/catalog/courses`, pickers in the UI)
+- [x] PROJ-1, PROJ-2: optional project details, up to 4 photos and a YouTube or Vimeo video; project page redesigned
+- [x] BROWSE-4: Uri's picks, explainable fit score on Browse (`GET /me/recommendations`); search and filters in one bar
 
 Stage 2
 - [x] Covers stored in Supabase Storage via A's service (public `covers` bucket, cache-busted URL, PROJ-2 guard)
