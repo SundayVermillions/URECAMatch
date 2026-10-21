@@ -41,7 +41,10 @@ export default function Applicants() {
   const unranked = (everyone.data ?? []).filter((r) => !ids.includes(r.application_id)).length;
   // AI match scores belong to one listing; keyed by it so they vanish when the supervisor opens another project.
   const scores = ai?.listing === id ? ai.scores : null;
-  const filteredPool = (rows.data ?? []).filter((r) => !ids.includes(r.application_id) && (!recommendedOnly || r.recommended));
+  // The AI score replaces the top-10 recommendation (REQ-VRANK-1) once it is on screen, so Top 10 only applies before AI match runs.
+  const topTenOnly = recommendedOnly && !scores;
+  const scoredLocally = scores ? [...scores.values()].filter((s) => s.source === "local").length : 0;
+  const filteredPool = (rows.data ?? []).filter((r) => !ids.includes(r.application_id) && (!topTenOnly || r.recommended));
   const pool = scores && sortByScore
     ? [...filteredPool].sort((a, b) => (scores.get(b.application_id)?.score ?? -1) - (scores.get(a.application_id)?.score ?? -1))
     : filteredPool;
@@ -80,11 +83,13 @@ export default function Applicants() {
               onChange={(v) => setFilters({ ...filters, min_cgpa: CGPA_MINS.find((m) => cgpaLabel(m) === v) })} />
             <FilterSelect label="School" align="left" value={filters.school} options={SCHOOLS} onChange={(s) => setFilters({ ...filters, school: s })} />
             <Chip active={!!filters.prerequisites_only} onClick={() => setFilters({ ...filters, prerequisites_only: !filters.prerequisites_only })}>Meets prerequisites</Chip>
-            <Chip active={recommendedOnly} onClick={() => setRecommendedOnly(!recommendedOnly)}>Top 10</Chip>
-            {scores && <Chip active={sortByScore} onClick={() => setSortByScore(!sortByScore)}>Sort by AI score</Chip>}
+            {scores
+              ? <Chip active={sortByScore} onClick={() => setSortByScore(!sortByScore)}>Sort by AI score</Chip>
+              : <Chip active={recommendedOnly} onClick={() => setRecommendedOnly(!recommendedOnly)}>Top 10</Chip>}
           </div>
           {scores && <div className="px-[18px] py-2 border-b border-border text-[11.5px] text-faint">
-            {[...scores.values()].some((s) => s.source === "ai") ? "Scored by Gemini." : "Scored locally from prerequisites, shared interests and CGPA."} A guide only: read each application before ranking.
+            {scoredLocally === scores.size ? "Scored locally from prerequisites, shared interests and CGPA."
+              : scoredLocally > 0 ? `Scored by Gemini (${scoredLocally} scored locally).` : "Scored by Gemini."} A guide only: read each application before ranking.
           </div>}
           {rows.loading && !rows.data ? <Loading /> : pool.length === 0 ? (
             <div className="p-4"><Empty title={rows.data?.length ? "Everyone shown is already ranked" : "No students have applied yet"} note={rows.data?.length ? "Clear a filter to see more." : "Applicants appear here as students apply during the round."} /></div>
@@ -98,7 +103,7 @@ export default function Applicants() {
                   <span className="text-[13.5px] font-semibold whitespace-nowrap">{a.student.name}</span>
                   {s && <Pill tone={s.score >= 70 ? "good" : s.score >= 40 ? "accent" : "neutral"} className="tabular">{s.score}</Pill>}
                   {!a.meets_prerequisites && <Pill tone="warn"><I.Warn size={10} /> prerequisite</Pill>}
-                  {a.recommended && <Pill tone="accent">Top 10</Pill>}
+                  {a.recommended && !scores && <Pill tone="accent">Top 10</Pill>}
                 </span>
                 {s && <span title={s.reason} className="block mt-0.5 text-[11.5px] text-muted truncate">{s.reason}</span>}
               </button>
