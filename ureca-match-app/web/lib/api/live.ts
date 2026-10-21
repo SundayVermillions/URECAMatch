@@ -15,7 +15,7 @@ export class LiveClient implements ApiClient {
     const res = await fetch(this.base + path, { method, headers, body: form ?? (body !== undefined ? JSON.stringify(body) : undefined) });
     if (res.status === 204) return undefined as T;
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new M.ApiError(res.status, data.code ?? "error", data.message ?? "Something went wrong.", data.field);
+    if (!res.ok) throw new M.ApiError(res.status, data.code ?? "error", data.message ?? "Something went wrong.", data.field, data.items);
     return data as T;
   }
   private q(params: Record<string, unknown>) {
@@ -32,20 +32,28 @@ export class LiveClient implements ApiClient {
   me = () => this.req<M.Me>("GET", "/me");
   getProfile = () => this.req<M.StudentProfile>("GET", "/me/profile");
   updateProfile = (b: M.ProfileUpdate) => this.req<M.StudentProfile>("PUT", "/me/profile", b);
-  uploadDocument = (file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.Document>("POST", "/me/documents", undefined, f); };
+  uploadDocument = (file: File, kind: M.Document["kind"] = "supporting") => { const f = new FormData(); f.append("file", file); f.append("kind", kind); return this.req<M.Document>("POST", "/me/documents", undefined, f); };
+  deleteDocument = (id: string) => this.req<void>("DELETE", `/me/documents/${id}`);
+  parseTranscript = (file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.TranscriptParse>("POST", "/me/transcript/parse", undefined, f); };
   listUsers = (f: M.UserFilters = {}) => this.req<M.UserListItem[]>("GET", "/admin/users" + this.q(f));
   createUser = (b: M.UserCreate) => this.req<M.User>("POST", "/admin/users", b);
-  updateUser = (id: string, b: M.UserUpdate) => this.req<M.User>("PATCH", `/admin/users/${id}`, b);
-  deactivateUser = (id: string) => this.req<void>("POST", `/admin/users/${id}/deactivate`);
+  updateUser = (id: string, b: M.UserUpdate, confirmCleanup = false) => this.req<M.User>("PATCH", `/admin/users/${id}` + this.q({ confirm_cleanup: confirmCleanup || undefined }), b);
+  deactivateUser = (id: string, confirmCleanup = false) => this.req<void>("POST", `/admin/users/${id}/deactivate` + this.q({ confirm_cleanup: confirmCleanup || undefined }));
 
   browse = (f: M.ListingFilters = {}) => this.req<M.Listing[]>("GET", "/listings" + this.q(f));
   listing = (id: string) => this.req<M.Listing>("GET", `/listings/${id}`);
   supervisors = () => this.req<M.SupervisorSummary[]>("GET", "/supervisors");
+  topics = () => this.req<M.TopicGroup[]>("GET", "/catalog/topics");
+  courses = (q: string, limit?: number) => this.req<M.Course[]>("GET", "/catalog/courses" + this.q({ q, limit }));
+  recommendations = (limit?: number) => this.req<M.Recommendation[]>("GET", "/me/recommendations" + this.q({ limit }));
+  coursesByCode = (codes: string[]) => (codes.length ? this.req<M.Course[]>("GET", "/catalog/courses" + this.q({ codes: codes.join(","), limit: 50 })) : Promise.resolve([]));
   myListings = () => this.req<M.Listing[]>("GET", "/supervisor/listings");
   createListing = (b: M.ListingCreate) => this.req<M.Listing>("POST", "/supervisor/listings", b);
   updateListing = (id: string, b: M.ListingUpdate) => this.req<M.Listing>("PUT", `/supervisor/listings/${id}`, b);
   closeListing = (id: string) => this.req<M.Listing>("POST", `/supervisor/listings/${id}/close`);
   uploadCover = (id: string, file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.Listing>("POST", `/supervisor/listings/${id}/cover`, undefined, f); };
+  addGalleryPhoto = (id: string, file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.Listing>("POST", `/supervisor/listings/${id}/gallery`, undefined, f); };
+  removeGalleryPhoto = (id: string, index: number) => this.req<M.Listing>("DELETE", `/supervisor/listings/${id}/gallery/${index}`);
   propose = (b: M.ProposalCreate) => this.req<M.Proposal>("POST", "/proposals", b);
   myProposals = () => this.req<M.Proposal[]>("GET", "/me/proposals");
   incomingProposals = () => this.req<M.Proposal[]>("GET", "/supervisor/proposals");

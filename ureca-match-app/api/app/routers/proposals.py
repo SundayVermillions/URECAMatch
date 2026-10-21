@@ -21,7 +21,7 @@ from app.models import (
     ProposalStatus,
     Window,
 )
-from app.services import windows
+from app.services import catalog, placement, windows
 from app.services.notify import notify
 
 router = APIRouter(tags=["proposals"])
@@ -39,12 +39,14 @@ def _words(text: str) -> int:
 def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: SettingsDep) -> Proposal:
     if not windows.in_application_window(store.cycle, settings.now()):  # REQ-PROPOSE-3
         raise invalid("window_closed", "Proposals can only be submitted during an application window.")
+    if placement.is_placed(store, user.id):  # one project per cycle (REQ-OUTCOME-1)
+        raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot propose another.")
     # REQ-PROPOSE-2: the recipient must be an active project supervisor.
     sup = store.user(body.supervisor_id)
     if sup is None or store.supervisor(body.supervisor_id) is None or sup.status != AccountStatus.active:
         raise invalid("unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id")
     # REQ-PROPOSE-1: title, description and at least one research interest.
-    interests = [t.strip() for t in body.research_interests if t.strip()]
+    interests = catalog.clean_topics([t for t in body.research_interests if t.strip()], "research_interests")  # standard topics
     if not interests:
         raise invalid("interests_required", "Add at least one research interest.", "research_interests")
     if _words(body.description) > DESCRIPTION_MAX_WORDS:
@@ -138,6 +140,10 @@ def _require_cycle_open(store, settings) -> None:
 def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Proposal:
     p = _get(store, proposal_id, user)
     _require_cycle_open(store, settings)  # REQ-REVPROP-3
+    if placement.is_placed(store, p.student_id):  # the student accepted another project after proposing
+        raise conflict(
+            "already_placed", "This student has already accepted another project, so this proposal can only be declined."
+        )
     now = settings.now()
     p.status, p.decided_at = ProposalStatus.accepted, now
     # REQ-REVPROP-2: register the student. A one-slot listing plus an accepted match makes the
@@ -163,6 +169,19 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
     # would be missing from every round summary and match list).
     upcoming = windows.current_round(store.cycle, now) if store.cycle else None
     round_id = phase.round_id or (upcoming.id if upcoming else "")
+    # The student is placed now, so any other match still holding a slot for them is withdrawn: an open offer
+    # (they can no longer accept it) and any match not yet published. Its slot is released for other students.
+    for m in placement.open_matches(store, p.student_id):
+        m.status, m.student_responded_at = MatchStatus.declined, now
+        notify(
+            store,
+            [m.supervisor_id],
+            NotificationEvent.match_rejected,
+            "A match on your project was withdrawn",
+            f"{p.student_name} accepted a self-proposed project, so their match to {m.listing_title} was withdrawn.",
+            now,
+            "/approvals",
+        )
     # Slice D (matches) and slice C (applications) are still in memory in Supabase mode.
     # TODO(slice D/C): save through the store once those tables are migrated.
     store.matches.append(

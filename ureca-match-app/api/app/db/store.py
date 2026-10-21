@@ -326,6 +326,12 @@ class SupabaseStore(MockStore):
         "offering_faculty",
         "research_location",
         "cover_url",
+        "outcomes",
+        "skills",
+        "hours_per_week",
+        "mode",
+        "gallery_urls",
+        "video_url",
         "status",
         "created_at",
     }

@@ -373,6 +373,82 @@
         }
       }
     },
+    "/me/transcript/parse": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Parse Transcript",
+        "description": "Read CGPA, programme, year and passed modules from a transcript to prefill the profile form. Saves nothing.",
+        "operationId": "parse_transcript_me_transcript_parse_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_parse_transcript_me_transcript_parse_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptParse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/documents": {
       "post": {
         "tags": [
@@ -431,6 +507,80 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/documents/{document_id}": {
+      "delete": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Delete Document",
+        "operationId": "delete_document_me_documents__document_id__delete",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
                 }
               }
             }
@@ -656,6 +806,18 @@
             }
           },
           {
+            "name": "confirm_cleanup",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview.",
+              "default": false,
+              "title": "Confirm Cleanup"
+            },
+            "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview."
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,
@@ -709,6 +871,16 @@
               }
             }
           },
+          "409": {
+            "description": "Last active admin, or the user has open items to clean up first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupWarning"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -738,6 +910,18 @@
               "type": "string",
               "title": "User Id"
             }
+          },
+          {
+            "name": "confirm_cleanup",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview.",
+              "default": false,
+              "title": "Confirm Cleanup"
+            },
+            "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview."
           },
           {
             "name": "authorization",
@@ -779,6 +963,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Last active admin, or the user has open items to clean up first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupWarning"
                 }
               }
             }
@@ -913,6 +1107,88 @@
                     "$ref": "#/components/schemas/Listing"
                   },
                   "title": "Response Browse Listings Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/recommendations": {
+      "get": {
+        "tags": [
+          "listings"
+        ],
+        "summary": "Recommendations",
+        "description": "REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.\nEmpty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).\nProjects already applied to or with no open slot are left out.",
+        "operationId": "recommendations_me_recommendations_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 6,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Recommendation"
+                  },
+                  "title": "Response Recommendations Me Recommendations Get"
                 }
               }
             }
@@ -1435,6 +1711,174 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/supervisor/listings/{listing_id}/gallery": {
+      "post": {
+        "tags": [
+          "listings"
+        ],
+        "summary": "Add Photo",
+        "description": "Add a photo to the listing's gallery (lab, equipment, sample results). Same rules as the cover.",
+        "operationId": "add_photo_supervisor_listings__listing_id__gallery_post",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Listing Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_photo_supervisor_listings__listing_id__gallery_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/supervisor/listings/{listing_id}/gallery/{index}": {
+      "delete": {
+        "tags": [
+          "listings"
+        ],
+        "summary": "Remove Photo",
+        "operationId": "remove_photo_supervisor_listings__listing_id__gallery__index__delete",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Listing Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -4824,6 +5268,177 @@
         }
       }
     },
+    "/catalog/topics": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Topics",
+        "operationId": "topics_catalog_topics_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TopicGroup"
+                  },
+                  "title": "Response Topics Catalog Topics Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/courses": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Courses",
+        "description": "Search by code prefix (\"SC40\") or title words (\"deep learning\"),\nor look up exact codes (\"SC4001,SC3020\") to show their titles. Unknown codes are left out.",
+        "operationId": "courses_catalog_courses_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "codes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Codes"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Course"
+                  },
+                  "title": "Response Courses Catalog Courses Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/debug/clock": {
       "get": {
         "tags": [
@@ -5018,6 +5633,44 @@
           "inactive"
         ],
         "title": "AccountStatus"
+      },
+      "ActiveItem": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ActiveItemKind"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "title"
+        ],
+        "title": "ActiveItem",
+        "description": "Something that is still open for a user, shown before an admin deactivates them or changes their role."
+      },
+      "ActiveItemKind": {
+        "type": "string",
+        "enum": [
+          "listing",
+          "proposal",
+          "application",
+          "match"
+        ],
+        "title": "ActiveItemKind"
       },
       "AdminDashboard": {
         "properties": {
@@ -5224,6 +5877,11 @@
       },
       "ApplicantStudent": {
         "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "default": ""
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -5235,6 +5893,17 @@
           "school": {
             "type": "string",
             "title": "School"
+          },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
           },
           "year_of_study": {
             "anyOf": [
@@ -5466,6 +6135,20 @@
         ],
         "title": "AuditOperation"
       },
+      "Body_add_photo_supervisor_listings__listing_id__gallery_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_add_photo_supervisor_listings__listing_id__gallery_post"
+      },
       "Body_cover_supervisor_listings__listing_id__cover_post": {
         "properties": {
           "file": {
@@ -5480,7 +6163,7 @@
         ],
         "title": "Body_cover_supervisor_listings__listing_id__cover_post"
       },
-      "Body_upload_document_me_documents_post": {
+      "Body_parse_transcript_me_transcript_parse_post": {
         "properties": {
           "file": {
             "type": "string",
@@ -5492,7 +6175,68 @@
         "required": [
           "file"
         ],
+        "title": "Body_parse_transcript_me_transcript_parse_post"
+      },
+      "Body_upload_document_me_documents_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "transcript",
+              "supporting"
+            ],
+            "title": "Kind",
+            "default": "supporting"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
         "title": "Body_upload_document_me_documents_post"
+      },
+      "CleanupWarning": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActiveItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "items"
+        ],
+        "title": "CleanupWarning",
+        "description": "The 409 `has_active_items` body: nothing was changed. Resend with confirm_cleanup=true to close these first."
       },
       "ClockSet": {
         "properties": {
@@ -5532,6 +6276,45 @@
         ],
         "title": "ClockState",
         "description": "Debug clock (developer tool). `enabled` is false when the server has DEBUG_CLOCK off."
+      },
+      "Course": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "au": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Au"
+          },
+          "dept": {
+            "type": "string",
+            "title": "Dept",
+            "default": ""
+          },
+          "last_offered": {
+            "type": "string",
+            "title": "Last Offered",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title"
+        ],
+        "title": "Course"
       },
       "Cycle": {
         "properties": {
@@ -5687,6 +6470,15 @@
             "title": "File Format",
             "default": "pdf"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "transcript",
+              "supporting"
+            ],
+            "title": "Kind",
+            "default": "supporting"
+          },
           "file_size": {
             "type": "integer",
             "title": "File Size"
@@ -5729,6 +6521,30 @@
         ],
         "title": "Document"
       },
+      "FitParts": {
+        "properties": {
+          "interests": {
+            "type": "integer",
+            "title": "Interests"
+          },
+          "readiness": {
+            "type": "integer",
+            "title": "Readiness"
+          },
+          "chance": {
+            "type": "integer",
+            "title": "Chance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "interests",
+          "readiness",
+          "chance"
+        ],
+        "title": "FitParts",
+        "description": "How a recommendation's score is made up (REQ-BROWSE-4). Maximums: 50, 30, 20."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -5744,6 +6560,11 @@
       },
       "Listing": {
         "properties": {
+          "supervisor_email": {
+            "type": "string",
+            "title": "Supervisor Email",
+            "default": ""
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -5807,6 +6628,56 @@
               }
             ],
             "title": "Cover Url"
+          },
+          "outcomes": {
+            "type": "string",
+            "title": "Outcomes",
+            "default": ""
+          },
+          "skills": {
+            "type": "string",
+            "title": "Skills",
+            "default": ""
+          },
+          "hours_per_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours Per Week"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gallery_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gallery Urls",
+            "default": []
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
           },
           "status": {
             "$ref": "#/components/schemas/ListingStatus"
@@ -5895,6 +6766,52 @@
             "type": "string",
             "title": "Research Location"
           },
+          "outcomes": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Outcomes",
+            "default": ""
+          },
+          "skills": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Skills",
+            "default": ""
+          },
+          "hours_per_week": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 40.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours Per Week"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          },
           "publish": {
             "type": "boolean",
             "title": "Publish",
@@ -5910,6 +6827,15 @@
           "research_location"
         ],
         "title": "ListingCreate"
+      },
+      "ListingMode": {
+        "type": "string",
+        "enum": [
+          "on_site",
+          "hybrid",
+          "remote"
+        ],
+        "title": "ListingMode"
       },
       "ListingStatus": {
         "type": "string",
@@ -6006,6 +6932,64 @@
               }
             ],
             "title": "Research Location"
+          },
+          "outcomes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcomes"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "hours_per_week": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 40.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours Per Week"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
           },
           "publish": {
             "anyOf": [
@@ -6431,6 +7415,17 @@
             "type": "string",
             "title": "School"
           },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
+          },
           "cgpa": {
             "type": "number",
             "maximum": 5.0,
@@ -6646,6 +7641,43 @@
           "justification"
         ],
         "title": "ReassignRequest"
+      },
+      "Recommendation": {
+        "properties": {
+          "listing": {
+            "$ref": "#/components/schemas/Listing"
+          },
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "parts": {
+            "$ref": "#/components/schemas/FitParts"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "default": []
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gaps",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "listing",
+          "score",
+          "parts"
+        ],
+        "title": "Recommendation"
       },
       "RegisterRequest": {
         "properties": {
@@ -6967,6 +7999,17 @@
             "type": "string",
             "title": "School"
           },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
+          },
           "cgpa": {
             "anyOf": [
               {
@@ -7110,6 +8153,74 @@
           "faculty"
         ],
         "title": "SupervisorSummary"
+      },
+      "TopicGroup": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Topics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "topics"
+        ],
+        "title": "TopicGroup"
+      },
+      "TranscriptParse": {
+        "properties": {
+          "cgpa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cgpa"
+          },
+          "school": {
+            "type": "string",
+            "title": "School",
+            "default": ""
+          },
+          "degree": {
+            "type": "string",
+            "title": "Degree",
+            "default": ""
+          },
+          "year_of_study": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Of Study"
+          },
+          "completed_modules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Completed Modules",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "TranscriptParse",
+        "description": "What was read from an uploaded transcript. Empty values mean not found; nothing is saved (REQ-PROF-1)."
       },
       "User": {
         "properties": {

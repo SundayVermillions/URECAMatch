@@ -23,6 +23,7 @@ from app.models import (
     CycleStatus,
     Document,
     Listing,
+    ListingMode,
     ListingStatus,
     Match,
     MatchStatus,
@@ -149,24 +150,24 @@ LAST = [
 SCHOOLS = ["CCDS", "CCDS", "CCDS", "EEE", "SBS", "MAE", "SPMS", "NBS"]
 MODULES_BY_SCHOOL = {
     "CCDS": ["SC1015", "SC2001", "SC3020", "SC4001", "SC4002", "CE4041"],
-    "EEE": ["EE2004", "EE3080", "EE4483", "SC1015"],
-    "SBS": ["SB2210", "SB3101", "SB3211"],
-    "MAE": ["MA2007", "MA3005", "MA4826"],
+    "EEE": ["EE2101", "EE3015", "EE4285", "SC1015"],
+    "SBS": ["BS2004", "BS3008", "BS2030"],
+    "MAE": ["MA2007", "MA3005", "MA4012"],
     "SPMS": ["MH1810", "MH3511", "PH2104"],
-    "NBS": ["AB1201", "AB2101", "BC2402"],
+    "NBS": ["AB1201", "AB1202", "BC2402"],
 }
 INTERESTS = [
     "Machine Learning",
     "Computer Vision",
-    "HCI",
+    "Human-Computer Interaction",
     "Healthcare AI",
     "Genomics",
     "Robotics",
-    "NLP",
+    "Natural Language Processing",
     "Statistics",
     "Explainable AI",
     "Energy Systems",
-    "Materials",
+    "Materials Science",
     "Marine Biology",
 ]
 
@@ -203,6 +204,7 @@ def make_users() -> tuple[list[User], list[StudentProfile], list[SupervisorProfi
                         id=f"doc-{uid}-t",
                         owner_id=uid,
                         file_name=f"Transcript_{name.replace(' ', '')}.pdf",
+                        kind="transcript",
                         file_size=rng.randint(180_000, 900_000),
                         uploaded_at=dt(12 + i % 6, 8),
                     ),
@@ -326,7 +328,7 @@ LISTINGS = [
         2,
         "CCDS",
         "N4-02c Lab",
-        "cover-chat",
+        "cover-stethoscope",
     ),
     (
         "lst-3",
@@ -345,7 +347,7 @@ LISTINGS = [
         "sup-2",
         "Microbiome Diversity in Tropical Coral Reefs",
         "Sequence and analyse microbial communities from reef samples collected off Pulau Hantu to link diversity with bleaching resilience.",
-        ["SB2210"],
+        ["BS2004"],
         ["Genomics", "Marine Biology"],
         2,
         "SBS",
@@ -357,19 +359,19 @@ LISTINGS = [
         "sup-2",
         "CRISPR Screening for Antibiotic Resistance Genes",
         "Design a pooled CRISPR knockout screen to identify genes that change antibiotic sensitivity in E. coli.",
-        ["SB3101"],
+        ["BS3008"],
         ["Genomics"],
         2,
         "SBS",
         "SBS-02n-15",
-        "cover-leaf",
+        "cover-petri",
     ),
     (
         "lst-6",
         "sup-3",
         "Solid-State Battery Degradation Modelling",
         "Fit physics-informed degradation models to cycling data and predict remaining useful life for a lab cell.",
-        ["EE3080"],
+        ["EE3015"],
         ["Energy Systems", "Statistics"],
         3,
         "EEE",
@@ -381,12 +383,12 @@ LISTINGS = [
         "sup-3",
         "Low-Power Edge Inference for Wearable ECG",
         "Quantise and deploy an arrhythmia classifier on a microcontroller, then measure latency and battery impact.",
-        ["EE4483", "SC1015"],
+        ["EE4285", "SC1015"],
         ["Machine Learning", "Healthcare AI"],
         2,
         "EEE",
         "S2-B4a-03",
-        "cover-eye",
+        "cover-wearable",
     ),
     (
         "lst-8",
@@ -394,7 +396,7 @@ LISTINGS = [
         "Human-Robot Collaboration in Assistive Environments",
         "Study handover strategies between a collaborative arm and a human in a mock kitchen, measuring safety and comfort.",
         ["MA3005"],
-        ["Robotics", "HCI"],
+        ["Robotics", "Human-Computer Interaction"],
         2,
         "MAE",
         "N3-01a-05",
@@ -406,11 +408,11 @@ LISTINGS = [
         "Soft Gripper Design for Delicate Produce",
         "Iterate silicone finger geometries and evaluate grasp success on fruit of varied firmness.",
         [],
-        ["Robotics", "Materials"],
+        ["Robotics", "Materials Science"],
         1,
         "MAE",
         "N3-01a-05",
-        "cover-robot",
+        "cover-gripper",
     ),
     (
         "lst-10",
@@ -422,7 +424,7 @@ LISTINGS = [
         2,
         "SPMS",
         "SPMS-MAS-04-01",
-        "cover-atom",
+        "cover-haze",
     ),
     (
         "lst-11",
@@ -430,7 +432,7 @@ LISTINGS = [
         "NLP for Low-Resource Southeast Asian Languages",
         "Adapt a multilingual transformer to Malay and Tamil news text with a small annotated corpus and evaluate transfer.",
         ["SC4002"],
-        ["NLP", "Machine Learning"],
+        ["Natural Language Processing", "Machine Learning"],
         2,
         "CCDS",
         "N4-02b Lab",
@@ -446,9 +448,180 @@ LISTINGS = [
         2,
         "CCDS",
         "N4-02b Lab",
-        "cover-leaf",
+        "cover-cinema",
     ),
 ]
+
+
+# Project details for every seeded listing, so the demo shows full project pages. Photos are real images from
+# Wikimedia Commons in web/public/gallery (authors and licences in web/public/gallery/CREDITS.md).
+def _g(lid: str, n: int) -> list[str]:
+    return [f"/gallery/{lid}-{i}.jpg" for i in range(1, n + 1)]
+
+
+DETAILS = {
+    "lst-1": {
+        "outcomes": "\n".join(
+            [
+                "Clean and split a public fundus dataset.",
+                "Train a CNN grader and compare it with a baseline.",
+                "Add saliency maps a clinician can read, and check calibration.",
+                "Write a short report and present a poster.",
+            ]
+        ),
+        "skills": "PyTorch, model evaluation, explainability methods, scientific writing",
+        "hours_per_week": 8,
+        "mode": ListingMode.hybrid,
+        "gallery_urls": _g("lst-1", 3),
+        "video_url": "https://www.youtube.com/watch?v=aircAruvnKk",
+    },
+    "lst-2": {
+        "outcomes": "\n".join(
+            [
+                "Review explanation methods for tabular clinical data.",
+                "Train a risk model on an open clinical dataset.",
+                "Build a small decision-support prototype with SHAP and counterfactual views.",
+                "Run a usability session with two clinicians and report what helped them.",
+            ]
+        ),
+        "skills": "Explainable AI, user studies, Python, Streamlit",
+        "hours_per_week": 6,
+        "mode": ListingMode.on_site,
+        "gallery_urls": _g("lst-2", 2),
+    },
+    "lst-3": {
+        "outcomes": "\n".join(
+            [
+                "Simulate three hospital data silos from a public imaging dataset.",
+                "Implement federated averaging and one privacy defence.",
+                "Measure the accuracy and privacy trade-off.",
+                "Present the results at the lab meeting.",
+            ]
+        ),
+        "skills": "Federated learning, differential privacy, experiment design",
+        "hours_per_week": 10,
+        "mode": ListingMode.remote,
+        "gallery_urls": _g("lst-3", 3),
+    },
+    "lst-4": {
+        "outcomes": "\n".join(
+            [
+                "Join two field trips to collect coral and water samples off Pulau Hantu.",
+                "Extract DNA and prepare 16S amplicon libraries.",
+                "Analyse diversity with QIIME 2 and relate it to bleaching surveys.",
+            ]
+        ),
+        "skills": "Field sampling, DNA extraction, bioinformatics, R",
+        "hours_per_week": 10,
+        "mode": ListingMode.on_site,
+        "gallery_urls": _g("lst-4", 2),
+    },
+    "lst-5": {
+        "outcomes": "\n".join(
+            [
+                "Design a guide RNA library against candidate resistance genes.",
+                "Run the pooled knockout screen under two antibiotics.",
+                "Count guides by sequencing and rank genes by effect.",
+            ]
+        ),
+        "skills": "Molecular cloning, CRISPR screening, sequencing analysis, lab safety",
+        "hours_per_week": 12,
+        "mode": ListingMode.on_site,
+        "gallery_urls": _g("lst-5", 2),
+        "video_url": "https://www.youtube.com/watch?v=jAhjPd4uNFY",
+    },
+    "lst-6": {
+        "outcomes": "\n".join(
+            [
+                "Clean cycling data from coin cells tested in the lab.",
+                "Fit an equivalent-circuit model and a physics-informed degradation model.",
+                "Predict remaining useful life and compare the two models.",
+            ]
+        ),
+        "skills": "Battery modelling, Python, curve fitting, uncertainty estimation",
+        "hours_per_week": 8,
+        "mode": ListingMode.hybrid,
+        "gallery_urls": _g("lst-6", 3),
+    },
+    "lst-7": {
+        "outcomes": "\n".join(
+            [
+                "Train a small arrhythmia classifier on the MIT-BIH dataset.",
+                "Quantise it and deploy it on a microcontroller.",
+                "Measure latency, accuracy and battery drain on the board.",
+            ]
+        ),
+        "skills": "Embedded C, TinyML, signal processing, power measurement",
+        "hours_per_week": 8,
+        "mode": ListingMode.on_site,
+        "gallery_urls": _g("lst-7", 2),
+    },
+    "lst-8": {
+        "outcomes": "\n".join(
+            [
+                "Program three handover strategies on a collaborative robot arm.",
+                "Run a user study with 12 participants in the mock kitchen.",
+                "Analyse safety and comfort ratings and write up the findings.",
+            ]
+        ),
+        "skills": "ROS 2, robot programming, user study design, statistics",
+        "hours_per_week": 10,
+        "mode": ListingMode.on_site,
+        "gallery_urls": _g("lst-8", 2),
+    },
+    "lst-9": {
+        "outcomes": "\n".join(
+            [
+                "Design silicone finger geometries in CAD and cast them.",
+                "Test grasp success on fruit of different firmness.",
+            ]
+        ),
+        "skills": "CAD, moulding and casting, experimental testing",
+        "hours_per_week": 8,
+        "mode": ListingMode.on_site,
+    },
+    "lst-10": {
+        "outcomes": "\n".join(
+            [
+                "Explore a year of air-quality readings and their missing values.",
+                "Build a hierarchical Bayesian model for the gaps.",
+                "Validate it against held-out NEA station data.",
+            ]
+        ),
+        "skills": "Bayesian statistics, Stan or PyMC, spatial data, R or Python",
+        "hours_per_week": 6,
+        "mode": ListingMode.remote,
+        "gallery_urls": _g("lst-10", 2),
+    },
+    "lst-11": {
+        "outcomes": "\n".join(
+            [
+                "Annotate a small corpus of Malay and Tamil news headlines.",
+                "Fine-tune a multilingual transformer on it.",
+                "Test how well it transfers between the two languages.",
+                "Release the corpus and a short report.",
+            ]
+        ),
+        "skills": "NLP, Hugging Face Transformers, annotation design, evaluation",
+        "hours_per_week": 8,
+        "mode": ListingMode.hybrid,
+        "gallery_urls": _g("lst-11", 3),
+        "video_url": "https://www.youtube.com/watch?v=eMlx5fFNoYc",
+    },
+    "lst-12": {
+        "outcomes": "\n".join(
+            [
+                "Train a baseline movie recommender on MovieLens.",
+                "Measure how exposure is shared between popular and niche films.",
+                "Implement two re-ranking methods and compare fairness and accuracy.",
+            ]
+        ),
+        "skills": "Recommender systems, fairness metrics, PyTorch, experiment tracking",
+        "hours_per_week": 6,
+        "mode": ListingMode.remote,
+        "gallery_urls": _g("lst-12", 2),
+    },
+}
 
 
 def make_listings() -> list[Listing]:
@@ -471,6 +644,7 @@ def make_listings() -> list[Listing]:
                 offering_faculty=fac,
                 research_location=loc,
                 cover_url=f"/covers/{cover}.jpg",
+                **DETAILS.get(lid, {}),
                 status=status,
                 created_at=dt(5 + i % 10, 8),
             )

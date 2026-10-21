@@ -6,9 +6,11 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Avatar, Banner, Button, Card, DeadlineChip, Field, Input, Loading, TagInput, Textarea } from "@/components/ui";
+import { TopicPicker } from "@/components/pickers";
+import { Avatar, Banner, Button, Card, DeadlineChip, Field, Input, Loading, Textarea } from "@/components/ui";
 import { ApiError, type Proposal, type SupervisorSummary } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
+import { useStanding } from "@/lib/use-standing";
 
 const DESCRIPTION_MAX_WORDS = 500; // same limits as routers/proposals.py
 const STATEMENT_MAX_WORDS = 300;
@@ -32,6 +34,7 @@ export default function Propose() {
   const [busy, setBusy] = useState(false);
   const err = (k: string) => (error?.field === k ? error.message : null);
   const closed = me?.phase.window !== "application"; // REQ-PROPOSE-3
+  const standing = useStanding(); // placed or ineligible: the form stays readable but cannot be sent
 
   const checks = [
     { label: "Supervisor chosen", ok: !!supervisor },
@@ -40,7 +43,7 @@ export default function Propose() {
     { label: "At least one research interest", ok: interests.length > 0 },
     { label: `Why this supervisor, at least ${MIN_CHARS} characters`, ok: statement.trim().length >= MIN_CHARS && words(statement) <= STATEMENT_MAX_WORDS },
   ];
-  const ready = checks.every((c) => c.ok) && !closed;
+  const ready = checks.every((c) => c.ok) && !closed && !standing.viewOnly && !standing.loading;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +60,9 @@ export default function Propose() {
     <form onSubmit={submit}>
       <PageHeader title="Propose a project" description="Pitch your own research idea directly to a supervisor. If they accept, you are registered to it and leave the matching pool."
         right={me && <DeadlineChip>{me.phase.label}</DeadlineChip>} />
-      {closed && <div className="mb-5"><Banner tone="warn" title="Proposals are closed.">{me?.phase.label}. You can send a proposal during an application window.</Banner></div>}
+      {standing.viewOnly
+        ? <div className="mb-5"><Banner tone={standing.placedIn ? "good" : "warn"} title={standing.placedIn ? "You have a project." : "You cannot propose this cycle."}>{standing.reason}</Banner></div>
+        : closed && <div className="mb-5"><Banner tone="warn" title="Proposals are closed.">{me?.phase.label}. You can send a proposal during an application window.</Banner></div>}
       {error && !error.field && <div className="mb-5"><Banner tone="bad">{error.message}</Banner></div>}
 
       <div className="grid grid-cols-[1fr_300px] gap-6 items-start">
@@ -77,8 +82,8 @@ export default function Propose() {
                 placeholder="What you will build or study, your method, and the deliverable." />
               <WordCount text={description} max={DESCRIPTION_MAX_WORDS} />
             </Field>
-            <Field label="Research interests" error={err("research_interests")} hint="Press Enter or comma to add. Prefilled from your profile.">
-              <TagInput value={interests} onChange={setInterests} invalid={!!err("research_interests")} placeholder="e.g. Machine Learning" />
+            <Field label="Research interests" error={err("research_interests")} hint="Standard topics. Prefilled from your profile.">
+              <TopicPicker value={interests} onChange={setInterests} invalid={!!err("research_interests")} />
             </Field>
           </Section>
 
@@ -125,7 +130,9 @@ export default function Propose() {
           </ul>
           <div className="text-[12.5px] text-faint mt-4">{docIds.length ? `${docIds.length} document${docIds.length > 1 ? "s" : ""} attached` : "No documents attached"}</div>
           <Button type="submit" size="lg" className="w-full mt-4" disabled={!ready || busy}>{busy ? "Sending…" : "Send proposal"}</Button>
-          {closed && <div className="text-[12.5px] text-muted mt-2 text-center">Opens in the next application window.</div>}
+          {standing.viewOnly
+            ? <div className="text-[12.5px] text-muted mt-2 text-center">{standing.placedIn ? "You already have a project this cycle." : "Not available this cycle."}</div>
+            : closed && <div className="text-[12.5px] text-muted mt-2 text-center">Opens in the next application window.</div>}
         </Card>
       </div>
     </form>

@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from app.deps import SettingsDep, StoreDep, StudentUser
 from app.errors import conflict, invalid, not_found
 from app.models import Application, ApplicationCreate, ApplicationStatus, ListingStatus, Ok, PreferenceRankingUpdate
-from app.services import windows
+from app.services import placement, windows
 
 router = APIRouter(tags=["applications"])
 
@@ -37,8 +37,10 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
     sp = store.student(user.id)
     if sp and not sp.profile_complete:  # REQ-APPLY-1 (use case 2-2 precondition 4)
         raise conflict("profile_incomplete", "Complete your profile before applying. Go to My Profile to finish it.")
+    if placement.is_placed(store, user.id):  # one project per cycle, whether from an offer or a proposal
+        raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot apply to another.")
     if sp and not sp.eligible_for_matching:
-        raise conflict("not_eligible", "You declined an earlier offer, so you cannot apply again this cycle.")
+        raise conflict("not_eligible", "You declined or did not answer an earlier offer, so you cannot apply again this cycle.")
     if lst.filled_slots >= lst.available_slots:
         raise conflict("fully_allocated", "All slots on this project are filled.")
     own = {d.id for d in (sp.documents if sp else [])}

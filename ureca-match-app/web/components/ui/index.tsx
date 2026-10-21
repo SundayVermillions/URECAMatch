@@ -90,8 +90,9 @@ export function Chip({ active, children, onClick }: { active?: boolean; children
 /** Compact filter dropdown for toolbars: "School  Any ⌄", opening a popover list with a check on the current choice.
  *  Custom instead of a native <select> so the list is styled consistently; keyboard support is rebuilt:
  *  Enter/Space/↓ opens, ↑/↓ move, Enter selects, Esc or a click outside closes. ARIA listbox roles for screen readers. */
-export function FilterSelect({ label, value, options, onChange, anyLabel = "Any", align = "right" }:
-  { label: string; value: string | undefined; options: string[]; onChange: (v: string | undefined) => void; anyLabel?: string; align?: "left" | "right" }) {
+export function FilterSelect({ label, value, options, onChange, anyLabel = "Any", align = "right", bare = false }:
+  { label: string; value: string | undefined; options: string[]; onChange: (v: string | undefined) => void; anyLabel?: string; align?: "left" | "right";
+    /** No outline, for use inside a toolbar that already has one (Browse search bar). */ bare?: boolean }) {
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0); // highlighted row while open
   const root = useRef<HTMLDivElement>(null);
@@ -127,8 +128,8 @@ export function FilterSelect({ label, value, options, onChange, anyLabel = "Any"
       <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-controls={listId} aria-label={`${label}: ${value ?? anyLabel}`}
         onClick={() => (open ? setOpen(false) : show())} onKeyDown={onKey}
         className={`inline-flex items-center h-10 rounded-pill pl-4 pr-3 text-[13.5px] whitespace-nowrap transition-colors max-w-[260px] ${value
-          ? "bg-accent-soft text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)]"
-          : "bg-surface text-text shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft"}`}>
+          ? `bg-accent-soft text-accent-ink ${bare ? "" : "shadow-[inset_0_0_0_1px_var(--accent-border)]"}`
+          : bare ? "bg-transparent text-text hover:bg-neutral-soft" : "bg-surface text-text shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft"}`}>
         <span className={value ? "text-accent-ink/70" : "text-muted"}>{label}</span>
         <span className="ml-1.5 font-medium truncate">{value ?? anyLabel}</span>
         <span className={`ml-2 shrink-0 transition-transform ${open ? "rotate-180" : ""} ${value ? "text-accent-ink/70" : "text-faint"}`}><I.ChevronDown size={15} /></span>
@@ -282,31 +283,75 @@ export function Modal({ open, onClose, title, children, footer }: { open: boolea
   );
 }
 
-/** Removable tags for lists like topics or course codes. Enter or comma adds; Backspace on an empty field removes the last.
- *  `normalize` can reshape each new tag, e.g. upper-casing course codes. Duplicates (ignoring case) are skipped. */
-export function TagInput({ value, onChange, invalid, placeholder = "Add a tag", normalize = (t: string) => t }:
-  { value: string[]; onChange: (v: string[]) => void; invalid?: boolean; placeholder?: string; normalize?: (t: string) => string }) {
+/** Chips chosen from a list only: typing filters a dropdown, nothing free-typed is added.
+ *  `search` returns the options for the typed text (sync or async); chosen values are hidden from the list.
+ *  Keyboard: ↑/↓ move, Enter picks, Esc closes, Backspace on an empty field removes the last chip. */
+export type PickOption = { value: string; note?: string; group?: string };
+export function TagPicker({ value, onChange, search, invalid, placeholder, idle = "Type to search", none = "No matches" }: {
+  value: string[]; onChange: (v: string[]) => void; search: (q: string) => PickOption[] | Promise<PickOption[]>;
+  invalid?: boolean; placeholder?: string; idle?: string; none?: string;
+}) {
   const [draft, setDraft] = useState("");
-  const add = (t: string) => {
-    const v = normalize(t.trim());
-    if (v && !value.some((x) => x.toLowerCase() === v.toLowerCase())) onChange([...value, v]);
-    setDraft("");
-  };
+  const [open, setOpen] = useState(false);
+  const [options, setOptions] = useState<PickOption[]>([]);
+  const [hi, setHi] = useState(0);
+  const root = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const listId = useId();
+
+  useEffect(() => { // newest query wins; a short pause before async lookups
+    if (!open) return;
+    let alive = true;
+    const run = async () => {
+      const found = await Promise.resolve(search(draft)).catch(() => []);
+      if (alive) { setOptions(found.filter((o) => !value.includes(o.value))); setHi(0); }
+    };
+    const t = setTimeout(run, draft ? 120 : 0);
+    return () => { alive = false; clearTimeout(t); };
+  }, [draft, open, value, search]);
+  useEffect(() => { if (open) root.current?.querySelector(`[data-i="${hi}"]`)?.scrollIntoView({ block: "nearest" }); }, [hi, open]);
+
+  const pick = (o: PickOption) => { onChange([...value, o.value]); setDraft(""); input.current?.focus(); };
+  function onKey(e: React.KeyboardEvent) {
+    if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setHi((h) => Math.min(h + 1, options.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); if (open && options[hi]) pick(options[hi]); }
+    else if (e.key === "Escape") setOpen(false);
+    else if (e.key === "Backspace" && !draft && value.length) onChange(value.slice(0, -1));
+  }
+
   return (
-    <div className={`min-h-10 flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-button border bg-surface transition-shadow focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15 ${invalid ? "border-bad" : "border-border-strong"}`}>
-      {value.map((t) => (
-        <span key={t} className="inline-flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-pill bg-neutral-soft text-[13px] text-text">
-          {t}
-          <button type="button" aria-label={`Remove ${t}`} onClick={() => onChange(value.filter((x) => x !== t))} className="w-5 h-5 rounded-full inline-flex items-center justify-center text-faint hover:text-text hover:bg-black/[0.06]"><I.X size={12} /></button>
-        </span>
-      ))}
-      <input value={draft} onChange={(e) => (e.target.value.endsWith(",") ? add(e.target.value.slice(0, -1)) : setDraft(e.target.value))}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); add(draft); }
-          else if (e.key === "Backspace" && !draft && value.length) onChange(value.slice(0, -1));
-        }}
-        onBlur={() => draft && add(draft)}
-        placeholder={value.length ? "Add another" : placeholder} className="flex-1 min-w-[120px] h-7 px-1.5 outline-none bg-transparent text-[14px]" />
+    <div ref={root} className="relative">
+      <div
+        className={`min-h-10 flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-button border bg-surface transition-shadow focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15 ${invalid ? "border-bad" : "border-border-strong"}`}>
+        {/* The input comes first in the DOM so a wrapping <label> (Field) points at it, not at a chip's remove button. */}
+        <input ref={input} value={draft} role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list"
+          onChange={(e) => { setDraft(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={onKey}
+          onBlur={() => { setOpen(false); setDraft(""); }} // unmatched text is never kept, so it cannot look added
+          placeholder={value.length ? "Add another" : placeholder} className="order-last flex-1 min-w-[140px] h-7 px-1.5 outline-none bg-transparent text-[14px]" />
+        {value.map((t) => (
+          <span key={t} className="inline-flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-pill bg-neutral-soft text-[13px] text-text">
+            {t}
+            <button type="button" aria-label={`Remove ${t}`} onClick={() => onChange(value.filter((x) => x !== t))} className="w-5 h-5 rounded-full inline-flex items-center justify-center text-faint hover:text-text hover:bg-black/[0.06]"><I.X size={12} /></button>
+          </span>
+        ))}
+      </div>
+      {open && (
+        <ul id={listId} role="listbox" onMouseDown={(e) => e.preventDefault()} // keep focus in the input while scrolling or picking
+          className="absolute left-0 right-0 z-20 mt-1.5 max-h-[280px] overflow-y-auto p-1.5 rounded-[14px] bg-surface/95 backdrop-blur-xl shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]">
+          {options.map((o, i) => (
+            <li key={o.value} className="list-none">
+              {o.group && o.group !== options[i - 1]?.group && <div className="px-3 pt-2 pb-1 text-[11.5px] font-semibold text-faint uppercase tracking-[0.04em]">{o.group}</div>}
+              <div data-i={i} role="option" aria-selected={i === hi} onMouseEnter={() => setHi(i)} onClick={() => pick(o)}
+                className={`flex items-baseline gap-2.5 px-3 py-2 rounded-[9px] text-[13.5px] cursor-pointer select-none ${i === hi ? "bg-neutral-soft" : ""}`}>
+                <span className="font-medium shrink-0">{o.value}</span>
+                {o.note && <span className="text-muted truncate">{o.note}</span>}
+              </div>
+            </li>
+          ))}
+          {options.length === 0 && <li className="list-none px-3 py-2 text-[13px] text-faint">{draft.trim() ? none : idle}</li>}
+        </ul>
+      )}
     </div>
   );
 }
@@ -328,6 +373,9 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
     </div>
   );
 }
+
+/** How a project is run (Listing.mode). */
+export const LISTING_MODES: Record<"on_site" | "hybrid" | "remote", string> = { on_site: "On site", hybrid: "Hybrid", remote: "Remote" };
 
 /** A listing is "in high demand" when more than 5 students compete for each open slot. Only this case is flagged. */
 export const isHighDemand = (applicants: number, open: number) => open > 0 && applicants / open > 5;

@@ -107,6 +107,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/transcript/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Transcript
+         * @description Read CGPA, programme, year and passed modules from a transcript to prefill the profile form. Saves nothing.
+         */
+        post: operations["parse_transcript_me_transcript_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/documents": {
         parameters: {
             query?: never;
@@ -119,6 +139,23 @@ export interface paths {
         /** Upload Document */
         post: operations["upload_document_me_documents_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Document */
+        delete: operations["delete_document_me_documents__document_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -189,6 +226,28 @@ export interface paths {
          *     REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive.
          */
         get: operations["browse_listings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recommendations
+         * @description REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.
+         *     Empty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).
+         *     Projects already applied to or with no open slot are left out.
+         */
+        get: operations["recommendations_me_recommendations_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -301,6 +360,43 @@ export interface paths {
          */
         post: operations["cover_supervisor_listings__listing_id__cover_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supervisor/listings/{listing_id}/gallery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Photo
+         * @description Add a photo to the listing's gallery (lab, equipment, sample results). Same rules as the cover.
+         */
+        post: operations["add_photo_supervisor_listings__listing_id__gallery_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supervisor/listings/{listing_id}/gallery/{index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Photo */
+        delete: operations["remove_photo_supervisor_listings__listing_id__gallery__index__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1048,6 +1144,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalog/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Topics */
+        get: operations["topics_catalog_topics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Courses
+         * @description Search by code prefix ("SC40") or title words ("deep learning"),
+         *     or look up exact codes ("SC4001,SC3020") to show their titles. Unknown codes are left out.
+         */
+        get: operations["courses_catalog_courses_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/debug/clock": {
         parameters: {
             query?: never;
@@ -1102,6 +1236,27 @@ export interface components {
          * @enum {string}
          */
         AccountStatus: "pending_verification" | "active" | "inactive";
+        /**
+         * ActiveItem
+         * @description Something that is still open for a user, shown before an admin deactivates them or changes their role.
+         */
+        ActiveItem: {
+            kind: components["schemas"]["ActiveItemKind"];
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+        };
+        /**
+         * ActiveItemKind
+         * @enum {string}
+         */
+        ActiveItemKind: "listing" | "proposal" | "application" | "match";
         /** AdminDashboard */
         AdminDashboard: {
             cycle: components["schemas"]["Cycle"] | null;
@@ -1188,12 +1343,19 @@ export interface components {
         };
         /** ApplicantStudent */
         ApplicantStudent: {
+            /**
+             * Email
+             * @default
+             */
+            email: string;
             /** Id */
             id: string;
             /** Name */
             name: string;
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Year Of Study */
             year_of_study: number | null;
             /** Cgpa */
@@ -1282,8 +1444,18 @@ export interface components {
          * @enum {string}
          */
         AuditOperation: "matching_executed" | "manual_reassignment" | "results_published" | "user_updated" | "user_deactivated" | "cycle_updated";
+        /** Body_add_photo_supervisor_listings__listing_id__gallery_post */
+        Body_add_photo_supervisor_listings__listing_id__gallery_post: {
+            /** File */
+            file: string;
+        };
         /** Body_cover_supervisor_listings__listing_id__cover_post */
         Body_cover_supervisor_listings__listing_id__cover_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_parse_transcript_me_transcript_parse_post */
+        Body_parse_transcript_me_transcript_parse_post: {
             /** File */
             file: string;
         };
@@ -1291,6 +1463,26 @@ export interface components {
         Body_upload_document_me_documents_post: {
             /** File */
             file: string;
+            /**
+             * Kind
+             * @default supporting
+             * @enum {string}
+             */
+            kind: "transcript" | "supporting";
+        };
+        /**
+         * CleanupWarning
+         * @description The 409 `has_active_items` body: nothing was changed. Resend with confirm_cleanup=true to close these first.
+         */
+        CleanupWarning: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Field */
+            field?: string | null;
+            /** Items */
+            items: components["schemas"]["ActiveItem"][];
         };
         /** ClockSet */
         ClockSet: {
@@ -1317,6 +1509,25 @@ export interface components {
              * @default false
              */
             overridden: boolean;
+        };
+        /** Course */
+        Course: {
+            /** Code */
+            code: string;
+            /** Title */
+            title: string;
+            /** Au */
+            au?: number | null;
+            /**
+             * Dept
+             * @default
+             */
+            dept: string;
+            /**
+             * Last Offered
+             * @default
+             */
+            last_offered: string;
         };
         /** Cycle */
         Cycle: {
@@ -1392,6 +1603,12 @@ export interface components {
              * @default pdf
              */
             file_format: string;
+            /**
+             * Kind
+             * @default supporting
+             * @enum {string}
+             */
+            kind: "transcript" | "supporting";
             /** File Size */
             file_size: number;
             /**
@@ -1404,6 +1621,18 @@ export interface components {
             /** Storage Path */
             storage_path?: string | null;
         };
+        /**
+         * FitParts
+         * @description How a recommendation's score is made up (REQ-BROWSE-4). Maximums: 50, 30, 20.
+         */
+        FitParts: {
+            /** Interests */
+            interests: number;
+            /** Readiness */
+            readiness: number;
+            /** Chance */
+            chance: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1411,6 +1640,11 @@ export interface components {
         };
         /** Listing */
         Listing: {
+            /**
+             * Supervisor Email
+             * @default
+             */
+            supervisor_email: string;
             /** Id */
             id: string;
             /** Supervisor Id */
@@ -1444,6 +1678,26 @@ export interface components {
             research_location: string;
             /** Cover Url */
             cover_url?: string | null;
+            /**
+             * Outcomes
+             * @default
+             */
+            outcomes: string;
+            /**
+             * Skills
+             * @default
+             */
+            skills: string;
+            /** Hours Per Week */
+            hours_per_week?: number | null;
+            mode?: components["schemas"]["ListingMode"] | null;
+            /**
+             * Gallery Urls
+             * @default []
+             */
+            gallery_urls: string[];
+            /** Video Url */
+            video_url?: string | null;
             status: components["schemas"]["ListingStatus"];
             /**
              * Created At
@@ -1486,11 +1740,31 @@ export interface components {
             /** Research Location */
             research_location: string;
             /**
+             * Outcomes
+             * @default
+             */
+            outcomes: string;
+            /**
+             * Skills
+             * @default
+             */
+            skills: string;
+            /** Hours Per Week */
+            hours_per_week?: number | null;
+            mode?: components["schemas"]["ListingMode"] | null;
+            /** Video Url */
+            video_url?: string | null;
+            /**
              * Publish
              * @default true
              */
             publish: boolean;
         };
+        /**
+         * ListingMode
+         * @enum {string}
+         */
+        ListingMode: "on_site" | "hybrid" | "remote";
         /**
          * ListingStatus
          * @enum {string}
@@ -1512,6 +1786,15 @@ export interface components {
             offering_faculty?: string | null;
             /** Research Location */
             research_location?: string | null;
+            /** Outcomes */
+            outcomes?: string | null;
+            /** Skills */
+            skills?: string | null;
+            /** Hours Per Week */
+            hours_per_week?: number | null;
+            mode?: components["schemas"]["ListingMode"] | null;
+            /** Video Url */
+            video_url?: string | null;
             /** Publish */
             publish?: boolean | null;
         };
@@ -1645,6 +1928,8 @@ export interface components {
         ProfileUpdate: {
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Cgpa */
             cgpa: number;
             /** Year Of Study */
@@ -1729,6 +2014,23 @@ export interface components {
             listing_id: string;
             /** Justification */
             justification: string;
+        };
+        /** Recommendation */
+        Recommendation: {
+            listing: components["schemas"]["Listing"];
+            /** Score */
+            score: number;
+            parts: components["schemas"]["FitParts"];
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+            /**
+             * Gaps
+             * @default []
+             */
+            gaps: string[];
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -1877,6 +2179,8 @@ export interface components {
             user_id: string;
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Cgpa */
             cgpa?: number | null;
             /** Year Of Study */
@@ -1937,6 +2241,38 @@ export interface components {
             name: string;
             /** Faculty */
             faculty: string;
+        };
+        /** TopicGroup */
+        TopicGroup: {
+            /** Name */
+            name: string;
+            /** Topics */
+            topics: string[];
+        };
+        /**
+         * TranscriptParse
+         * @description What was read from an uploaded transcript. Empty values mean not found; nothing is saved (REQ-PROF-1).
+         */
+        TranscriptParse: {
+            /** Cgpa */
+            cgpa?: number | null;
+            /**
+             * School
+             * @default
+             */
+            school: string;
+            /**
+             * Degree
+             * @default
+             */
+            degree: string;
+            /** Year Of Study */
+            year_of_study?: number | null;
+            /**
+             * Completed Modules
+             * @default []
+             */
+            completed_modules: string[];
         };
         /** User */
         User: {
@@ -2253,6 +2589,42 @@ export interface operations {
             };
         };
     };
+    parse_transcript_me_transcript_parse_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_parse_transcript_me_transcript_parse_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranscriptParse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_document_me_documents_post: {
         parameters: {
             query?: never;
@@ -2276,6 +2648,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Document"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_me_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
                 };
             };
             /** @description Validation Error */
@@ -2363,7 +2769,10 @@ export interface operations {
     };
     update_user_admin_users__user_id__patch: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Close the user's open items first. Without it, a user with open items gets a 409 preview. */
+                confirm_cleanup?: boolean;
+            };
             header?: {
                 authorization?: string | null;
                 "x-demo-user"?: string | null;
@@ -2388,6 +2797,15 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
+            /** @description Last active admin, or the user has open items to clean up first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupWarning"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2401,7 +2819,10 @@ export interface operations {
     };
     deactivate_admin_users__user_id__deactivate_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Close the user's open items first. Without it, a user with open items gets a 409 preview. */
+                confirm_cleanup?: boolean;
+            };
             header?: {
                 authorization?: string | null;
                 "x-demo-user"?: string | null;
@@ -2420,6 +2841,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Last active admin, or the user has open items to clean up first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupWarning"];
                 };
             };
             /** @description Validation Error */
@@ -2457,6 +2887,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Listing"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recommendations_me_recommendations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recommendation"][];
                 };
             };
             /** @description Validation Error */
@@ -2693,6 +3157,79 @@ export interface operations {
                 "multipart/form-data": components["schemas"]["Body_cover_supervisor_listings__listing_id__cover_post"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Listing"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_photo_supervisor_listings__listing_id__gallery_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_add_photo_supervisor_listings__listing_id__gallery_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Listing"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_photo_supervisor_listings__listing_id__gallery__index__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -4224,6 +4761,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupervisorDashboard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    topics_catalog_topics_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopicGroup"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    courses_catalog_courses_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                codes?: string;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"][];
                 };
             };
             /** @description Validation Error */

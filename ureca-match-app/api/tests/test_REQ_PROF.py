@@ -50,7 +50,7 @@ def test_REQ_PROF_1_profile_marked_complete_after_save(client_for):
         "cgpa": 4.5,
         "year_of_study": 3,
         "completed_modules": ["SC2006", "SC2001"],
-        "research_interests": ["Machine Learning", "Software Systems"],
+        "research_interests": ["Machine Learning", "Software Engineering"],
     }
     put_resp = client.put("/me/profile", json=payload)
     assert put_resp.status_code == 200
@@ -66,7 +66,7 @@ def test_REQ_PROF_2_fields_saved(client_for):
         "cgpa": 4.85,
         "year_of_study": 2,
         "completed_modules": ["SC1003", "SC1007"],
-        "research_interests": ["Algorithms", "Distributed Systems"],
+        "research_interests": ["Algorithms and Theory", "Distributed Systems"],
     }
     put_resp = client.put("/me/profile", json=payload)
     assert put_resp.status_code == 200
@@ -78,4 +78,42 @@ def test_REQ_PROF_2_fields_saved(client_for):
     assert data["cgpa"] == 4.85
     assert data["year_of_study"] == 2
     assert data["completed_modules"] == ["SC1003", "SC1007"]
-    assert data["research_interests"] == ["Algorithms", "Distributed Systems"]
+    assert data["research_interests"] == ["Algorithms and Theory", "Distributed Systems"]
+
+
+def _pdf(name: str):
+    return {"file": (name, io.BytesIO(b"%PDF-1.4 x"), "application/pdf")}
+
+
+def _docs(client):
+    return client.get("/me/profile").json()["documents"]
+
+
+def test_REQ_PROF_3_transcript_kind_ignores_file_name(client_for):
+    client = client_for("stu-1")
+    resp = client.post("/me/documents", files=_pdf("abcd.pdf"), data={"kind": "transcript"})
+    assert resp.status_code == 201
+    assert resp.json()["kind"] == "transcript"
+    transcripts = [d for d in _docs(client) if d["kind"] == "transcript"]
+    assert [d["file_name"] for d in transcripts] == ["abcd.pdf"]  # replaced the seeded transcript
+
+
+def test_REQ_PROF_3_default_kind_is_supporting(client_for):
+    client = client_for("stu-1")
+    resp = client.post("/me/documents", files=_pdf("transcript.pdf"))
+    assert resp.json()["kind"] == "supporting"
+
+
+def test_REQ_PROF_3_transcript_does_not_use_supporting_cap(client_for):
+    client = client_for("stu-1")
+    while sum(d["kind"] == "supporting" for d in _docs(client)) < 5:
+        assert client.post("/me/documents", files=_pdf("s.pdf")).status_code == 201
+    assert client.post("/me/documents", files=_pdf("s.pdf")).status_code == 422
+    assert client.post("/me/documents", files=_pdf("t.pdf"), data={"kind": "transcript"}).status_code == 201
+
+
+def test_REQ_PROF_3_delete_transcript_empties_slot(client_for):
+    client = client_for("stu-1")
+    tid = next(d["id"] for d in _docs(client) if d["kind"] == "transcript")
+    assert client.delete(f"/me/documents/{tid}").status_code == 200
+    assert not [d for d in _docs(client) if d["kind"] == "transcript"]

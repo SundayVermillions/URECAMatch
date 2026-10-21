@@ -81,6 +81,13 @@ function ProposalCard({ p, onView, onDecide }: { p: Proposal; onView: () => void
         <Avatar name={p.student_name} size={40} tone="navy" />
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-semibold text-text">{p.student_name}</div>
+          {p.student?.email && (
+            <div className="text-[12.5px] text-accent">
+              <a href={`mailto:${p.student.email}`} className="hover:underline">
+                {p.student.email}
+              </a>
+            </div>
+          )}
           <div className="text-[13px] text-muted">
             {p.student ? <>{p.student.school} · Year {p.student.year_of_study ?? "-"} · CGPA <span className="font-semibold text-text tabular">{p.student.cgpa?.toFixed(2) ?? "-"}</span></> : "Profile not completed"}
           </div>

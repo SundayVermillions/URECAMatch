@@ -29,6 +29,12 @@ async function signIn(page: Page, email: string) {
   await expect(page).not.toHaveURL(/sign-in/);
 }
 
+/** Topic and course pickers only take values from the catalogue, so type and choose the matching option. */
+async function pick(page: Page, label: string, value: string) {
+  await page.getByLabel(label).fill(value);
+  await page.getByRole("option", { name: new RegExp(`^${value}`) }).first().click();
+}
+
 async function expectNotification(page: Page, text: RegExp) {
   await page.goto("/notifications");
   await expect(page.getByText(text).first()).toBeVisible();
@@ -47,8 +53,9 @@ test("one URECA cycle end to end", async ({ page }) => {
     await signIn(page, newStudent.email);
     await page.goto("/profile");
     await page.getByLabel("CGPA").fill("4.2");
-    await page.getByLabel("Research interests").fill("Machine Learning");
-    await page.getByLabel("Completed modules").fill("SC1015, SC2001");
+    await pick(page, "Research interests", "Machine Learning");
+    await pick(page, "Completed modules", "SC1015");
+    await pick(page, "Completed modules", "SC2001");
     await page.locator("input[type=file]").first().setInputFiles("public/sample-transcript.pdf");
     await page.getByRole("button", { name: /save/i }).click();
     await expect(page.getByText("Saved.")).toBeVisible();
@@ -59,8 +66,7 @@ test("one URECA cycle end to end", async ({ page }) => {
     await page.goto("/projects/new");
     await page.getByLabel("Title").fill(listingTitle);
     await page.getByLabel("Description").fill("End-to-end test listing for the full-cycle journey.");
-    await page.getByLabel("Topic tags").fill("Machine Learning");
-    await page.keyboard.press("Enter");
+    await pick(page, "Topic tags", "Machine Learning");
     await page.getByRole("button", { name: /publish/i }).click();
     await expect(page.getByText(listingTitle)).toBeVisible();
 
@@ -128,8 +134,7 @@ test("one URECA cycle end to end", async ({ page }) => {
     await page.getByText("Prof. Daniel Ho").first().click();
     await page.getByLabel("Title").fill(proposalTitle);
     await page.getByLabel("Description").fill("A self-proposed project created by the end-to-end test.");
-    await page.getByLabel("Research interests").fill("Machine Learning");
-    await page.keyboard.press("Enter");
+    await pick(page, "Research interests", "Machine Learning");
     await page.getByLabel("Statement").fill("I would like this supervisor for the project.");
     await page.getByRole("button", { name: /submit|propose/i }).click();
 
