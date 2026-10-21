@@ -1,4 +1,51 @@
 ﻿"use client";
+
+const NTU_DEGREES_BY_SCHOOL: Record<string, string[]> = {
+  CCDS: [
+    "Computer Science",
+    "Data Science & Artificial Intelligence",
+    "Computer Engineering",
+    "AI & Society",
+  ],
+  EEE: [
+    "Electrical & Electronic Engineering",
+    "Information Engineering & Media",
+  ],
+  SBS: [
+    "Biological Sciences",
+    "Biomedical Sciences & BioBusiness",
+    "Biomedical Sciences & Chinese Medicine",
+  ],
+  MAE: [
+    "Mechanical Engineering",
+    "Aerospace Engineering",
+  ],
+  SPMS: [
+    "Mathematical Sciences",
+    "Physics / Applied Physics",
+    "Chemistry & Biological Chemistry",
+    "Mathematics & Computer Science",
+  ],
+  NBS: [
+    "Accountancy",
+    "Business",
+    "Accountancy & Data Science and AI",
+    "Business & Computer Science",
+  ],
+  CEE: [
+    "Civil Engineering",
+    "Environmental Engineering",
+    "Maritime Studies",
+  ],
+  MSE: [
+    "Materials Engineering",
+  ],
+};
+
+const ALL_NTU_DEGREES = Array.from(
+  new Set(Object.values(NTU_DEGREES_BY_SCHOOL).flat())
+).sort();
+
 /** ManageProfile (4.14). REQ-PROF-1..3. Screens: CompleteProfilePage, MyProfilePage, EditProfilePage. */
 import { useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
@@ -17,6 +64,9 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   const [f, setF] = useState(() => ({
     school: p?.school ?? "",
     degree: p?.degree ?? "",
+    isDoubleDegree: (p?.degree?.includes("(Double Degree)") || p?.degree?.includes(" & ")) ?? false,
+    degree1: p?.degree?.split(" & ")[0] ?? "",
+    degree2: p?.degree?.split(" & ")[1]?.replace(" (Double Degree)", "") ?? "",
     cgpa: p?.cgpa?.toString() ?? "",
     year_of_study: p?.year_of_study?.toString() ?? "",
     completed_modules: p?.completed_modules ?? [],
@@ -141,14 +191,62 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                 ))}
               </Select>
             </Field>
-            <Field label="Degree Programme / Major" hint="e.g. Computer Science, Data Science & AI">
-              <Input
+            <Field label="Degree Course" hint={f.school ? `Offered under ${f.school}` : "Select your school first or choose from all programmes"}>
+              <Select
                 id="degree"
-                placeholder="e.g. Computer Science"
-                value={f.degree}
-                onChange={(e) => setF({ ...f, degree: e.target.value })}
-              />
+                value={f.isDoubleDegree ? "Other" : f.degree}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "Other") {
+                    setF({ ...f, isDoubleDegree: true, degree1: f.degree || ALL_NTU_DEGREES[0], degree2: ALL_NTU_DEGREES[1], degree: `${f.degree || ALL_NTU_DEGREES[0]} & ${ALL_NTU_DEGREES[1]} (Double Degree)` });
+                  } else {
+                    setF({ ...f, isDoubleDegree: false, degree: val, degree1: "", degree2: "" });
+                  }
+                }}
+              >
+                <option value="">Choose degree programme</option>
+                {((f.school && NTU_DEGREES_BY_SCHOOL[f.school]) || ALL_NTU_DEGREES).map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+                <option value="Other">Other / Double Degree</option>
+              </Select>
             </Field>
+
+            {f.isDoubleDegree && (
+              <div className="grid grid-cols-2 gap-3 p-3.5 bg-sunken rounded-[10px] border border-border mt-1 mb-2">
+                <Field label="Primary Degree">
+                  <Select
+                    value={f.degree1}
+                    onChange={(e) => {
+                      const d1 = e.target.value;
+                      setF({ ...f, degree1: d1, degree: `${d1} & ${f.degree2 || "Second Major"} (Double Degree)` });
+                    }}
+                  >
+                    <option value="">Select First Degree</option>
+                    {ALL_NTU_DEGREES.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </Select>
+                </Field>
+
+                <Field label="Second Degree / Major">
+                  <Select
+                    value={f.degree2}
+                    onChange={(e) => {
+                      const d2 = e.target.value;
+                      setF({ ...f, degree2: d2, degree: `${f.degree1 || "Primary Degree"} & ${d2} (Double Degree)` });
+                    }}
+                  >
+                    <option value="">Select Second Degree</option>
+                    {ALL_NTU_DEGREES.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+            )}
             <Field label="CGPA" error={err("cgpa")} hint="0.00 to 5.00">
               <Input
                 id="cgpa"
