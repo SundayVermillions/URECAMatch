@@ -30,7 +30,7 @@ def update_profile(body: ProfileUpdate, user: StudentUser, store: StoreDep) -> S
     p = store.student(user.id)
     if p is None:
         raise not_found("Profile")
-    p.school, p.cgpa, p.year_of_study = body.school, body.cgpa, body.year_of_study
+    p.school, p.degree, p.cgpa, p.year_of_study = body.school, body.degree, body.cgpa, body.year_of_study
     p.completed_modules = catalog.clean_courses(body.completed_modules, "completed_modules")  # compared with prerequisites
     p.research_interests = catalog.clean_topics(body.research_interests, "research_interests")
     p.profile_complete = True  # REQ-PROF-1

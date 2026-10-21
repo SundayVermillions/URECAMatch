@@ -1313,6 +1313,8 @@ export interface components {
             name: string;
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Year Of Study */
             year_of_study: number | null;
             /** Cgpa */
@@ -1854,6 +1856,8 @@ export interface components {
         ProfileUpdate: {
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Cgpa */
             cgpa: number;
             /** Year Of Study */
@@ -2103,6 +2107,8 @@ export interface components {
             user_id: string;
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Cgpa */
             cgpa?: number | null;
             /** Year Of Study */

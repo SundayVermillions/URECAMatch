@@ -16,6 +16,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   const mustComplete = useSearchParams().get("complete") === "1";
   const [f, setF] = useState(() => ({
     school: p?.school ?? "",
+    degree: p?.degree ?? "",
     cgpa: p?.cgpa?.toString() ?? "",
     year_of_study: p?.year_of_study?.toString() ?? "",
     completed_modules: p?.completed_modules ?? [],
@@ -40,6 +41,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
       await call((api) =>
         api.updateProfile({
           school: f.school,
+          degree: f.degree || null,
           cgpa: parseFloat(f.cgpa),
           year_of_study: parseInt(f.year_of_study, 10),
           completed_modules: f.completed_modules,
@@ -138,6 +140,14 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                   <option key={s}>{s}</option>
                 ))}
               </Select>
+            </Field>
+            <Field label="Degree Programme / Major" hint="e.g. Computer Science, Data Science & AI">
+              <Input
+                id="degree"
+                placeholder="e.g. Computer Science"
+                value={f.degree}
+                onChange={(e) => setF({ ...f, degree: e.target.value })}
+              />
             </Field>
             <Field label="CGPA" error={err("cgpa")} hint="0.00 to 5.00">
               <Input
