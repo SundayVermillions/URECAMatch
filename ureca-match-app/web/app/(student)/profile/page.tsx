@@ -77,10 +77,16 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   const [busy, setBusy] = useState(false);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
+  const transcriptFile = useRef<HTMLInputElement>(null);
   const err = (k: string) => (error?.field === k ? error.message : null);
 
-  const docCount = (p?.documents ?? []).length;
-  const atMaxDocs = docCount >= 5;
+    const allDocs = p?.documents ?? [];
+  const transcriptDoc = allDocs.find((d) => d.file_name.toLowerCase().includes("transcript"));
+  const supportingDocs = allDocs.filter((d) => d.id !== transcriptDoc?.id);
+  const supportingCount = supportingDocs.length;
+  const atMaxSupporting = supportingCount >= 5;
+  const docCount = allDocs.length;
+  const atMaxDocs = supportingCount >= 5;
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -289,15 +295,87 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
           </div>
         </Card>
         <Card>
-          <div className="flex items-center justify-between mb-2">
-            <span className="eyebrow">Documents</span>
-            <span className="text-[12px] text-muted">{docCount} / 5</span>
+          {/* Dedicated Academic Transcript Slot */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="eyebrow flex items-center gap-1.5">
+                Academic Transcript
+                <span className="text-[10px] uppercase font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded">Required</span>
+              </span>
+            </div>
+            <div className="text-[12.5px] text-muted mb-3">
+              Official NTU transcript (PDF, max 5 MB). Used for CGPA and prerequisite eligibility.
+            </div>
+
+            {transcriptDoc ? (
+              <div className="flex items-center gap-2.5 px-3.5 py-3 border border-border bg-sunken rounded-[9px] text-[12.5px]">
+                <span className="shrink-0 text-accent flex items-center">
+                  <I.File size={16} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium text-text" title={transcriptDoc.file_name}>
+                    {transcriptDoc.file_name}
+                  </div>
+                  <div className="text-[11px] text-muted">
+                    {(transcriptDoc.file_size / 1024).toFixed(0)} KB · uploaded {fmtDate(transcriptDoc.uploaded_at)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => viewDoc(transcriptDoc.id)}
+                    disabled={activeDocId === transcriptDoc.id}
+                    className="px-2.5 py-1 text-[11.5px] font-semibold text-accent border border-accent/25 rounded hover:bg-accent/5 disabled:opacity-50"
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeDoc(transcriptDoc.id)}
+                    disabled={activeDocId === transcriptDoc.id}
+                    className="px-2 py-1 text-[11.5px] font-semibold text-bad hover:underline disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="border border-dashed border-border rounded-[9px] p-4 text-center bg-sunken/40">
+                <input
+                  ref={transcriptFile}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    upload(e);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => transcriptFile.current?.click()}
+                >
+                  <I.Upload size={14} /> Upload Academic Transcript
+                </Button>
+                <div className="text-[11.5px] text-faint mt-1.5">PDF only, max 5 MB</div>
+              </div>
+            )}
           </div>
-          <div className="text-[12.5px] text-muted mb-3">
-            PDF only, up to 5 MB each (max 5 files). Transcript is required; a CV is optional.
-          </div>
+
+          {/* Supporting Documents (Max 5) */}
+          <div className="border-t border-border pt-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="eyebrow">Supporting Documents</span>
+              <span className="text-[12px] text-muted">{supportingCount} / 5</span>
+            </div>
+            <div className="text-[12.5px] text-muted mb-3">
+              Optional supporting files (Resume / CV, certificates, writing samples). PDF only, up to 5 MB each.
+            </div>
           <div className="flex flex-col gap-2 mb-3">
-            {(p?.documents ?? []).map((d) => (
+            {supportingDocs.map((d) => (
               <div
                 key={d.id}
                 className="flex items-center gap-2 px-3 py-2 border border-border rounded-button text-[12.5px]"
@@ -347,7 +425,8 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             </div>
           )}
           {err("file") && <div className="text-[12px] text-bad-ink mt-2">{err("file")}</div>}
-        </Card>
+            </div>
+          </Card>
       </div>
     </form>
   );
