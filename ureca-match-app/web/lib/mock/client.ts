@@ -5,6 +5,7 @@ const mockFileUrls = new Map<string, string>();
 import type { ApiClient } from "../api/client";
 import * as M from "../api/models";
 import { getSession } from "../session";
+import { parseTranscriptFile } from "../transcript";
 import catalogJson from "./catalog.json";
 import seedJson from "./seed.json";
 import { canonicalVideo } from "../video";
@@ -199,6 +200,13 @@ export class MockClient implements ApiClient {
     const s = this.db.students.find((s) => s.user_id === u.id);
     if (!s) throw new M.ApiError(404, "not_found", "Profile not found.");
     s.documents = s.documents.filter((d) => d.id !== id);
+  }
+
+  /** Read in the browser (lib/transcript.ts), as the API does in live mode. Unknown codes are dropped because saving refuses them. */
+  async parseTranscript(file: File): Promise<M.TranscriptParse> {
+    this.need("student");
+    const t = await parseTranscriptFile(file);
+    return { ...t, completed_modules: t.completed_modules.filter((c) => courseCodes.has(c)) };
   }
 
   async uploadDocument(file: File, kind: M.Document["kind"] = "supporting"): Promise<M.Document> {

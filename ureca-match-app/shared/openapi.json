@@ -373,6 +373,82 @@
         }
       }
     },
+    "/me/transcript/parse": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Parse Transcript",
+        "description": "Read CGPA, programme, year and passed modules from a transcript to prefill the profile form. Saves nothing.",
+        "operationId": "parse_transcript_me_transcript_parse_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_parse_transcript_me_transcript_parse_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptParse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/documents": {
       "post": {
         "tags": [
@@ -6005,6 +6081,20 @@
         ],
         "title": "Body_cover_supervisor_listings__listing_id__cover_post"
       },
+      "Body_parse_transcript_me_transcript_parse_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_parse_transcript_me_transcript_parse_post"
+      },
       "Body_upload_document_me_documents_post": {
         "properties": {
           "file": {
@@ -7964,6 +8054,53 @@
           "topics"
         ],
         "title": "TopicGroup"
+      },
+      "TranscriptParse": {
+        "properties": {
+          "cgpa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cgpa"
+          },
+          "school": {
+            "type": "string",
+            "title": "School",
+            "default": ""
+          },
+          "degree": {
+            "type": "string",
+            "title": "Degree",
+            "default": ""
+          },
+          "year_of_study": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Of Study"
+          },
+          "completed_modules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Completed Modules",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "TranscriptParse",
+        "description": "What was read from an uploaded transcript. Empty values mean not found; nothing is saved (REQ-PROF-1)."
       },
       "User": {
         "properties": {
