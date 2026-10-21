@@ -371,7 +371,7 @@ export class MockClient implements ApiClient {
         completed_modules: sp?.completed_modules ?? [],
         research_interests: sp?.research_interests ?? p.research_interests ?? []
       };
-      return { ...p, student, documents: (sp?.documents ?? []).filter((d: any) => (p.document_ids ?? []).includes(d.id)) };
+      return { ...p, student, documents: (sp?.documents ?? []).filter((d) => (p.document_ids ?? []).includes(d.id)) };
     });
   }
   async decideProposal(id: string, accept: boolean, note?: string) {
