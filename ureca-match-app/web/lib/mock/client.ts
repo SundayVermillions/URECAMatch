@@ -112,7 +112,8 @@ export class MockClient implements ApiClient {
   private decorate(l: M.Listing, u: M.User): M.Listing {
     const apps = this.db.applications.filter((a) => a.listing_id === l.id && a.status === "submitted");
     const mine = u.role === "student" ? apps.find((a) => a.student_id === u.id) : undefined;
-    return { ...l, applicant_count: apps.length, applied: !!mine, applied_rank: mine?.preference_rank ?? null };
+    const supervisor_email = l.supervisor_email || this.db.users.find((x) => x.id === l.supervisor_id)?.email || "";
+    return { ...l, supervisor_email, applicant_count: apps.length, applied: !!mine, applied_rank: mine?.preference_rank ?? null };
   }
   private notify(userIds: string[], event: M.NotificationEvent, title: string, message: string, link?: string) {
     for (const uid of userIds) this.db.notifications.push({ id: this.id("ntf"), user_id: uid, event, title, message, created_at: this.iso(), read: false, link: link ?? null });
@@ -274,7 +275,7 @@ export class MockClient implements ApiClient {
     if (b.publish !== false && this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Save this as a draft for the next cycle.");
     this.checkListingText(b.title, b.description);
     const video_url = this.checkDetails(b);
-    const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, title: b.title, description: b.description,
+    const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, supervisor_email: u.email, title: b.title, description: b.description,
       prerequisites: cleanCourses(b.prerequisites ?? [], "prerequisites"), topic_tags: cleanTopics(b.topic_tags ?? [], "topic_tags"), available_slots: b.available_slots, filled_slots: 0,
       offering_faculty: b.offering_faculty, research_location: b.research_location, cover_url: null,
       outcomes: (b.outcomes ?? "").trim(), skills: (b.skills ?? "").trim(), hours_per_week: b.hours_per_week ?? null, mode: b.mode ?? null, gallery_urls: [], video_url,
@@ -359,10 +360,18 @@ export class MockClient implements ApiClient {
     const u = this.need("supervisor");
     return this.db.proposals.filter((p) => p.supervisor_id === u.id).map((p): M.Proposal => {
       const su = this.db.users.find((x) => x.id === p.student_id), sp = this.student(p.student_id);
-      if (!su || !sp) return p;
-      const student: M.ApplicantStudent = { id: su.id, name: su.name, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null,
-        completed_modules: sp.completed_modules ?? [], research_interests: sp.research_interests ?? [] };
-      return { ...p, student, documents: (sp.documents ?? []).filter((d) => (p.document_ids ?? []).includes(d.id)) };
+      if (!su) return p;
+      const student: M.ApplicantStudent = {
+        id: su.id,
+        name: su.name,
+        email: su.email,
+        school: sp?.school || "CCDS",
+        year_of_study: sp?.year_of_study ?? 2,
+        cgpa: sp?.cgpa ?? null,
+        completed_modules: sp?.completed_modules ?? [],
+        research_interests: sp?.research_interests ?? p.research_interests ?? []
+      };
+      return { ...p, student, documents: (sp?.documents ?? []).filter((d: any) => (p.document_ids ?? []).includes(d.id)) };
     });
   }
   async decideProposal(id: string, accept: boolean, note?: string) {
@@ -384,7 +393,7 @@ export class MockClient implements ApiClient {
         this.notify([m.supervisor_id], "match_rejected", "A match on your project was withdrawn",
           `${p.student_name} accepted a self-proposed project, so their match to ${m.listing_title} was withdrawn.`, "/approvals");
       }
-      const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, title: p.title, description: p.description, prerequisites: [], topic_tags: p.research_interests,
+      const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, supervisor_email: u.email, title: p.title, description: p.description, prerequisites: [], topic_tags: p.research_interests,
         available_slots: 1, filled_slots: 1, offering_faculty: this.db.supervisors.find((s) => s.user_id === u.id)?.faculty ?? "", research_location: "", cover_url: null, outcomes: "", skills: "", gallery_urls: [], status: "closed", created_at: this.iso(), applicant_count: 0, applied: false, applied_rank: null };
       this.db.listings.push(l);
       this.db.matches.push({ id: this.id("mt"), round_id: this.phase().round_id ?? this.activeCycle()?.rounds[0]?.id ?? "", student_id: p.student_id, student_name: p.student_name, listing_id: l.id, listing_title: l.title, supervisor_id: u.id, supervisor_name: u.name,
@@ -436,7 +445,7 @@ export class MockClient implements ApiClient {
     return this.db.applications.filter((a) => a.listing_id === listingId && a.status === "submitted" && (!roundId || a.round_id === roundId)).flatMap((a) => {
       const u = this.db.users.find((u) => u.id === a.student_id), sp = this.student(a.student_id);
       if (!u || !sp) return [];
-      return [{ application_id: a.id, student: { id: u.id, name: u.name, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
+      return [{ application_id: a.id, student: { id: u.id, name: u.name, email: u.email, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
         statement: a.statement, submitted_at: a.submitted_at, documents: sp.documents, meets_prerequisites: l.prerequisites.every((m) => sp.completed_modules.includes(m)), recommended: false, rank: null }];
     });
   }
@@ -841,7 +850,7 @@ export class MockClient implements ApiClient {
     if (!su || !sp) throw new M.ApiError(404, "not_found", "Student was not found.");
     const own = this.db.applications.find((x) => x.student_id === m.student_id && x.round_id === m.round_id && x.listing_id === m.listing_id);
     const l = this.db.listings.find((x) => x.id === m.listing_id); const ranking = this.db.applicant_rankings[`${m.listing_id}:${m.round_id}`] ?? [];
-    return { application_id: own?.id ?? "", student: { id: su.id, name: su.name, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
+    return { application_id: own?.id ?? "", student: { id: su.id, name: su.name, email: su.email, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
       statement: own?.statement ?? "", submitted_at: own?.submitted_at ?? m.published_at ?? su.created_at, documents: sp.documents.filter((d) => own?.document_ids.includes(d.id)),
       meets_prerequisites: (l?.prerequisites ?? []).every((p) => sp.completed_modules.includes(p)), recommended: false, rank: own && ranking.includes(own.id) ? ranking.indexOf(own.id) + 1 : null };
   }

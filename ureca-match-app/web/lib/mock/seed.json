@@ -2201,6 +2201,7 @@
   ],
   "listings": [
     {
+      "supervisor_email": "",
       "id": "lst-1",
       "supervisor_id": "sup-1",
       "supervisor_name": "Prof. Marcus Chua",
@@ -2236,6 +2237,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-2",
       "supervisor_id": "sup-1",
       "supervisor_name": "Prof. Marcus Chua",
@@ -2269,6 +2271,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-3",
       "supervisor_id": "sup-1",
       "supervisor_name": "Prof. Marcus Chua",
@@ -2304,6 +2307,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-4",
       "supervisor_id": "sup-2",
       "supervisor_name": "Prof. Daniel Ho",
@@ -2337,6 +2341,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-5",
       "supervisor_id": "sup-2",
       "supervisor_name": "Prof. Daniel Ho",
@@ -2369,6 +2374,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-6",
       "supervisor_id": "sup-3",
       "supervisor_name": "Assoc. Prof. Mei Lin Tan",
@@ -2403,6 +2409,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-7",
       "supervisor_id": "sup-3",
       "supervisor_name": "Assoc. Prof. Mei Lin Tan",
@@ -2437,6 +2444,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-8",
       "supervisor_id": "sup-4",
       "supervisor_name": "Dr. Rajesh Kumar",
@@ -2470,6 +2478,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-9",
       "supervisor_id": "sup-4",
       "supervisor_name": "Dr. Rajesh Kumar",
@@ -2498,6 +2507,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-10",
       "supervisor_id": "sup-5",
       "supervisor_name": "Prof. Sarah Goh",
@@ -2530,6 +2540,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-11",
       "supervisor_id": "sup-6",
       "supervisor_name": "Dr. Hafiz Rahman",
@@ -2564,6 +2575,7 @@
       "applied_rank": null
     },
     {
+      "supervisor_email": "",
       "id": "lst-12",
       "supervisor_id": "sup-6",
       "supervisor_name": "Dr. Hafiz Rahman",

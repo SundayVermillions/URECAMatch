@@ -58,8 +58,17 @@ export default function ProjectDetail() {
           </div>
           <h1 className="mt-1.5 text-[28px] leading-[1.18]">{l.title}</h1>
           <div className="flex items-center gap-2.5 mt-4">
-            <Avatar name={l.supervisor_name} size={30} />
-            <span className="text-[14px] font-medium text-text">{l.supervisor_name}</span>
+            <Avatar name={l.supervisor_name} size={32} />
+            <div>
+              <div className="text-[14px] font-medium text-text">{l.supervisor_name}</div>
+              {l.supervisor_email && (
+                <div className="text-[12.5px] text-accent">
+                  <a href={`mailto:${l.supervisor_email}`} className="hover:underline">
+                    {l.supervisor_email}
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
           {l.topic_tags.length > 0 && <div className="text-[14px] text-muted mt-3">{l.topic_tags.join(" · ")}</div>}
 

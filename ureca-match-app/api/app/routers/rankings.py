@@ -37,6 +37,7 @@ def _applicants(store, listing_id: str, round_id: str | None) -> list[Applicant]
             Applicant(
                 application_id=a.id,
                 student=ApplicantStudent(
+                    email=u.email if u else "",
                     id=u.id,
                     name=u.name,
                     school=sp.school,

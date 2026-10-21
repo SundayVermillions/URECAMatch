@@ -1280,6 +1280,11 @@ export interface components {
         };
         /** ApplicantStudent */
         ApplicantStudent: {
+            /**
+             * Email
+             * @default
+             */
+            email: string;
             /** Id */
             id: string;
             /** Name */
@@ -1527,6 +1532,11 @@ export interface components {
         };
         /** Listing */
         Listing: {
+            /**
+             * Supervisor Email
+             * @default
+             */
+            supervisor_email: string;
             /** Id */
             id: string;
             /** Supervisor Id */
