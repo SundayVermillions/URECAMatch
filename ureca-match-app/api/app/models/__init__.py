@@ -79,6 +79,7 @@ class ProposalStatus(str, Enum):
     submitted = "submitted"
     accepted = "accepted"
     declined = "declined"
+    withdrawn = "withdrawn"  # by the student, or because they were placed or are no longer eligible
 
 
 class MatchStatus(str, Enum):
@@ -357,6 +358,7 @@ class Listing(BaseModel):
     status: ListingStatus
     created_at: datetime
     applicant_count: int = 0
+    held_slots: int = 0  # slots held by matches or offers the student has not answered yet (REQ-PROJ-3)
     applied: bool = False  # for the current student, if any
     applied_rank: int | None = None
 
@@ -391,13 +393,13 @@ class Course(BaseModel):
 
 
 class ListingCreate(BaseModel):
-    title: str = Field(min_length=5)
-    description: str = Field(min_length=20)
+    title: str = Field(min_length=5, max_length=150)
+    description: str = Field(min_length=20, max_length=5000)
     prerequisites: list[str] = []
     topic_tags: list[str] = []
     available_slots: int = Field(ge=1, le=20)
-    offering_faculty: str
-    research_location: str
+    offering_faculty: str = Field(min_length=1, max_length=40)
+    research_location: str = Field(max_length=100)
     outcomes: str = Field(default="", max_length=2000)
     skills: str = Field(default="", max_length=1000)
     hours_per_week: int | None = Field(default=None, ge=1, le=40)
@@ -407,13 +409,13 @@ class ListingCreate(BaseModel):
 
 
 class ListingUpdate(BaseModel):
-    title: str | None = None
-    description: str | None = None
+    title: str | None = Field(default=None, max_length=150)
+    description: str | None = Field(default=None, max_length=5000)
     prerequisites: list[str] | None = None
     topic_tags: list[str] | None = None
     available_slots: int | None = Field(default=None, ge=1, le=20)
-    offering_faculty: str | None = None
-    research_location: str | None = None
+    offering_faculty: str | None = Field(default=None, min_length=1, max_length=40)
+    research_location: str | None = Field(default=None, max_length=100)
     outcomes: str | None = Field(default=None, max_length=2000)
     skills: str | None = Field(default=None, max_length=1000)
     hours_per_week: int | None = Field(default=None, ge=1, le=40)  # sending null clears it
@@ -532,10 +534,10 @@ class Proposal(BaseModel):
 
 class ProposalCreate(BaseModel):
     supervisor_id: str
-    title: str = Field(min_length=5)
-    description: str = Field(min_length=50)
+    title: str = Field(min_length=5, max_length=150)
+    description: str = Field(min_length=50, max_length=6000)  # 500 words
     research_interests: list[str] = []
-    statement: str = Field(min_length=50)
+    statement: str = Field(min_length=50, max_length=3000)  # 300 words
     document_ids: list[str] = []
 
 

@@ -56,6 +56,7 @@ export class LiveClient implements ApiClient {
   removeGalleryPhoto = (id: string, index: number) => this.req<M.Listing>("DELETE", `/supervisor/listings/${id}/gallery/${index}`);
   propose = (b: M.ProposalCreate) => this.req<M.Proposal>("POST", "/proposals", b);
   myProposals = () => this.req<M.Proposal[]>("GET", "/me/proposals");
+  withdrawProposal = (id: string) => this.req<M.Proposal>("POST", `/me/proposals/${id}/withdraw`);
   incomingProposals = () => this.req<M.Proposal[]>("GET", "/supervisor/proposals");
   decideProposal = (id: string, accept: boolean, note?: string) =>
     this.req<M.Proposal>("POST", `/supervisor/proposals/${id}/${accept ? "accept" : "decline"}`, { note });

@@ -11,7 +11,7 @@ import pytest
 from app.settings import get_settings
 from tests.test_REQ_PROJ import new_listing
 
-PNG = ("photo.png", b"\x89PNG fake image bytes", "image/png")
+PNG = ("photo.png", b"\x89PNG\r\n\x1a\n" + b"0" * 64, "image/png")
 
 
 def test_REQ_PROJ_1_details_are_saved_and_shown_to_students(as_supervisor, as_student):

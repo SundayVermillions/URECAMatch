@@ -138,7 +138,11 @@ export class MockClient implements ApiClient {
     const apps = this.db.applications.filter((a) => a.listing_id === l.id && a.status === "submitted");
     const mine = u.role === "student" ? apps.find((a) => a.student_id === u.id) : undefined;
     const supervisor_email = l.supervisor_email || this.db.users.find((x) => x.id === l.supervisor_id)?.email || "";
-    return { ...l, supervisor_email, applicant_count: apps.length, applied: !!mine, applied_rank: mine?.preference_rank ?? null };
+    return { ...l, supervisor_email, applicant_count: apps.length, held_slots: this.heldSlots(l.id), applied: !!mine, applied_rank: mine?.preference_rank ?? null };
+  }
+  /** Matches and offers not yet answered; each holds a slot (mirror of listings._held_slots). */
+  private heldSlots(listingId: string) {
+    return this.db.matches.filter((m) => m.listing_id === listingId && ["proposed", "approved", "reassigned", "published"].includes(m.status)).length;
   }
   private notify(userIds: string[], event: M.NotificationEvent, title: string, message: string, link?: string) {
     for (const uid of userIds) this.db.notifications.push({ id: this.id("ntf"), user_id: uid, event, title, message, created_at: this.iso(), read: false, link: link ?? null });
@@ -451,20 +455,24 @@ export class MockClient implements ApiClient {
     const u = this.need("supervisor");
     if (b.publish !== false && this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Save this as a draft for the next cycle.");
     this.checkListingText(b.title, b.description);
+    this.checkListingLimits(b);
     const video_url = this.checkDetails(b);
     const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, supervisor_email: u.email, title: b.title, description: b.description,
       prerequisites: cleanCourses(b.prerequisites ?? [], "prerequisites"), topic_tags: cleanTopics(b.topic_tags ?? [], "topic_tags"), available_slots: b.available_slots, filled_slots: 0,
       offering_faculty: b.offering_faculty, research_location: b.research_location, cover_url: null,
       outcomes: (b.outcomes ?? "").trim(), skills: (b.skills ?? "").trim(), hours_per_week: b.hours_per_week ?? null, mode: b.mode ?? null, gallery_urls: [], video_url,
-      status: b.publish === false ? "draft" : "published", created_at: this.iso(), applicant_count: 0, applied: false, applied_rank: null };
+      status: b.publish === false ? "draft" : "published", created_at: this.iso(), applicant_count: 0, held_slots: 0, applied: false, applied_rank: null };
     this.db.listings.push(l); return l;
   }
   async updateListing(id: string, b: M.ListingUpdate) {
     const u = this.need("supervisor"); const l = this.listingOr404(id);
     if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
+    if (l.status === "closed") throw new M.ApiError(409, "listing_closed", "This project is closed, so it can no longer be edited.");
     if (this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Listings can no longer be edited."); // REQ-PROJ-2
     this.checkListingText(b.title, b.description);
-    if (b.available_slots != null && b.available_slots < l.filled_slots) throw new M.ApiError(422, "slots_below_matched", `${l.filled_slots} students are already matched. Slots cannot go below that.`, "available_slots");
+    this.checkListingLimits(b);
+    const floor = l.filled_slots + this.heldSlots(l.id); // accepted students plus offers still open (REQ-PROJ-3)
+    if (b.available_slots != null && b.available_slots < floor) throw new M.ApiError(422, "slots_below_matched", `${floor} students are already matched or have an open offer. Slots cannot go below that.`, "available_slots");
     const video_url = this.checkDetails(b);
     const { publish, hours_per_week, mode, video_url: _video, ...changes } = b;
     void _video;
@@ -481,7 +489,7 @@ export class MockClient implements ApiClient {
   async addGalleryPhoto(id: string, file: File) { // same rules as routers/listings.py add_photo()
     const u = this.need("supervisor"); const l = this.editableListing(id, u);
     if ((l.gallery_urls ?? []).length >= 4) throw new M.ApiError(422, "gallery_full", "A project can show up to 4 photos. Remove one first.", "file");
-    this.checkImage(file);
+    await this.checkImage(file);
     l.gallery_urls = [...(l.gallery_urls ?? []), URL.createObjectURL(file)];
     return this.decorate(l, u);
   }
@@ -494,20 +502,46 @@ export class MockClient implements ApiClient {
   private editableListing(id: string, u: M.User) {
     const l = this.listingOr404(id);
     if (l.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Project was not found.");
+    if (l.status === "closed") throw new M.ApiError(409, "listing_closed", "This project is closed, so it can no longer be edited.");
     if (this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Listings can no longer be edited.");
     return l;
   }
-  private checkImage(file: File) {
-    if (!["image/jpeg", "image/png"].includes(file.type)) throw new M.ApiError(422, "not_image", "Upload a JPEG or PNG image.", "file");
+  /** Checked by the file's first bytes, not the label the browser put on it (routers/listings.py _sniff_image). */
+  private async checkImage(file: File) {
     if (file.size > 5 * 1024 * 1024) throw new M.ApiError(422, "too_large", "The image is larger than 5 MB.", "file");
+    const h = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+    const png = h[0] === 0x89 && h[1] === 0x50 && h[2] === 0x4e && h[3] === 0x47;
+    const jpg = h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff;
+    if (!png && !jpg) throw new M.ApiError(422, "not_image", "Upload a JPEG or PNG image.", "file");
+  }
+  private checkListingLimits(b: { title?: string | null; description?: string | null; offering_faculty?: string | null; research_location?: string | null }) {
+    if (b.offering_faculty != null && !b.offering_faculty.trim()) throw new M.ApiError(422, "faculty_required", "Choose the faculty that offers this project.", "offering_faculty");
+    for (const [field, text, max] of [["title", b.title, 150], ["description", b.description, 5000], ["offering_faculty", b.offering_faculty, 40], ["research_location", b.research_location, 100]] as const)
+      if (text != null && text.length > max) throw new M.ApiError(422, "invalid", `Keep this to ${max} characters or fewer.`, field);
   }
   async uploadCover(id: string, file: File) { // same rules as routers/listings.py cover()
     const u = this.need("supervisor"); const l = this.editableListing(id, u);
-    this.checkImage(file);
+    await this.checkImage(file);
     l.cover_url = URL.createObjectURL(file); // lives as long as the tab, like the rest of the mock data
     return this.decorate(l, u);
   }
-  async closeListing(id: string) { const u = this.need("supervisor"); const l = this.listingOr404(id); if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "No access."); l.status = "closed"; return l; }
+  /** Mirror of routers/listings.py close(): applications under review are withdrawn, the student's remaining preferences move up, they are told. */
+  async closeListing(id: string) {
+    const u = this.need("supervisor"); const l = this.listingOr404(id);
+    if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "No access.");
+    if (l.status === "closed") return l;
+    l.status = "closed";
+    const stranded = this.db.applications.filter((a) => a.listing_id === l.id && a.status === "submitted");
+    for (const a of stranded) { a.status = "withdrawn"; a.preference_rank = null; }
+    for (const key of new Set(stranded.map((a) => `${a.student_id}|${a.round_id}`))) {
+      const [sid, rid] = key.split("|");
+      this.db.applications.filter((x) => x.student_id === sid && x.round_id === rid && x.status === "submitted")
+        .sort((x, y) => (x.preference_rank ?? 99) - (y.preference_rank ?? 99)).forEach((x, i) => { x.preference_rank = i + 1; });
+    }
+    for (const a of stranded) this.notify([a.student_id], "proposal_decided", "A project you applied to was closed",
+      `${l.supervisor_name} closed ${l.title}, so your application was withdrawn. Your other preferences moved up.`, "/my-applications");
+    return l;
+  }
   // One project per cycle (mirror of services/placement.py): placed = an accepted match in the active cycle.
   private cycleMatches(studentId: string) {
     const rounds = new Set((this.activeCycle()?.rounds ?? []).map((r) => r.id));
@@ -517,19 +551,28 @@ export class MockClient implements ApiClient {
   async propose(b: M.ProposalCreate) {
     const u = this.need("student"); this.requireApplicationWindow(); // REQ-PROPOSE-3
     if (this.isPlaced(u.id)) throw new M.ApiError(409, "already_placed", "You have already accepted a project this cycle, so you cannot propose another.");
+    if (this.student(u.id)?.eligible_for_matching === false) throw new M.ApiError(409, "not_eligible", "You declined or did not answer an earlier offer, or already have a project, so you cannot propose this cycle.");
     // REQ-PROPOSE-2: an active project supervisor
     const sup = this.db.users.find((x) => x.id === b.supervisor_id);
     if (!sup || sup.role !== "supervisor" || sup.status !== "active") throw new M.ApiError(422, "unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id");
+    if (this.db.proposals.some((q) => q.student_id === u.id && q.supervisor_id === sup.id && q.status === "submitted"))
+      throw new M.ApiError(409, "already_proposed", `You already have a proposal waiting with ${sup.name}. Withdraw it first, or wait for their reply.`);
+    for (const [field, text, max] of [["title", b.title, 150], ["description", b.description, 6000], ["statement", b.statement, 3000]] as const)
+      if (text.length > max) throw new M.ApiError(422, "invalid", `Keep this to ${max} characters or fewer.`, field);
     // REQ-PROPOSE-1: at least one interest, word limits, own documents only (same rules as routers/proposals.py)
     const interests = cleanTopics((b.research_interests ?? []).filter((t) => t.trim()), "research_interests"); // standard topics
     if (!interests.length) throw new M.ApiError(422, "interests_required", "Add at least one research interest.", "research_interests");
+    for (const [field, text, min, msg] of [["title", b.title, 5, "Give the proposal a title of at least 5 characters."], ["description", b.description, 50, "Describe the project in at least 50 characters."],
+      ["statement", b.statement, 50, "Write a statement of at least 50 characters."]] as const) {
+      if (text.trim().length < min) throw new M.ApiError(422, `${field}_too_short`, msg, field);
+    }
     const words = (t: string) => t.split(/\s+/).filter(Boolean).length;
     if (words(b.description) > 500) throw new M.ApiError(422, "too_long", "Keep the description to 500 words or fewer.", "description");
     if (words(b.statement) > 300) throw new M.ApiError(422, "too_long", "Keep this to 300 words or fewer.", "statement");
     const own = new Set((this.student(u.id)?.documents ?? []).map((d) => d.id));
     if ((b.document_ids ?? []).some((d) => !own.has(d))) throw new M.ApiError(422, "unknown_document", "Attach documents from your own profile only.", "document_ids");
-    const p: M.Proposal = { id: this.id("prp"), student_id: u.id, student_name: u.name, supervisor_id: sup.id, supervisor_name: sup.name, title: b.title,
-      description: b.description, research_interests: interests, statement: b.statement, status: "submitted", submitted_at: this.iso(), decided_at: null, document_ids: b.document_ids ?? [], student: null, documents: [] };
+    const p: M.Proposal = { id: this.id("prp"), student_id: u.id, student_name: u.name, supervisor_id: sup.id, supervisor_name: sup.name, title: b.title.trim(),
+      description: b.description.trim(), research_interests: interests, statement: b.statement.trim(), status: "submitted", submitted_at: this.iso(), decided_at: null, document_ids: b.document_ids ?? [], student: null, documents: [] };
     this.db.proposals.push(p); this.notify([sup.id], "proposal_decided", `New proposal from ${u.name}`, p.title, "/proposals"); return p;
   }
   async myProposals() { const u = this.need("student"); return this.db.proposals.filter((p) => p.student_id === u.id); }
@@ -552,6 +595,15 @@ export class MockClient implements ApiClient {
       return { ...p, student, documents: (sp?.documents ?? []).filter((d) => (p.document_ids ?? []).includes(d.id)) };
     });
   }
+  /** The student takes back a proposal the supervisor has not answered yet (routers/proposals.py withdraw()). */
+  async withdrawProposal(id: string) {
+    const u = this.need("student"); const p = this.db.proposals.find((q) => q.id === id);
+    if (!p || p.student_id !== u.id) throw new M.ApiError(404, "not_found", "Proposal was not found.");
+    if (p.status !== "submitted") throw new M.ApiError(409, "already_decided", `This proposal was already ${p.status}, so it can no longer be withdrawn.`);
+    p.status = "withdrawn"; p.decided_at = this.iso();
+    this.notify([p.supervisor_id], "proposal_decided", "A proposal was withdrawn", `${u.name} withdrew their proposal ${p.title}.`, "/proposals");
+    return p;
+  }
   async decideProposal(id: string, accept: boolean, note?: string) {
     const u = this.need("supervisor"); const p = this.db.proposals.find((p) => p.id === id);
     if (!p || p.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Proposal was not found.");
@@ -562,6 +614,8 @@ export class MockClient implements ApiClient {
         throw new M.ApiError(422, "cycle_closed", "The application cycle is not open, so this proposal can no longer be accepted.");
       if (this.isPlaced(p.student_id))
         throw new M.ApiError(409, "already_placed", "This student has already accepted another project, so this proposal can only be declined.");
+      if (this.student(p.student_id)?.eligible_for_matching === false)
+        throw new M.ApiError(409, "not_eligible", "This student declined or did not answer an offer, so this proposal can only be declined.");
     }
     p.status = accept ? "accepted" : "declined"; p.decided_at = this.iso();
     if (accept) {
@@ -572,12 +626,14 @@ export class MockClient implements ApiClient {
           `${p.student_name} accepted a self-proposed project, so their match to ${m.listing_title} was withdrawn.`, "/approvals");
       }
       const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, supervisor_email: u.email, title: p.title, description: p.description, prerequisites: [], topic_tags: p.research_interests,
-        available_slots: 1, filled_slots: 1, offering_faculty: this.db.supervisors.find((s) => s.user_id === u.id)?.faculty ?? "", research_location: "", cover_url: null, outcomes: "", skills: "", gallery_urls: [], status: "closed", created_at: this.iso(), applicant_count: 0, applied: false, applied_rank: null };
+        available_slots: 1, filled_slots: 1, offering_faculty: this.db.supervisors.find((s) => s.user_id === u.id)?.faculty ?? "", research_location: "", cover_url: null, outcomes: "", skills: "", gallery_urls: [], status: "closed", created_at: this.iso(), applicant_count: 0, held_slots: 0, applied: false, applied_rank: null };
       this.db.listings.push(l);
       this.db.matches.push({ id: this.id("mt"), round_id: this.phase().round_id ?? this.activeCycle()?.rounds[0]?.id ?? "", student_id: p.student_id, student_name: p.student_name, listing_id: l.id, listing_title: l.title, supervisor_id: u.id, supervisor_name: u.name,
         status: "accepted", preference_rank: null, supervisor_decided_at: this.iso(), published_at: this.iso(), offer_expires_at: null, student_responded_at: this.iso(), original_listing_id: null, justification: null });
       for (const a of this.db.applications) if (a.student_id === p.student_id && a.status === "submitted") a.status = "withdrawn";
       const sp = this.student(p.student_id); if (sp) sp.eligible_for_matching = false;
+      // The student is placed, so their other proposals still waiting for a supervisor are withdrawn.
+      this.withdrawPendingProposals(p.student_id, "was registered to another project");
     }
     this.notify([p.student_id], "proposal_decided", accept ? "Your proposal was accepted" : "Your proposal was declined", `${u.name} ${accept ? "accepted" : "declined"} ${p.title}.${note ? ` Note: ${note}` : ""}`, "/my-applications");
     return p;
@@ -799,7 +855,18 @@ export class MockClient implements ApiClient {
     if (this.openSlots(l) === 0) throw new M.ApiError(422, "no_slot", "That project has no open slot.", "listing_id");
     return l;
   }
-  private markIneligible(studentId: string) { const sp = this.student(studentId); if (sp) sp.eligible_for_matching = false; }
+  /** The student leaves the rest of the cycle (REQ-OUTCOME-1, 2, 4). Mirror of matching._mark_ineligible. */
+  private markIneligible(studentId: string, reason: string) {
+    const sp = this.student(studentId); if (sp) sp.eligible_for_matching = false;
+    this.withdrawPendingProposals(studentId, reason);
+  }
+  /** Proposals still waiting become withdrawn and each supervisor is told (mirror of placement.withdraw_pending_proposals). */
+  private withdrawPendingProposals(studentId: string, reason: string) {
+    for (const q of this.db.proposals.filter((x) => x.student_id === studentId && x.status === "submitted")) {
+      q.status = "withdrawn"; q.decided_at = this.iso();
+      this.notify([q.supervisor_id], "proposal_decided", "A proposal was withdrawn", `${q.student_name} ${reason}, so their proposal ${q.title} was withdrawn.`, "/proposals");
+    }
+  }
   // mirror of _offer_deadline, _late_offer_deadline, _offer_now and _expire_offers in routers/matching.py
   private offerDeadline(r: M.Round) { const c = this.activeCycle()!; return c.rounds.find((x) => x.number === r.number + 1)?.review_start ?? c.closing_date; }
   private lateOfferDeadline(r: M.Round) {
@@ -814,7 +881,7 @@ export class MockClient implements ApiClient {
     this.notify([m.student_id], "offer_received", "You have a match offer", `Respond by ${when(deadline)}.`, "/my-applications");
   }
   private expireOffers() {
-    for (const m of this.db.matches) if (m.status === "published" && m.offer_expires_at && this.now.getTime() > Date.parse(m.offer_expires_at)) { m.status = "timed_out"; this.markIneligible(m.student_id); }
+    for (const m of this.db.matches) if (m.status === "published" && m.offer_expires_at && this.now.getTime() > Date.parse(m.offer_expires_at)) { m.status = "timed_out"; this.markIneligible(m.student_id, "did not answer a match offer in time"); }
   }
   async execute(roundId: string) {
     const a = this.need("admin"); const r = this.round(roundId);
@@ -981,16 +1048,11 @@ export class MockClient implements ApiClient {
     if (!m || m.status !== "published") throw new M.ApiError(409, "no_offer", "There is no open offer to respond to.");
     if (accept && this.isPlaced(u.id)) throw new M.ApiError(409, "already_placed", "You have already accepted a project this cycle, so you cannot accept this offer.");
     m.status = accept ? "accepted" : "declined"; m.student_responded_at = this.iso();
-    this.markIneligible(u.id); // REQ-OUTCOME-1 (placed) and REQ-OUTCOME-2 (declined)
+    this.markIneligible(u.id, accept ? "accepted a match offer" : "declined a match offer"); // REQ-OUTCOME-1 (placed) and REQ-OUTCOME-2 (declined)
     if (accept) {
       const l = this.db.listings.find((l) => l.id === m.listing_id); if (l) l.filled_slots += 1;
       // use case 2-5: accepting closes the student's other open applications
       for (const x of this.db.applications) if (x.student_id === u.id && x.status === "submitted") { x.status = "withdrawn"; x.preference_rank = null; }
-      // and declines proposals still waiting for a supervisor, telling each supervisor
-      for (const p of this.db.proposals) if (p.student_id === u.id && p.status === "submitted") {
-        p.status = "declined"; p.decided_at = this.iso();
-        this.notify([p.supervisor_id], "proposal_decided", "A proposal was withdrawn", `${u.name} accepted a match offer, so their proposal ${p.title} was withdrawn.`, "/proposals");
-      }
     }
     return m;
   }
