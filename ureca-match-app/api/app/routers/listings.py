@@ -12,6 +12,7 @@ from app.deps import CurrentUser, SettingsDep, StoreDep, StudentUser, Supervisor
 from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
     AccountStatus,
+    Application,
     ApplicationStatus,
     Listing,
     ListingCreate,
@@ -30,9 +31,20 @@ from app.services.storage import get_storage
 router = APIRouter(tags=["listings"])
 
 
-def _decorate(lst: Listing, store, user) -> Listing:
-    """Attach per-viewer fields (applied, rank, applicant count) without mutating the stored row."""
-    apps = [a for a in store.applications if a.listing_id == lst.id and a.status.value == "submitted"]
+def _submitted_by_listing(store) -> dict[str, list[Application]]:
+    """Applications under review, grouped by project. Read through applications_for(), which is the database in Supabase
+    mode (store.applications is only the in-memory seed there), and read once so Browse does not query once per card."""
+    out: dict[str, list[Application]] = {}
+    for a in store.applications_for():
+        if a.status == ApplicationStatus.submitted:
+            out.setdefault(a.listing_id, []).append(a)
+    return out
+
+
+def _decorate(lst: Listing, store, user, by_listing: dict[str, list[Application]] | None = None) -> Listing:
+    """Attach per-viewer fields (applied, rank, applicant count) without mutating the stored row.
+    Pass `by_listing` when decorating many projects, so the applications are read once."""
+    apps = (by_listing if by_listing is not None else _submitted_by_listing(store)).get(lst.id, [])
     mine = next((a for a in apps if a.student_id == user.id), None) if user.role == Role.student else None
     return lst.model_copy(
         update={
@@ -62,6 +74,7 @@ def browse(
     """REQ-BROWSE-1: open in every phase, including before the cycle opens.
     REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive."""
     out = []
+    by_listing = _submitted_by_listing(store)
     for lst in store.all_listings():
         if lst.status != ListingStatus.published:  # REQ-BROWSE-3
             continue
@@ -74,7 +87,7 @@ def browse(
             continue
         if supervisor and supervisor.lower() not in lst.supervisor_name.lower():
             continue
-        out.append(_decorate(lst, store, user))
+        out.append(_decorate(lst, store, user, by_listing))
     return out
 
 
@@ -86,9 +99,12 @@ def recommendations(user: StudentUser, store: StoreDep, limit: int = Query(defau
     sp = store.student(user.id)
     if sp is None or not sp.research_interests or not sp.eligible_for_matching or placement.is_placed(store, user.id):
         return []
+    by_listing = _submitted_by_listing(store)
     open_listings = [
         d
-        for d in (_decorate(lst, store, user) for lst in store.all_listings() if lst.status == ListingStatus.published)
+        for d in (
+            _decorate(lst, store, user, by_listing) for lst in store.all_listings() if lst.status == ListingStatus.published
+        )
         if not d.applied and d.filled_slots < d.available_slots
     ]
     return recommend.recommend(open_listings, sp, limit)
@@ -115,7 +131,8 @@ def supervisors(user: CurrentUser, store: StoreDep) -> list[SupervisorSummary]:
 
 @router.get("/supervisor/listings", response_model=list[Listing])
 def my_listings(user: SupervisorUser, store: StoreDep) -> list[Listing]:
-    return [_decorate(lst, store, user) for lst in store.all_listings() if lst.supervisor_id == user.id]
+    by_listing = _submitted_by_listing(store)
+    return [_decorate(lst, store, user, by_listing) for lst in store.all_listings() if lst.supervisor_id == user.id]
 
 
 @router.post("/supervisor/listings", response_model=Listing, status_code=201)
@@ -218,7 +235,7 @@ def close(listing_id: str, user: SupervisorUser, store: StoreDep, settings: Sett
     lst.status = ListingStatus.closed
     store.save_listing(lst)
     now = settings.now()
-    stranded = [a for a in store.applications if a.listing_id == lst.id and a.status == ApplicationStatus.submitted]
+    stranded = [a for a in store.applications_for(listing_id=lst.id) if a.status == ApplicationStatus.submitted]
     for a in stranded:
         a.status, a.preference_rank = ApplicationStatus.withdrawn, None
     changed = list(stranded)

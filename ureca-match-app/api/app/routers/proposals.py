@@ -246,9 +246,11 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
             student_responded_at=now,
         )
     )
-    for a in store.applications:
-        if a.student_id == p.student_id and a.status == ApplicationStatus.submitted:
-            a.status = ApplicationStatus.withdrawn
+    # Read and saved through the store, so in Supabase mode these are the student's real applications, not the seed list.
+    open_applications = [a for a in store.applications_for(student_id=p.student_id) if a.status == ApplicationStatus.submitted]
+    for a in open_applications:
+        a.status, a.preference_rank = ApplicationStatus.withdrawn, None
+    store.save_applications(*open_applications)
     sp = store.student(p.student_id)
     if sp:
         sp.eligible_for_matching = False
