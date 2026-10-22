@@ -24,7 +24,6 @@ from app.models import (
     MatchStatus,
     NotificationEvent,
     Ok,
-    ProposalStatus,
     ReassignRequest,
     Role,
     RoundStatus,
@@ -238,7 +237,7 @@ def _expire_offers(store, now) -> None:
     for m in store.matches:
         if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at:
             m.status = MatchStatus.timed_out
-            _mark_ineligible(store, m.student_id)
+            _mark_ineligible(store, m.student_id, now, "did not answer a match offer in time")
 
 
 def _assignable_listing(store, listing_id: str):
@@ -592,35 +591,23 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     if lst:
         lst.filled_slots += 1
         store.save_listing(lst)
-    _mark_ineligible(store, user.id)  # placed: exclude from later rounds (REQ-OUTCOME-1)
+    # placed: exclude from later rounds (REQ-OUTCOME-1), and withdraw any proposal still waiting
+    _mark_ineligible(store, user.id, settings.now(), "accepted a match offer")
     # Use case 2-5: accepting closes the student's other open applications.
     others = [a for a in store.applications_for(student_id=user.id) if a.status == ApplicationStatus.submitted]
     for a in others:
         a.status, a.preference_rank = ApplicationStatus.withdrawn, None
     store.save_applications(*others)
-    # The same goes for proposals still waiting for a supervisor: they are declined, and each supervisor is told.
-    now = settings.now()
-    for p in store.proposals_for(student_id=user.id):
-        if p.status == ProposalStatus.submitted:
-            p.status, p.decided_at = ProposalStatus.declined, now
-            store.save_proposal(p)
-            notify(
-                store,
-                [p.supervisor_id],
-                NotificationEvent.proposal_decided,
-                "A proposal was withdrawn",
-                f"{user.name} accepted a match offer, so their proposal {p.title} was withdrawn.",
-                now,
-                "/proposals",
-            )
     return m
 
 
-def _mark_ineligible(store, student_id: str) -> None:
+def _mark_ineligible(store, student_id: str, now, reason: str) -> None:
+    """The student leaves the rest of the cycle (REQ-OUTCOME-1, 2, 4). Proposals still waiting are withdrawn with them."""
     sp = store.student(student_id)
     if sp and sp.eligible_for_matching:
         sp.eligible_for_matching = False
         store.save_student(sp)
+    placement.withdraw_pending_proposals(store, student_id, now, reason)
 
 
 @router.post("/me/match/decline", response_model=Match)
@@ -629,7 +616,7 @@ def decline_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> 
     if m is None or m.status != MatchStatus.published:
         raise conflict("no_offer", "There is no open offer to respond to.")
     m.status, m.student_responded_at = MatchStatus.declined, settings.now()  # REQ-OUTCOME-2
-    _mark_ineligible(store, user.id)
+    _mark_ineligible(store, user.id, settings.now(), "declined a match offer")
     return m
 
 

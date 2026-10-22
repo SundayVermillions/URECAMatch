@@ -16,7 +16,7 @@ export default function MyApplications() {
   const offer = useApi((api) => api.myMatch(), []);
   const cycle = useApi((api) => api.cycle(), []); // to name the round the offer came from
   const proposals = useApi((api) => api.myProposals(), []);
-  const [confirm, setConfirm] = useState<"accept" | "decline" | "withdraw" | null>(null);
+  const [confirm, setConfirm] = useState<"accept" | "decline" | "withdraw" | "withdraw-proposal" | null>(null);
   const [target, setTarget] = useState<string | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState(false);
@@ -34,6 +34,10 @@ export default function MyApplications() {
   async function withdraw() {
     if (!target) return;
     try { await call((api) => api.withdraw(target)); apps.reload(); } catch (e) { setError(e as ApiError); } finally { setConfirm(null); }
+  }
+  async function withdrawProposal() {
+    if (!target) return;
+    try { await call((api) => api.withdrawProposal(target)); proposals.reload(); } catch (e) { setError(e as ApiError); } finally { setConfirm(null); }
   }
   async function respond(accept: boolean) {
     try { offer.setData(await call((api) => api.respondToOffer(accept))); await refresh(); } catch (e) { setError(e as ApiError); } finally { setConfirm(null); }
@@ -116,6 +120,9 @@ export default function MyApplications() {
             <div key={p.id} className="bg-surface border border-border rounded-row flex items-center gap-3 px-3 py-2.5">
               <div className="flex-1 min-w-0"><div className="text-[13.5px] font-semibold truncate">{p.title}</div><div className="text-[12px] text-muted">to {p.supervisor_name} · sent {fmtDate(p.submitted_at)}</div></div>
               <Status value={p.status} />
+              {p.status === "submitted" && ( // only until the supervisor answers
+                <Button size="sm" variant="secondary" onClick={() => { setTarget(p.id); setConfirm("withdraw-proposal"); }}>Withdraw</Button>
+              )}
             </div>
           ))}
         </div>
@@ -128,6 +135,10 @@ export default function MyApplications() {
       <Modal open={confirm === "decline"} onClose={() => setConfirm(null)} title="Decline this offer?"
         footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Keep offer</Button><Button variant="destructive" onClick={() => respond(false)}>Decline</Button></>}>
         Your slot in {m?.listing_title} reopens for other students. You will not be eligible for any later round this cycle.
+      </Modal>
+      <Modal open={confirm === "withdraw-proposal"} onClose={() => setConfirm(null)} title="Withdraw this proposal?"
+        footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Keep it</Button><Button variant="destructive" onClick={withdrawProposal}>Withdraw</Button></>}>
+        The supervisor has not answered yet, so you can still take it back. Once they accept it, it cannot be changed or withdrawn. You can send a new proposal while the window is open.
       </Modal>
       <Modal open={confirm === "withdraw"} onClose={() => setConfirm(null)} title="Withdraw this application?"
         footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={withdraw}>Withdraw</Button></>}>

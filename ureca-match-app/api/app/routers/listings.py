@@ -9,19 +9,22 @@ from uuid import uuid4
 from fastapi import APIRouter, File, Query, UploadFile
 
 from app.deps import CurrentUser, SettingsDep, StoreDep, StudentUser, SupervisorUser
-from app.errors import forbidden, invalid, not_found
+from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
     AccountStatus,
+    ApplicationStatus,
     Listing,
     ListingCreate,
     ListingStatus,
     ListingUpdate,
+    NotificationEvent,
     Ok,
     Recommendation,
     Role,
     SupervisorSummary,
 )
 from app.services import catalog, placement, recommend, windows
+from app.services.notify import notify
 from app.services.storage import get_storage
 
 router = APIRouter(tags=["listings"])
@@ -121,6 +124,7 @@ def create(body: ListingCreate, user: SupervisorUser, store: StoreDep, settings:
     if body.publish and _cycle_closed(store, settings):
         raise invalid("cycle_closed", "The application cycle has closed. Save this as a draft for the next cycle.")
     _check_text(body.title, body.description)
+    _check_faculty(body.offering_faculty)
     lst = Listing(
         id=store.next_id("lst"),
         supervisor_id=user.id,
@@ -150,9 +154,12 @@ def update(listing_id: str, body: ListingUpdate, user: SupervisorUser, store: St
         raise not_found("Project")
     if lst.supervisor_id != user.id:
         raise forbidden()
+    if lst.status == ListingStatus.closed:
+        raise conflict("listing_closed", "This project is closed, so it can no longer be edited.")
     if _cycle_closed(store, settings):  # REQ-PROJ-2
         raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
     _check_text(body.title, body.description)
+    _check_faculty(body.offering_faculty)
     # REQ-PROJ-3: never below the students who accepted plus the offers still open. Otherwise those offers could be
     # accepted into a project that has no room, leaving it over capacity.
     floor = lst.filled_slots + _held_slots(lst, store)
@@ -184,6 +191,11 @@ def _cycle_closed(store, settings) -> bool:
     return bool(store.cycle and settings.now() > store.cycle.closing_date)
 
 
+def _check_faculty(faculty: str | None) -> None:
+    if faculty is not None and not faculty.strip():
+        raise invalid("faculty_required", "Choose the faculty that offers this project.", "offering_faculty")
+
+
 def _check_text(title: str | None, description: str | None) -> None:
     """Same minimums as ListingCreate, checked after trimming spaces so a title of spaces is rejected too."""
     if title is not None and len(title.strip()) < 5:
@@ -193,14 +205,44 @@ def _check_text(title: str | None, description: str | None) -> None:
 
 
 @router.post("/supervisor/listings/{listing_id}/close", response_model=Listing)
-def close(listing_id: str, user: SupervisorUser, store: StoreDep) -> Listing:
+def close(listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Listing:
+    """Closing hides the project from students and keeps its matches. Applications still under review are withdrawn
+    (a closed project cannot be matched), each affected student's remaining preferences move up, and they are told."""
     lst = store.listing(listing_id)
     if lst is None:
         raise not_found("Project")
     if lst.supervisor_id != user.id:
         raise forbidden()
+    if lst.status == ListingStatus.closed:
+        return lst
     lst.status = ListingStatus.closed
-    return store.save_listing(lst)
+    store.save_listing(lst)
+    now = settings.now()
+    stranded = [a for a in store.applications if a.listing_id == lst.id and a.status == ApplicationStatus.submitted]
+    for a in stranded:
+        a.status, a.preference_rank = ApplicationStatus.withdrawn, None
+    changed = list(stranded)
+    for student_id, round_id in {(a.student_id, a.round_id) for a in stranded}:
+        active = [
+            x for x in store.applications_for(student_id=student_id, round_id=round_id) if x.status == ApplicationStatus.submitted
+        ]
+        left = sorted(active, key=lambda x: x.preference_rank or 99)
+        for i, x in enumerate(left, start=1):
+            x.preference_rank = i
+        changed += left
+    if changed:
+        store.save_applications(*changed)
+    for a in stranded:
+        notify(
+            store,
+            [a.student_id],
+            NotificationEvent.proposal_decided,
+            "A project you applied to was closed",
+            f"{lst.supervisor_name} closed {lst.title}, so your application was withdrawn. Your other preferences moved up.",
+            now,
+            "/my-applications",
+        )
+    return lst
 
 
 @router.post("/supervisor/listings/{listing_id}/cover", response_model=Listing)
@@ -244,18 +286,29 @@ def _editable(listing_id: str, user, store, settings) -> Listing:
     lst = store.listing(listing_id)
     if lst is None or lst.supervisor_id != user.id:
         raise not_found("Project")
+    if lst.status == ListingStatus.closed:
+        raise conflict("listing_closed", "This project is closed, so it can no longer be edited.")
     if _cycle_closed(store, settings):
         raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
     return lst
 
 
+def _sniff_image(data: bytes) -> str | None:
+    """What the bytes really are, whatever the upload says. The covers bucket is public, so only real images go in."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    return None
+
+
 async def _read_image(file: UploadFile) -> tuple[bytes, str]:
-    content_type = file.content_type or ""
-    if content_type not in IMAGE_TYPES:
-        raise invalid("not_image", "Upload a JPEG or PNG image.", "file")
-    data = await file.read()
+    data = await file.read(MAX_IMAGE_BYTES + 1)  # never read more than the limit allows
     if len(data) > MAX_IMAGE_BYTES:
         raise invalid("too_large", "The image is larger than 5 MB.", "file")
+    content_type = _sniff_image(data)
+    if content_type is None:
+        raise invalid("not_image", "Upload a JPEG or PNG image.", "file")
     return data, content_type
 
 

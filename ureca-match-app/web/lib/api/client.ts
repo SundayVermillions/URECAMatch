@@ -37,6 +37,7 @@ export interface ApiClient {
   propose(body: M.ProposalCreate): Promise<M.Proposal>;
   myProposals(): Promise<M.Proposal[]>;
   incomingProposals(): Promise<M.Proposal[]>;
+  withdrawProposal(id: string): Promise<M.Proposal>;
   decideProposal(id: string, accept: boolean, note?: string): Promise<M.Proposal>;
   // slice C
   myApplications(): Promise<M.Application[]>;

@@ -41,14 +41,34 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
         raise invalid("window_closed", "Proposals can only be submitted during an application window.")
     if placement.is_placed(store, user.id):  # one project per cycle (REQ-OUTCOME-1)
         raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot propose another.")
+    sp = store.student(user.id)
+    if (
+        sp and not sp.eligible_for_matching
+    ):  # declined or missed an offer, or placed (the flag outlives a restart in Supabase mode)
+        raise conflict(
+            "not_eligible",
+            "You declined or did not answer an earlier offer, or already have a project, so you cannot propose this cycle.",
+        )
     # REQ-PROPOSE-2: the recipient must be an active project supervisor.
     sup = store.user(body.supervisor_id)
     if sup is None or store.supervisor(body.supervisor_id) is None or sup.status != AccountStatus.active:
         raise invalid("unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id")
+    if any(q.supervisor_id == sup.id and q.status == ProposalStatus.submitted for q in store.proposals_for(student_id=user.id)):
+        raise conflict(
+            "already_proposed",
+            f"You already have a proposal waiting with {sup.name}. Withdraw it first, or wait for their reply.",
+        )
     # REQ-PROPOSE-1: title, description and at least one research interest.
     interests = catalog.clean_topics([t for t in body.research_interests if t.strip()], "research_interests")  # standard topics
     if not interests:
         raise invalid("interests_required", "Add at least one research interest.", "research_interests")
+    for field, text, minimum, message in (  # the model counts spaces, so check the trimmed text too
+        ("title", body.title, 5, "Give the proposal a title of at least 5 characters."),
+        ("description", body.description, 50, "Describe the project in at least 50 characters."),
+        ("statement", body.statement, 50, "Write a statement of at least 50 characters."),
+    ):
+        if len(text.strip()) < minimum:
+            raise invalid(f"{field}_too_short", message, field)
     if _words(body.description) > DESCRIPTION_MAX_WORDS:
         raise invalid("too_long", f"Keep the description to {DESCRIPTION_MAX_WORDS} words or fewer.", "description")
     if _words(body.statement) > STATEMENT_MAX_WORDS:
@@ -63,10 +83,10 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
         student_name=user.name,
         supervisor_id=sup.id,
         supervisor_name=sup.name,
-        title=body.title,
-        description=body.description,
+        title=body.title.strip(),
+        description=body.description.strip(),
         research_interests=interests,
-        statement=body.statement,
+        statement=body.statement.strip(),
         status=ProposalStatus.submitted,
         submitted_at=settings.now(),
         document_ids=body.document_ids,
@@ -87,6 +107,29 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
 @router.get("/me/proposals", response_model=list[Proposal])
 def my_proposals(user: StudentUser, store: StoreDep) -> list[Proposal]:
     return store.proposals_for(student_id=user.id)
+
+
+@router.post("/me/proposals/{proposal_id}/withdraw", response_model=Proposal)
+def withdraw(proposal_id: str, user: StudentUser, store: StoreDep, settings: SettingsDep) -> Proposal:
+    """The student takes back a proposal the supervisor has not answered yet. Once it is accepted or declined it is final."""
+    p = store.proposal(proposal_id)
+    if p is None or p.student_id != user.id:
+        raise not_found("Proposal")
+    if p.status != ProposalStatus.submitted:
+        raise conflict("already_decided", f"This proposal was already {p.status.value}, so it can no longer be withdrawn.")
+    now = settings.now()
+    p.status, p.decided_at = ProposalStatus.withdrawn, now
+    store.save_proposal(p)
+    notify(
+        store,
+        [p.supervisor_id],
+        NotificationEvent.proposal_decided,
+        "A proposal was withdrawn",
+        f"{user.name} withdrew their proposal {p.title}.",
+        now,
+        "/proposals",
+    )
+    return p
 
 
 def _with_student(store, p: Proposal) -> Proposal:
@@ -144,6 +187,9 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
         raise conflict(
             "already_placed", "This student has already accepted another project, so this proposal can only be declined."
         )
+    student = store.student(p.student_id)
+    if student and not student.eligible_for_matching:  # the student declined or missed an offer after proposing
+        raise conflict("not_eligible", "This student declined or did not answer an offer, so this proposal can only be declined.")
     now = settings.now()
     p.status, p.decided_at = ProposalStatus.accepted, now
     # REQ-REVPROP-2: register the student. A one-slot listing plus an accepted match makes the
@@ -208,6 +254,8 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
         sp.eligible_for_matching = False
         store.save_student(sp)  # in Supabase mode store.student() returns a copy, so the flag must be saved
     store.save_proposal(p)
+    # The student is placed, so their other proposals still waiting for a supervisor are withdrawn.
+    placement.withdraw_pending_proposals(store, p.student_id, now, "was registered to another project")
     notify(
         store,
         [p.student_id],

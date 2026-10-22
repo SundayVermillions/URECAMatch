@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
 import { TopicPicker } from "@/components/pickers";
-import { Avatar, Banner, Button, Card, DeadlineChip, Field, Input, Loading, Textarea } from "@/components/ui";
+import { Avatar, Banner, Button, Card, DeadlineChip, Field, Input, Loading, Modal, Textarea } from "@/components/ui";
 import { ApiError, type Proposal, type SupervisorSummary } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 import { useStanding } from "@/lib/use-standing";
@@ -32,6 +32,7 @@ export default function Propose() {
   const [error, setError] = useState<ApiError | null>(null);
   const [done, setDone] = useState<Proposal | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState(false); // "Send this proposal?" dialog
   const err = (k: string) => (error?.field === k ? error.message : null);
   const closed = me?.phase.window !== "application"; // REQ-PROPOSE-3
   const standing = useStanding(); // placed or ineligible: the form stays readable but cannot be sent
@@ -45,19 +46,23 @@ export default function Propose() {
   ];
   const ready = checks.every((c) => c.ok) && !closed && !standing.viewOnly && !standing.loading;
 
-  async function submit(e: React.FormEvent) {
+  /** Sending is a commitment, so the form only asks; the dialog sends. */
+  function ask(e: React.FormEvent) {
     e.preventDefault();
+    if (ready && supervisor) setConfirm(true);
+  }
+  async function send() {
     if (!ready || !supervisor) return;
     setBusy(true); setError(null);
     try {
       setDone(await call((api) => api.propose({ supervisor_id: supervisor.id, title: title.trim(), description, research_interests: interests, statement, document_ids: docIds })));
-    } catch (x) { setError(x as ApiError); } finally { setBusy(false); }
+    } catch (x) { setError(x as ApiError); } finally { setBusy(false); setConfirm(false); }
   }
 
   if (done) return <Sent p={done} />;
 
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={ask}>
       <PageHeader title="Propose a project" description="Pitch your own research idea directly to a supervisor. If they accept, you are registered to it and leave the matching pool."
         right={me && <DeadlineChip>{me.phase.label}</DeadlineChip>} />
       {standing.viewOnly
@@ -129,12 +134,24 @@ export default function Propose() {
             ))}
           </ul>
           <div className="text-[12.5px] text-faint mt-4">{docIds.length ? `${docIds.length} document${docIds.length > 1 ? "s" : ""} attached` : "No documents attached"}</div>
-          <Button type="submit" size="lg" className="w-full mt-4" disabled={!ready || busy}>{busy ? "Sending…" : "Send proposal"}</Button>
+          <Button type="submit" size="lg" className="w-full mt-4" disabled={!ready || busy}>Send proposal</Button>
           {standing.viewOnly
             ? <div className="text-[12.5px] text-muted mt-2 text-center">{standing.placedIn ? "You already have a project this cycle." : "Not available this cycle."}</div>
             : closed && <div className="text-[12.5px] text-muted mt-2 text-center">Opens in the next application window.</div>}
         </Card>
       </div>
+      <Modal open={confirm} onClose={() => !busy && setConfirm(false)} title={`Send this proposal to ${supervisor?.name ?? "the supervisor"}?`}
+        footer={<><Button type="button" variant="secondary" disabled={busy} onClick={() => setConfirm(false)}>Not yet</Button><Button type="button" disabled={busy} onClick={send}>{busy ? "Sending…" : "Send proposal"}</Button></>}>
+        <ul className="flex flex-col gap-2.5 text-text">
+          {[
+            "Until they answer, you can still withdraw it from My applications.",
+            "If they accept, you are registered to this project straight away. It cannot be changed or withdrawn after that.",
+            "You then leave the matching pool. Every other application and proposal you have is withdrawn.",
+          ].map((t) => (
+            <li key={t} className="flex gap-2.5 items-start"><span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-accent shrink-0" />{t}</li>
+          ))}
+        </ul>
+      </Modal>
     </form>
   );
 }

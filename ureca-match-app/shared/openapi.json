@@ -1582,6 +1582,7 @@
           "listings"
         ],
         "summary": "Close",
+        "description": "Closing hides the project from students and keeps its matches. Applications still under review are withdrawn\n(a closed project cannot be matched), each affected student's remaining preferences move up, and they are told.",
         "operationId": "close_supervisor_listings__listing_id__close_post",
         "parameters": [
           {
@@ -2030,6 +2031,81 @@
                     "$ref": "#/components/schemas/Proposal"
                   },
                   "title": "Response My Proposals Me Proposals Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/proposals/{proposal_id}/withdraw": {
+      "post": {
+        "tags": [
+          "proposals"
+        ],
+        "summary": "Withdraw",
+        "description": "The student takes back a proposal the supervisor has not answered yet. Once it is accepted or declined it is final.",
+        "operationId": "withdraw_me_proposals__proposal_id__withdraw_post",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Proposal"
                 }
               }
             }
@@ -6733,11 +6809,13 @@
         "properties": {
           "title": {
             "type": "string",
+            "maxLength": 150,
             "minLength": 5,
             "title": "Title"
           },
           "description": {
             "type": "string",
+            "maxLength": 5000,
             "minLength": 20,
             "title": "Description"
           },
@@ -6765,10 +6843,13 @@
           },
           "offering_faculty": {
             "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
             "title": "Offering Faculty"
           },
           "research_location": {
             "type": "string",
+            "maxLength": 100,
             "title": "Research Location"
           },
           "outcomes": {
@@ -6856,7 +6937,8 @@
           "title": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 150
               },
               {
                 "type": "null"
@@ -6867,7 +6949,8 @@
           "description": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 5000
               },
               {
                 "type": "null"
@@ -6919,7 +7002,9 @@
           "offering_faculty": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
               },
               {
                 "type": "null"
@@ -6930,7 +7015,8 @@
           "research_location": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -7580,11 +7666,13 @@
           },
           "title": {
             "type": "string",
+            "maxLength": 150,
             "minLength": 5,
             "title": "Title"
           },
           "description": {
             "type": "string",
+            "maxLength": 6000,
             "minLength": 50,
             "title": "Description"
           },
@@ -7598,6 +7686,7 @@
           },
           "statement": {
             "type": "string",
+            "maxLength": 3000,
             "minLength": 50,
             "title": "Statement"
           },
@@ -7624,7 +7713,8 @@
         "enum": [
           "submitted",
           "accepted",
-          "declined"
+          "declined",
+          "withdrawn"
         ],
         "title": "ProposalStatus"
       },

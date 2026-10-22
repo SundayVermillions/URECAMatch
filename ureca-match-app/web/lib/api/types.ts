@@ -337,7 +337,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Close */
+        /**
+         * Close
+         * @description Closing hides the project from students and keeps its matches. Applications still under review are withdrawn
+         *     (a closed project cannot be matched), each affected student's remaining preferences move up, and they are told.
+         */
         post: operations["close_supervisor_listings__listing_id__close_post"];
         delete?: never;
         options?: never;
@@ -430,6 +434,26 @@ export interface paths {
         get: operations["my_proposals_me_proposals_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/proposals/{proposal_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw
+         * @description The student takes back a proposal the supervisor has not answered yet. Once it is accepted or declined it is final.
+         */
+        post: operations["withdraw_me_proposals__proposal_id__withdraw_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2012,7 +2036,7 @@ export interface components {
          * ProposalStatus
          * @enum {string}
          */
-        ProposalStatus: "submitted" | "accepted" | "declined";
+        ProposalStatus: "submitted" | "accepted" | "declined" | "withdrawn";
         /** ReassignRequest */
         ReassignRequest: {
             /** Listing Id */
@@ -3311,6 +3335,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Proposal"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withdraw_me_proposals__proposal_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Proposal"];
                 };
             };
             /** @description Validation Error */

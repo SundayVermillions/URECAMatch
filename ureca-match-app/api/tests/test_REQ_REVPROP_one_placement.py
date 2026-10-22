@@ -46,7 +46,7 @@ def test_REQ_REVPROP_2_placed_student_cannot_propose(client_for):
 
 def test_REQ_REVPROP_2_unplaced_student_can_still_propose(client_for):
     """Positive control: the rule must not block students who hold no project."""
-    r = client_for("stu-9").post("/proposals", json=_proposal_body())
+    r = client_for("stu-1").post("/proposals", json=_proposal_body())
     assert r.status_code == 201
 
 
@@ -68,7 +68,7 @@ def test_REQ_OUTCOME_1_accepting_offer_withdraws_pending_proposals(client_for, f
     _offer(fresh_store, "stu-9")
     r = client_for("stu-9").post("/me/match/accept")
     assert r.status_code == 200
-    assert fresh_store.proposal("prp-2").status == ProposalStatus.declined
+    assert fresh_store.proposal("prp-2").status == ProposalStatus.withdrawn
     told = [n for n in fresh_store.notifications if n.user_id == "sup-1" and n.title == "A proposal was withdrawn"]
     assert len(told) == 1
 
