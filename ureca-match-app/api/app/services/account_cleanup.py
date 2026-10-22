@@ -58,8 +58,9 @@ def _matches_as_student(store: Store, user: User):
 
 
 def _matches_on_listings(store: Store, user: User):
-    """A supervisor's matches that are not yet accepted. Students already placed on their projects are left alone."""
-    return [m for m in store.matches if m.supervisor_id == user.id and m.status in OPEN]
+    """Every match on a supervisor's projects that still holds a slot or a placement, including students already
+    registered (accepted offers and accepted self-proposals), so nobody stays placed under an inactive supervisor."""
+    return [m for m in store.matches if m.supervisor_id == user.id and m.status in IN_PLAY]
 
 
 def find_active_items(store: Store, user: User) -> list[ActiveItem]:
@@ -102,7 +103,7 @@ def clean_up(store: Store, admin: User, user: User, now: datetime, reason: str) 
         return []
     told: dict[str, list[str]] = defaultdict(list)  # recipient -> lines, so each person gets one notification
 
-    # Matches first: a student's own matches end, and a supervisor's not-yet-accepted matches go back to the pool.
+    # Matches first: a student's own matches end, and the matches on a supervisor's projects are rejected.
     for m in _matches_as_student(store, user):
         if m.status == MatchStatus.accepted:  # the student was registered, so free the slot
             lst = store.listing(m.listing_id)
@@ -120,8 +121,17 @@ def clean_up(store: Store, admin: User, user: User, now: datetime, reason: str) 
         for a in won:
             a.status = ApplicationStatus.unmatched
         store.save_applications(*won)
+        was = m.status
+        if was == MatchStatus.accepted:  # registered: free the slot and put the student back in the pool
+            lst = store.listing(m.listing_id)
+            if lst and lst.filled_slots > 0:
+                lst.filled_slots -= 1
+                store.save_listing(lst)
         m.status, m.supervisor_decided_at = MatchStatus.rejected, now
-        told[m.student_id].append(f"Your match to {m.listing_title} was cancelled.")
+        if was == MatchStatus.accepted:
+            _back_in_pool(store, m.student_id)
+        if was in (MatchStatus.published, MatchStatus.accepted):  # the student never saw a match that was not yet offered
+            told[m.student_id].append(f"Your match to {m.listing_title} was cancelled.")
 
     for lst in _listings(store, user):
         lst.status = ListingStatus.closed
@@ -161,6 +171,17 @@ def clean_up(store: Store, admin: User, user: User, now: datetime, reason: str) 
         store, admin, AuditOperation.user_updated, [user.id], now, f"Cleanup before account {reason}: closed {summarise(items)}"
     )
     return items
+
+
+def _back_in_pool(store: Store, student_id: str) -> None:
+    """Make a student eligible for matching again unless another match this cycle still rules them out."""
+    rounds = {r.id for r in store.cycle.rounds} if store.cycle else set()
+    if any(m.student_id == student_id and m.round_id in rounds and m.status != MatchStatus.rejected for m in store.matches):
+        return
+    sp = store.student(student_id)
+    if sp and not sp.eligible_for_matching:
+        sp.eligible_for_matching = True
+        store.save_student(sp)
 
 
 def _supervisor_of(store: Store, listing_id: str) -> str:

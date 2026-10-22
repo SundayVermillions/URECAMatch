@@ -96,13 +96,13 @@ insert into student_profiles (user_id, school, cgpa, year_of_study, completed_mo
 ('stu-40', 'NBS', 3.93, 4, array['AB1201','BC2402']::text[], array['Machine Learning','Natural Language Processing']::text[], true, true)
 on conflict (user_id) do nothing;
 
-insert into supervisor_profiles (user_id, faculty, organisation) values
-('sup-1', 'CCDS', 'NTU'),
-('sup-2', 'SBS', 'NTU'),
-('sup-3', 'EEE', 'NTU'),
-('sup-4', 'MAE', 'NTU'),
-('sup-5', 'SPMS', 'NTU'),
-('sup-6', 'CCDS', 'NTU')
+insert into supervisor_profiles (user_id, faculty, organisation, title) values
+('sup-1', 'CCDS', 'NTU', 'Prof.'),
+('sup-2', 'SBS', 'NTU', 'Prof.'),
+('sup-3', 'EEE', 'NTU', 'Assoc. Prof.'),
+('sup-4', 'MAE', 'NTU', 'Dr.'),
+('sup-5', 'SPMS', 'NTU', 'Prof.'),
+('sup-6', 'CCDS', 'NTU', 'Dr.')
 on conflict (user_id) do nothing;
 
 insert into supporting_documents (id, owner_id, file_name, file_format, kind, file_size, uploaded_at) values

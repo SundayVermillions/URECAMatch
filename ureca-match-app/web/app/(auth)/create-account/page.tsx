@@ -2,13 +2,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Banner, Button, Field, Input } from "@/components/ui";
+import { Banner, Button, Field, Input, Select } from "@/components/ui";
 import { getClient } from "@/lib/api/client";
 import { ApiError, type Role } from "@/lib/api/models";
+import { TITLES } from "@/lib/titles";
 
 export default function CreateAccount() {
   const router = useRouter();
-  const [f, setF] = useState({ name: "", email: "", password: "", role: "student" as Role });
+  const [f, setF] = useState({ name: "", email: "", password: "", role: "student" as Role, title: "" });
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +35,15 @@ export default function CreateAccount() {
           ))}
         </div>
       </Field>
-      <Field label="Full name" error={err("name")}><Input id="name" value={f.name} onChange={set("name")} required invalid={!!err("name")} /></Field>
+      {f.role === "supervisor" && (
+        <Field label="Title" error={err("title")} hint="Shown in front of your name">
+          <Select id="title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} invalid={!!err("title")}>
+            <option value="">No title</option>
+            {TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </Select>
+        </Field>
+      )}
+      <Field label="Full name" hint={f.role === "supervisor" ? "Without the title" : undefined} error={err("name")}><Input id="name" value={f.name} onChange={set("name")} required invalid={!!err("name")} /></Field>
       <Field label="NTU e-mail" error={err("email")} hint="@e.ntu.edu.sg or @ntu.edu.sg"><Input id="email" type="email" value={f.email} onChange={set("email")} required invalid={!!err("email")} /></Field>
       <Field label="Password" error={err("password")} hint="At least 8 characters">
         <div className="relative">

@@ -38,6 +38,7 @@ from app.models import (
     SupervisorProfile,
     User,
 )
+from app.services.titles import split_title
 
 rng = random.Random(2006)
 
@@ -180,7 +181,7 @@ def make_users() -> tuple[list[User], list[StudentProfile], list[SupervisorProfi
         users.append(User(id=uid, email=email, name=name, role=Role.admin, status=AccountStatus.active, created_at=dt(1, 7)))
     for uid, name, email, faculty in SUPERVISORS:
         users.append(User(id=uid, email=email, name=name, role=Role.supervisor, status=AccountStatus.active, created_at=dt(3, 7)))
-        supervisors.append(SupervisorProfile(user_id=uid, faculty=faculty))
+        supervisors.append(SupervisorProfile(user_id=uid, faculty=faculty, title=split_title(name)[0]))
     for i in range(40):
         uid = f"stu-{i + 1}"
         name = f"{FIRST[i]} {LAST[i]}"

@@ -86,8 +86,9 @@ def test_REQ_USER_3_deactivate_supervisor_returns_preview(as_admin, fresh_store)
     assert r.status_code == 409
     body = r.json()
     assert body["code"] == "has_active_items"
-    assert _kinds(body["items"]) == ["listing", "listing", "listing", "proposal"]
-    assert {i["id"] for i in body["items"]} >= {"lst-1", "lst-2", "lst-3", "prp-2"}
+    # stu-33 is registered on one of sup-1's projects, so that placement is listed too
+    assert _kinds(body["items"]) == ["listing", "listing", "listing", "match", "proposal"]
+    assert {i["id"] for i in body["items"]} >= {"lst-1", "lst-2", "lst-3", "prp-2", "mt-1"}
     # nothing was touched
     assert fresh_store.user("sup-1").status.value == "active"
     assert fresh_store.listing("lst-1").status == ListingStatus.published
@@ -108,7 +109,7 @@ def test_REQ_USER_3_patch_to_inactive_returns_preview(as_admin, fresh_store):
 
 
 def test_REQ_USER_3_name_change_needs_no_confirmation(as_admin):
-    assert as_admin.patch("/admin/users/sup-1", json={"name": "Prof. Renamed"}).status_code == 200
+    assert as_admin.patch("/admin/users/sup-1", json={"name": "Renamed Supervisor"}).status_code == 200
 
 
 def test_REQ_USER_3_user_without_items_changes_straight_away(as_admin, fresh_store):
@@ -188,7 +189,97 @@ def test_REQ_USER_3_open_matches_on_supervisor_listings_are_cancelled(as_admin, 
     assert as_admin.post("/admin/users/sup-1/deactivate?confirm_cleanup=true").status_code == 200
     m = next(m for m in fresh_store.matches if m.id == "mt-open")
     assert m.status == MatchStatus.rejected
+    # the student never saw a match that was only proposed, so they are not told it was cancelled
+    assert not any("was cancelled" in n.message for n in fresh_store.notifications_for("stu-1"))
+
+
+def test_REQ_USER_3_placed_student_is_released_and_told_when_supervisor_goes(as_admin, fresh_store):
+    """stu-33 is registered on a sup-1 project: confirming frees the slot, returns them to the pool and tells them."""
+    m = next(m for m in fresh_store.matches if m.student_id == "stu-33")
+    assert m.supervisor_id == "sup-1" and m.status == MatchStatus.accepted
+    filled = fresh_store.listing(m.listing_id).filled_slots
+    sp = fresh_store.student("stu-33")
+    sp.eligible_for_matching = False
+
+    assert as_admin.post("/admin/users/sup-1/deactivate?confirm_cleanup=true").status_code == 200
+
+    assert m.status == MatchStatus.rejected
+    assert fresh_store.listing(m.listing_id).filled_slots == filled - 1
+    assert fresh_store.student("stu-33").eligible_for_matching
+    assert any("was cancelled" in n.message for n in fresh_store.notifications_for("stu-33"))
+
+
+def test_REQ_USER_3_published_offer_on_supervisor_listing_tells_the_student(as_admin, fresh_store):
+    fresh_store.matches.append(
+        Match(
+            id="mt-offer",
+            round_id="rnd-2",
+            student_id="stu-1",
+            student_name="Stu One",
+            listing_id="lst-1",
+            listing_title="Listing",
+            supervisor_id="sup-1",
+            supervisor_name="Prof. Marcus Chua",
+            status=MatchStatus.published,
+        )
+    )
+    assert as_admin.post("/admin/users/sup-1/deactivate?confirm_cleanup=true").status_code == 200
     assert any("was cancelled" in n.message for n in fresh_store.notifications_for("stu-1"))
+
+
+# ---------------------------------------------------------------- unverified counts as deactivating
+
+
+def test_REQ_USER_3_setting_unverified_gets_the_same_preview(as_admin, fresh_store):
+    """Unverified blocks sign-in just like Inactive, so it must not skip the warning."""
+    r = as_admin.patch("/admin/users/sup-1", json={"status": "pending_verification"})
+    assert r.status_code == 409 and r.json()["code"] == "has_active_items"
+    assert fresh_store.user("sup-1").status.value == "active"
+
+
+def test_REQ_USER_3_confirmed_unverified_cleans_up(as_admin, fresh_store):
+    r = as_admin.patch("/admin/users/sup-1?confirm_cleanup=true", json={"status": "pending_verification"})
+    assert r.status_code == 200
+    assert fresh_store.listing("lst-1").status == ListingStatus.closed
+    assert not any(a.status == ApplicationStatus.submitted for a in fresh_store.applications if a.listing_id == "lst-1")
+
+
+def test_REQ_USER_3_last_admin_cannot_be_set_unverified(as_admin):
+    _only_admin(as_admin)
+    r = as_admin.patch("/admin/users/adm-1?confirm_cleanup=true", json={"status": "pending_verification"})
+    assert r.status_code == 409 and r.json()["code"] == "last_admin"
+
+
+# ---------------------------------------------------------------- a role change leaves a usable account
+
+
+def test_REQ_USER_3_role_change_creates_the_new_profile(as_admin, client_for, fresh_store):
+    assert as_admin.patch("/admin/users/sup-3?confirm_cleanup=true", json={"role": "student"}).status_code == 200
+    assert fresh_store.student("sup-3") is not None
+    assert client_for("sup-3").get("/me/profile").status_code == 200
+
+    created = as_admin.post(
+        "/admin/users", json={"name": "Was Student", "email": "was.student@ntu.edu.sg", "role": "student"}
+    ).json()
+    assert as_admin.patch(f"/admin/users/{created['id']}", json={"role": "supervisor"}).status_code == 200
+    assert fresh_store.supervisor(created["id"]) is not None
+
+
+def test_REQ_USER_3_ex_supervisor_leaves_the_proposal_picker(as_admin, as_student, fresh_store):
+    assert as_admin.patch("/admin/users/sup-3?confirm_cleanup=true", json={"role": "student"}).status_code == 200
+    assert "sup-3" not in {s["id"] for s in as_student.get("/supervisors").json()}
+    r = as_student.post(
+        "/proposals",
+        json={
+            "supervisor_id": "sup-3",
+            "title": "Graph Models for Protein Folding",
+            "description": "I will build a dataset, a baseline model and an evaluation report over one semester.",
+            "research_interests": ["Machine Learning"],
+            "statement": "I took SC4001 and want to apply graph learning to biology under this supervisor.",
+            "document_ids": ["doc-stu-1-t"],
+        },
+    )
+    assert r.status_code == 422 and r.json()["code"] == "unknown_supervisor"
 
 
 # ---------------------------------------------------------------- cleanup: student with applications and a match
@@ -266,3 +357,91 @@ def test_REQ_USER_3_confirmed_cleanup_is_audited(as_admin, fresh_store):
 def test_REQ_USER_3_only_admins_can_use_the_flag(client_for):
     for uid in ("stu-1", "sup-1"):
         assert client_for(uid).post("/admin/users/stu-33/deactivate?confirm_cleanup=true").status_code == 403
+
+
+# ---------------------------------------------------------------- titles go when a supervisor becomes a student
+
+
+@pytest.mark.parametrize(("user_id", "expected"), [("sup-1", "Marcus Chua"), ("sup-3", "Mei Lin Tan"), ("sup-4", "Rajesh Kumar")])
+def test_REQ_USER_3_title_is_dropped_when_role_becomes_student(as_admin, fresh_store, user_id, expected):
+    """Prof., Assoc. Prof. and Dr. belong to supervisors, so they go when the account becomes a student."""
+    u = fresh_store.user(user_id)
+    r = as_admin.patch(f"/admin/users/{user_id}?confirm_cleanup=true", json={"name": u.name, "role": "student"})
+    assert r.status_code == 200
+    assert r.json()["name"] == expected
+    note = [n for n in fresh_store.notifications_for(user_id) if n.title == "Your account was updated"][-1]
+    assert f"name is now {expected}" in note.message
+
+
+def test_REQ_USER_3_title_kept_when_supervisor_becomes_admin(as_admin):
+    assert as_admin.patch("/admin/users/sup-5?confirm_cleanup=true", json={"role": "admin"}).json()["name"] == "Prof. Sarah Goh"
+
+
+def test_REQ_USER_3_title_cleared_on_profile_when_role_becomes_student(as_admin, fresh_store):
+    assert fresh_store.supervisor("sup-1").title == "Prof."
+    assert as_admin.patch("/admin/users/sup-1?confirm_cleanup=true", json={"role": "student"}).status_code == 200
+    assert fresh_store.supervisor("sup-1").title == ""
+
+
+# ---------------------------------------------------------------- the Title field
+
+
+def test_REQ_USER_1_admin_creates_supervisor_with_title(as_admin, fresh_store):
+    r = as_admin.post(
+        "/admin/users", json={"name": "Mei Ling", "email": "mei.ling@ntu.edu.sg", "role": "supervisor", "title": "Dr."}
+    )
+    assert r.status_code == 201
+    assert r.json()["name"] == "Dr. Mei Ling"
+    assert fresh_store.supervisor(r.json()["id"]).title == "Dr."
+
+
+def test_REQ_USER_1_title_is_ignored_for_students(as_admin):
+    r = as_admin.post(
+        "/admin/users", json={"name": "Some Student", "email": "some.student@e.ntu.edu.sg", "role": "student", "title": "Dr."}
+    )
+    assert r.status_code == 201 and r.json()["name"] == "Some Student"
+
+
+def test_REQ_USER_1_unknown_title_is_refused(as_admin):
+    r = as_admin.post(
+        "/admin/users", json={"name": "Mei Ling", "email": "mei.ling@ntu.edu.sg", "role": "supervisor", "title": "King"}
+    )
+    assert r.status_code == 422 and r.json()["code"] == "invalid_title" and r.json()["field"] == "title"
+
+
+def test_REQ_REG_1_supervisor_registers_with_title(anon, fresh_store):
+    r = anon.post(
+        "/auth/register",
+        json={
+            "name": "Wei Tan",
+            "email": "wei.tan@ntu.edu.sg",
+            "password": "Password123!",
+            "role": "supervisor",
+            "title": "Assoc. Prof.",
+        },
+    )
+    assert r.status_code == 201
+    u = fresh_store.user_by_email("wei.tan@ntu.edu.sg")
+    assert u.name == "Assoc. Prof. Wei Tan"
+    assert fresh_store.supervisor(u.id).title == "Assoc. Prof."
+
+
+def test_REQ_USER_3_admin_edits_title_without_touching_the_name(as_admin, fresh_store):
+    r = as_admin.patch("/admin/users/sup-2", json={"name": "Daniel Ho", "title": "Assoc. Prof."})
+    assert r.status_code == 200 and r.json()["name"] == "Assoc. Prof. Daniel Ho"
+    assert fresh_store.supervisor("sup-2").title == "Assoc. Prof."
+    r = as_admin.patch("/admin/users/sup-2", json={"name": "Daniel Ho", "title": ""})
+    assert r.json()["name"] == "Daniel Ho" and fresh_store.supervisor("sup-2").title == ""
+
+
+def test_REQ_USER_3_student_becomes_supervisor_with_title(as_admin, fresh_store):
+    r = as_admin.patch("/admin/users/stu-40", json={"role": "supervisor", "title": "Dr."})
+    assert r.status_code == 200
+    assert r.json()["name"].startswith("Dr. ")
+    assert fresh_store.supervisor("stu-40").title == "Dr."
+
+
+def test_REQ_USER_3_user_list_carries_the_title(as_admin):
+    rows = {r["user"]["id"]: r for r in as_admin.get("/admin/users").json()}
+    assert rows["sup-3"]["title"] == "Assoc. Prof."
+    assert rows["stu-1"]["title"] is None

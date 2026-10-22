@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { I } from "@/components/shell/icons";
 import { Avatar, Banner, Button, Chip, Field, Input, Loading, Modal, Select, Status } from "@/components/ui";
 import { ApiError, type AccountStatus, type ActiveItem, type ActiveItemKind, type Role, type UserListItem } from "@/lib/api/models";
+import { TITLES, composeName, splitTitle } from "@/lib/titles";
 import { useApi, useCall } from "@/lib/use-api";
 
 const KIND_LABEL: Record<ActiveItemKind, string> = { listing: "Open project listings", proposal: "Pending proposals", application: "Applications", match: "Matches" };
@@ -21,13 +22,13 @@ export default function Users() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<UserListItem | null>(null);
   const [deactivating, setDeactivating] = useState<UserListItem | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", role: "student" as Role });
+  const [form, setForm] = useState({ name: "", email: "", role: "student" as Role, title: "" });
   const [error, setError] = useState<ApiError | null>(null);
   const [cleanup, setCleanup] = useState<Cleanup | null>(null);
 
   async function create(e: React.FormEvent) {
     e.preventDefault(); setError(null);
-    try { await call((api) => api.createUser(form)); setCreating(false); setForm({ name: "", email: "", role: "student" }); reload(); } catch (err) { setError(err as ApiError); }
+    try { await call((api) => api.createUser(form)); setCreating(false); setForm({ name: "", email: "", role: "student", title: "" }); reload(); } catch (err) { setError(err as ApiError); }
   }
   /** Try without the flag first. A user with open items comes back as a preview; resend with the flag once the admin accepts. */
   async function submit(who: string, send: (confirm: boolean) => Promise<unknown>, done: () => void, confirm = false) {
@@ -42,7 +43,10 @@ export default function Users() {
   async function saveEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editing) return;
     const { id, name, role, status } = editing.user;
-    await submit(name, (confirm) => call((api) => api.updateUser(id, { name, role, status }, confirm)), () => setEditing(null));
+    const title = editing.title ?? "";
+    // The form edits the name without its title. Students carry no title, so only a supervisor sets one; an admin keeps the one they had.
+    const body = role === "supervisor" ? { name, role, status, title } : { name: role === "student" ? name : composeName(title, name), role, status };
+    await submit(composeName(role === "supervisor" ? title : "", name), (confirm) => call((api) => api.updateUser(id, body, confirm)), () => setEditing(null));
   }
   async function deactivate() {
     if (!deactivating) return;
@@ -70,7 +74,7 @@ export default function Users() {
             <span className="text-[12.5px] text-muted">{u.school ?? ""}</span>
             <Status value={u.user.status} />
             <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="secondary" onClick={() => setEditing({ ...u, user: { ...u.user } })}>Edit</Button>
+              <Button size="sm" variant="secondary" onClick={() => setEditing({ ...u, user: { ...u.user, name: u.title ? splitTitle(u.user.name)[1] : u.user.name } })}>Edit</Button>
               {u.user.status !== "inactive" && <Button size="sm" variant="secondary" onClick={() => setDeactivating(u)}>Deactivate</Button>}
             </div>
           </div>
@@ -80,7 +84,15 @@ export default function Users() {
       <Modal open={creating} onClose={() => setCreating(false)} title="New user">
         <form onSubmit={create} className="flex flex-col gap-3 text-text">
           {error && !error.field && <Banner tone="bad">{error.message}</Banner>}
-          <Field label="Full name"><Input id="new-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></Field>
+          {form.role === "supervisor" && (
+            <Field label="Title" hint="Shown in front of the name">
+              <Select id="new-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}>
+                <option value="">No title</option>
+                {TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Select>
+            </Field>
+          )}
+          <Field label="Full name" hint={form.role === "supervisor" ? "Without the title" : undefined}><Input id="new-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></Field>
           <Field label="NTU e-mail" error={error?.field === "email" ? error.message : null}><Input id="new-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required invalid={error?.field === "email"} /></Field>
           <Field label="Role" hint="Only admins can create admin accounts."><Select id="new-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}><option value="student">Student</option><option value="supervisor">Project Supervisor</option><option value="admin">Admin</option></Select></Field>
           <div className="flex justify-end gap-2 mt-2"><Button type="button" variant="secondary" onClick={() => setCreating(false)}>Cancel</Button><Button type="submit">Create</Button></div>
@@ -90,7 +102,15 @@ export default function Users() {
         {editing && (
           <form onSubmit={saveEdit} className="flex flex-col gap-3 text-text">
             {error && !error.field && <Banner tone="bad">{error.message}</Banner>}
-            <Field label="Full name"><Input id="edit-name" value={editing.user.name} onChange={(e) => setEditing({ ...editing, user: { ...editing.user, name: e.target.value } })} /></Field>
+            {editing.user.role === "supervisor" && (
+              <Field label="Title" hint="Shown in front of the name">
+                <Select id="edit-title" value={editing.title ?? ""} onChange={(e) => setEditing({ ...editing, title: e.target.value })}>
+                  <option value="">No title</option>
+                  {TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </Select>
+              </Field>
+            )}
+            <Field label="Full name" hint={editing.user.role === "supervisor" ? "Without the title" : undefined}><Input id="edit-name" value={editing.user.name} onChange={(e) => setEditing({ ...editing, user: { ...editing.user, name: e.target.value } })} /></Field>
             <Field label="Role"><Select id="edit-role" value={editing.user.role} onChange={(e) => setEditing({ ...editing, user: { ...editing.user, role: e.target.value as Role } })}><option value="student">Student</option><option value="supervisor">Project Supervisor</option><option value="admin">Admin</option></Select></Field>
             <Field label="Status"><Select id="edit-status" value={editing.user.status} onChange={(e) => setEditing({ ...editing, user: { ...editing.user, status: e.target.value as AccountStatus } })}><option value="active">Active</option><option value="inactive">Inactive</option><option value="pending_verification">Unverified</option></Select></Field>
             <div className="flex justify-end gap-2 mt-2"><Button type="button" variant="secondary" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit">Save</Button></div>

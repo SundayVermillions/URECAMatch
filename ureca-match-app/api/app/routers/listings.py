@@ -98,7 +98,7 @@ def supervisors(user: CurrentUser, store: StoreDep) -> list[SupervisorSummary]:
     out = []
     for s in store.supervisors:
         u = store.user(s.user_id)
-        if u and u.status == AccountStatus.active:
+        if u and u.status == AccountStatus.active and u.role == Role.supervisor:  # an old profile is kept after a role change
             out.append(SupervisorSummary(id=u.id, name=u.name, faculty=s.faculty))
     return sorted(out, key=lambda x: x.name.removeprefix("Assoc. ").removeprefix("Prof. ").removeprefix("Dr. "))
 

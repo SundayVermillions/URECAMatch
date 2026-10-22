@@ -2121,31 +2121,37 @@
     {
       "user_id": "sup-1",
       "faculty": "CCDS",
+      "title": "Prof.",
       "organisation": "NTU"
     },
     {
       "user_id": "sup-2",
       "faculty": "SBS",
+      "title": "Prof.",
       "organisation": "NTU"
     },
     {
       "user_id": "sup-3",
       "faculty": "EEE",
+      "title": "Assoc. Prof.",
       "organisation": "NTU"
     },
     {
       "user_id": "sup-4",
       "faculty": "MAE",
+      "title": "Dr.",
       "organisation": "NTU"
     },
     {
       "user_id": "sup-5",
       "faculty": "SPMS",
+      "title": "Prof.",
       "organisation": "NTU"
     },
     {
       "user_id": "sup-6",
       "faculty": "CCDS",
+      "title": "Dr.",
       "organisation": "NTU"
     }
   ],

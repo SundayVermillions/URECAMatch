@@ -19,6 +19,7 @@ from app.models import (
     Proposal,
     ProposalCreate,
     ProposalStatus,
+    Role,
     Window,
 )
 from app.services import catalog, placement, windows
@@ -43,7 +44,12 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
         raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot propose another.")
     # REQ-PROPOSE-2: the recipient must be an active project supervisor.
     sup = store.user(body.supervisor_id)
-    if sup is None or store.supervisor(body.supervisor_id) is None or sup.status != AccountStatus.active:
+    if (
+        sup is None
+        or sup.role != Role.supervisor
+        or store.supervisor(body.supervisor_id) is None
+        or sup.status != AccountStatus.active
+    ):
         raise invalid("unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id")
     # REQ-PROPOSE-1: title, description and at least one research interest.
     interests = catalog.clean_topics([t for t in body.research_interests if t.strip()], "research_interests")  # standard topics
