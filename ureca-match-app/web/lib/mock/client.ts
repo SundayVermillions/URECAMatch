@@ -137,7 +137,11 @@ export class MockClient implements ApiClient {
     const apps = this.db.applications.filter((a) => a.listing_id === l.id && a.status === "submitted");
     const mine = u.role === "student" ? apps.find((a) => a.student_id === u.id) : undefined;
     const supervisor_email = l.supervisor_email || this.db.users.find((x) => x.id === l.supervisor_id)?.email || "";
-    return { ...l, supervisor_email, applicant_count: apps.length, applied: !!mine, applied_rank: mine?.preference_rank ?? null };
+    return { ...l, supervisor_email, applicant_count: apps.length, held_slots: this.heldSlots(l.id), applied: !!mine, applied_rank: mine?.preference_rank ?? null };
+  }
+  /** Matches and offers not yet answered; each holds a slot (mirror of listings._held_slots). */
+  private heldSlots(listingId: string) {
+    return this.db.matches.filter((m) => m.listing_id === listingId && ["proposed", "approved", "reassigned", "published"].includes(m.status)).length;
   }
   private notify(userIds: string[], event: M.NotificationEvent, title: string, message: string, link?: string) {
     for (const uid of userIds) this.db.notifications.push({ id: this.id("ntf"), user_id: uid, event, title, message, created_at: this.iso(), read: false, link: link ?? null });
@@ -420,7 +424,7 @@ export class MockClient implements ApiClient {
       prerequisites: cleanCourses(b.prerequisites ?? [], "prerequisites"), topic_tags: cleanTopics(b.topic_tags ?? [], "topic_tags"), available_slots: b.available_slots, filled_slots: 0,
       offering_faculty: b.offering_faculty, research_location: b.research_location, cover_url: null,
       outcomes: (b.outcomes ?? "").trim(), skills: (b.skills ?? "").trim(), hours_per_week: b.hours_per_week ?? null, mode: b.mode ?? null, gallery_urls: [], video_url,
-      status: b.publish === false ? "draft" : "published", created_at: this.iso(), applicant_count: 0, applied: false, applied_rank: null };
+      status: b.publish === false ? "draft" : "published", created_at: this.iso(), applicant_count: 0, held_slots: 0, applied: false, applied_rank: null };
     this.db.listings.push(l); return l;
   }
   async updateListing(id: string, b: M.ListingUpdate) {
@@ -428,7 +432,8 @@ export class MockClient implements ApiClient {
     if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
     if (this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Listings can no longer be edited."); // REQ-PROJ-2
     this.checkListingText(b.title, b.description);
-    if (b.available_slots != null && b.available_slots < l.filled_slots) throw new M.ApiError(422, "slots_below_matched", `${l.filled_slots} students are already matched. Slots cannot go below that.`, "available_slots");
+    const floor = l.filled_slots + this.heldSlots(l.id); // accepted students plus offers still open (REQ-PROJ-3)
+    if (b.available_slots != null && b.available_slots < floor) throw new M.ApiError(422, "slots_below_matched", `${floor} students are already matched or have an open offer. Slots cannot go below that.`, "available_slots");
     const video_url = this.checkDetails(b);
     const { publish, hours_per_week, mode, video_url: _video, ...changes } = b;
     void _video;
@@ -536,7 +541,7 @@ export class MockClient implements ApiClient {
           `${p.student_name} accepted a self-proposed project, so their match to ${m.listing_title} was withdrawn.`, "/approvals");
       }
       const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, supervisor_email: u.email, title: p.title, description: p.description, prerequisites: [], topic_tags: p.research_interests,
-        available_slots: 1, filled_slots: 1, offering_faculty: this.db.supervisors.find((s) => s.user_id === u.id)?.faculty ?? "", research_location: "", cover_url: null, outcomes: "", skills: "", gallery_urls: [], status: "closed", created_at: this.iso(), applicant_count: 0, applied: false, applied_rank: null };
+        available_slots: 1, filled_slots: 1, offering_faculty: this.db.supervisors.find((s) => s.user_id === u.id)?.faculty ?? "", research_location: "", cover_url: null, outcomes: "", skills: "", gallery_urls: [], status: "closed", created_at: this.iso(), applicant_count: 0, held_slots: 0, applied: false, applied_rank: null };
       this.db.listings.push(l);
       this.db.matches.push({ id: this.id("mt"), round_id: this.phase().round_id ?? this.activeCycle()?.rounds[0]?.id ?? "", student_id: p.student_id, student_name: p.student_name, listing_id: l.id, listing_title: l.title, supervisor_id: u.id, supervisor_name: u.name,
         status: "accepted", preference_rank: null, supervisor_decided_at: this.iso(), published_at: this.iso(), offer_expires_at: null, student_responded_at: this.iso(), original_listing_id: null, justification: null });

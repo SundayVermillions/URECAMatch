@@ -6692,6 +6692,11 @@
             "title": "Applicant Count",
             "default": 0
           },
+          "held_slots": {
+            "type": "integer",
+            "title": "Held Slots",
+            "default": 0
+          },
           "applied": {
             "type": "boolean",
             "title": "Applied",

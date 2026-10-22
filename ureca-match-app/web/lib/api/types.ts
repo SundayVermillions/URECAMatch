@@ -1710,6 +1710,11 @@ export interface components {
              */
             applicant_count: number;
             /**
+             * Held Slots
+             * @default 0
+             */
+            held_slots: number;
+            /**
              * Applied
              * @default false
              */

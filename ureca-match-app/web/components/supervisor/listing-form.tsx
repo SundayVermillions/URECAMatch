@@ -25,7 +25,8 @@ export function ListingForm({ existing }: { existing?: Listing }) {
   const [prereqs, setPrereqs] = useState<string[]>(existing?.prerequisites ?? []);
   const [faculty, setFaculty] = useState(existing?.offering_faculty ?? me?.supervisor?.faculty ?? "CCDS");
   const [location, setLocation] = useState(existing?.research_location ?? "");
-  const minSlots = Math.max(1, existing?.filled_slots ?? 1); // REQ-PROJ-3
+  const committed = (existing?.filled_slots ?? 0) + (existing?.held_slots ?? 0); // accepted plus open offers: REQ-PROJ-3
+  const minSlots = Math.max(1, committed);
   const [slots, setSlots] = useState(existing?.available_slots ?? 2);
   // Optional project details
   const [outcomes, setOutcomes] = useState(existing?.outcomes ?? "");
@@ -183,7 +184,7 @@ export function ListingForm({ existing }: { existing?: Listing }) {
           <div className="flex items-center justify-between gap-4">
             <Stepper value={slots} onChange={setSlots} min={minSlots} max={20} format={(v) => `${v} ${v === 1 ? "slot" : "slots"}`} />
             {existing && existing.filled_slots > 0 && (
-              <span className="text-[13px] text-muted">{existing.filled_slots} already matched, so at least {minSlots}</span>
+              <span className="text-[13px] text-muted">{committed} matched or offered, so at least {minSlots}</span>
             )}
           </div>
           {err("available_slots") && <Banner tone="bad">{err("available_slots")}</Banner>}
@@ -234,7 +235,7 @@ export function ListingForm({ existing }: { existing?: Listing }) {
 
         <div className="px-1 text-[12.5px] text-muted leading-[1.6]">
           <div className="font-medium text-text mb-1">Good to know</div>
-          Listings can be edited until the cycle closing date. Slots cannot go below the number of students already matched. Closing a listing hides it from students; matches are kept.
+          Listings can be edited until the cycle closing date. Slots cannot go below the students already matched plus offers still open. Closing a listing hides it from students; matches are kept.
         </div>
       </div>
     </form>

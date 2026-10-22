@@ -34,10 +34,17 @@ def _decorate(lst: Listing, store, user) -> Listing:
     return lst.model_copy(
         update={
             "applicant_count": len(apps),
+            "held_slots": _held_slots(lst, store),
             "applied": mine is not None,
             "applied_rank": mine.preference_rank if mine else None,
         }
     )
+
+
+def _held_slots(lst: Listing, store) -> int:
+    """Matches and offers on this project that the student has not answered yet. Each one holds a slot until the
+    student accepts (it then counts in filled_slots) or it ends, so the supervisor cannot take that slot away."""
+    return sum(1 for m in store.matches if m.listing_id == lst.id and m.status in placement.OPEN)
 
 
 @router.get("/listings", response_model=list[Listing])
@@ -146,10 +153,13 @@ def update(listing_id: str, body: ListingUpdate, user: SupervisorUser, store: St
     if _cycle_closed(store, settings):  # REQ-PROJ-2
         raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
     _check_text(body.title, body.description)
-    if body.available_slots is not None and body.available_slots < lst.filled_slots:  # REQ-PROJ-3
+    # REQ-PROJ-3: never below the students who accepted plus the offers still open. Otherwise those offers could be
+    # accepted into a project that has no room, leaving it over capacity.
+    floor = lst.filled_slots + _held_slots(lst, store)
+    if body.available_slots is not None and body.available_slots < floor:
         raise invalid(
             "slots_below_matched",
-            f"{lst.filled_slots} students are already matched. Slots cannot go below that.",
+            f"{floor} students are already matched or have an open offer. Slots cannot go below that.",
             "available_slots",
         )
     changes = body.model_dump(exclude_none=True)

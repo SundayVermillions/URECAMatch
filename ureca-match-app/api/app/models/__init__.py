@@ -352,6 +352,7 @@ class Listing(BaseModel):
     status: ListingStatus
     created_at: datetime
     applicant_count: int = 0
+    held_slots: int = 0  # slots held by matches or offers the student has not answered yet (REQ-PROJ-3)
     applied: bool = False  # for the current student, if any
     applied_rank: int | None = None
 
