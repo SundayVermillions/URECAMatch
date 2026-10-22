@@ -18,7 +18,7 @@ from app.settings import Settings
 log = logging.getLogger(__name__)
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-TIMEOUT_SECONDS = 15
+TIMEOUT_SECONDS = 60  # Flash-Lite takes about 30 s for a round of applicants
 REASON_MAX = 140
 
 

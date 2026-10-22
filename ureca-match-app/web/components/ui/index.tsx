@@ -58,10 +58,16 @@ export function Status({ value, kind }: { value: MatchStatus | ProposalStatus | 
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
-export function Avatar({ name, size = 30, tone = "neutral" }: { name: string; size?: number; tone?: "navy" | "neutral" }) {
+/** Soft tints for tone="auto". Red and amber are left out: they mean "error" and "warning" elsewhere. */
+const AVATAR_TINTS = ["bg-accent-soft text-accent-ink", "bg-good-soft text-good-ink", "bg-navy/10 text-navy", "bg-neutral-soft text-muted"];
+const tintFor = (name: string) => AVATAR_TINTS[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % AVATAR_TINTS.length];
+
+/** tone="auto" picks a tint from the name, so the same person always gets the same colour. */
+export function Avatar({ name, size = 30, tone = "neutral" }: { name: string; size?: number; tone?: "navy" | "neutral" | "auto" }) {
   const initials = name.replace(/^(Prof\.|Dr\.|Assoc\. Prof\.)\s*/, "").split(" ").filter(Boolean).slice(0, 2).map((s) => s[0]).join("").toUpperCase();
+  const cls = tone === "navy" ? "bg-gradient-to-b from-[#a1a1a6] to-[#6e6e73] text-white" : tone === "auto" ? tintFor(name) : "bg-neutral-soft text-muted";
   return (
-    <div className={`rounded-full flex items-center justify-center font-display font-semibold shrink-0 ${tone === "navy" ? "bg-gradient-to-b from-[#a1a1a6] to-[#6e6e73] text-white" : "bg-neutral-soft text-muted"}`}
+    <div className={`rounded-full flex items-center justify-center font-display font-semibold shrink-0 ${cls}`}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}>{initials}</div>
   );
 }
@@ -87,12 +93,16 @@ export function Chip({ active, children, onClick }: { active?: boolean; children
   );
 }
 
+/** Filter buttons come in two sizes: md for page toolbars (Browse), sm where several sit in a narrow card. */
+type FilterSize = "md" | "sm";
+const FILTER_SIZES: Record<FilterSize, string> = { md: "h-10 pl-4 pr-3 text-[13.5px]", sm: "h-9 pl-3.5 pr-2.5 text-[13px]" };
+
 /** Compact filter dropdown for toolbars: "School  Any ⌄", opening a popover list with a check on the current choice.
  *  Custom instead of a native <select> so the list is styled consistently; keyboard support is rebuilt:
  *  Enter/Space/↓ opens, ↑/↓ move, Enter selects, Esc or a click outside closes. ARIA listbox roles for screen readers. */
-export function FilterSelect({ label, value, options, onChange, anyLabel = "Any", align = "right", bare = false }:
+export function FilterSelect({ label, value, options, onChange, anyLabel = "Any", align = "right", bare = false, size = "md" }:
   { label: string; value: string | undefined; options: string[]; onChange: (v: string | undefined) => void; anyLabel?: string; align?: "left" | "right";
-    /** No outline, for use inside a toolbar that already has one (Browse search bar). */ bare?: boolean }) {
+    /** No outline, for use inside a toolbar that already has one (Browse search bar). */ bare?: boolean; size?: FilterSize }) {
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0); // highlighted row while open
   const root = useRef<HTMLDivElement>(null);
@@ -127,7 +137,7 @@ export function FilterSelect({ label, value, options, onChange, anyLabel = "Any"
     <div ref={root} className="relative shrink-0">
       <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-controls={listId} aria-label={`${label}: ${value ?? anyLabel}`}
         onClick={() => (open ? setOpen(false) : show())} onKeyDown={onKey}
-        className={`inline-flex items-center h-10 rounded-pill pl-4 pr-3 text-[13.5px] whitespace-nowrap transition-colors max-w-[260px] ${value
+        className={`inline-flex items-center rounded-pill ${FILTER_SIZES[size]} whitespace-nowrap transition-colors max-w-[260px] ${value
           ? `bg-accent-soft text-accent-ink ${bare ? "" : "shadow-[inset_0_0_0_1px_var(--accent-border)]"}`
           : bare ? "bg-transparent text-text hover:bg-neutral-soft" : "bg-surface text-text shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft"}`}>
         <span className={value ? "text-accent-ink/70" : "text-muted"}>{label}</span>
@@ -152,6 +162,152 @@ export function FilterSelect({ label, value, options, onChange, anyLabel = "Any"
         </ul>
       )}
     </div>
+  );
+}
+
+/** FilterSelect with several choices: rows toggle a check and the menu stays open. "Any" clears them all. */
+export function FilterMultiSelect({ label, value, options, onChange, anyLabel = "Any", align = "right", bare = false, size = "md", countLabel = (n) => `${n} selected` }:
+  { label: string; value: string[]; options: string[]; onChange: (v: string[]) => void; anyLabel?: string; align?: "left" | "right"; bare?: boolean;
+    /** Button text when more than one is chosen, e.g. n => `${n} schools`. */ countLabel?: (n: number) => string; size?: FilterSize }) {
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
+  const root = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const items: (string | undefined)[] = [undefined, ...options];
+  const shown = value.length === 0 ? anyLabel : value.length === 1 ? value[0] : countLabel(value.length);
+  const on = value.length > 0;
+
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", away);
+    return () => document.removeEventListener("mousedown", away);
+  }, [open]);
+  useEffect(() => {
+    if (open) root.current?.querySelector(`[data-i="${hi}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [hi, open]);
+
+  const toggle = (o: string | undefined) => onChange(o === undefined ? [] : value.includes(o) ? value.filter((v) => v !== o) : [...value, o]);
+  function onKey(e: React.KeyboardEvent) {
+    if (!open) {
+      if (["Enter", " ", "ArrowDown"].includes(e.key)) { e.preventDefault(); setHi(0); setOpen(true); }
+      return;
+    }
+    if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => Math.min(h + 1, items.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(items[hi]); }
+    else if (e.key === "Tab") setOpen(false);
+  }
+
+  return (
+    <div ref={root} className="relative shrink-0">
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-controls={listId} aria-label={`${label}: ${shown}`}
+        onClick={() => { setHi(0); setOpen(!open); }} onKeyDown={onKey}
+        className={`inline-flex items-center rounded-pill ${FILTER_SIZES[size]} whitespace-nowrap transition-colors max-w-[260px] ${on
+          ? `bg-accent-soft text-accent-ink ${bare ? "" : "shadow-[inset_0_0_0_1px_var(--accent-border)]"}`
+          : bare ? "bg-transparent text-text hover:bg-neutral-soft" : "bg-surface text-text shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft"}`}>
+        <span className={on ? "text-accent-ink/70" : "text-muted"}>{label}</span>
+        <span className="ml-1.5 font-medium truncate">{shown}</span>
+        <span className={`ml-2 shrink-0 transition-transform ${open ? "rotate-180" : ""} ${on ? "text-accent-ink/70" : "text-faint"}`}><I.ChevronDown size={15} /></span>
+      </button>
+      {open && (
+        <ul id={listId} role="listbox" aria-label={label} aria-multiselectable
+          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-20 mt-2 min-w-[220px] max-w-[320px] max-h-[320px] overflow-y-auto p-1.5 rounded-[14px] bg-surface/95 backdrop-blur-xl shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]`}>
+          {items.map((o, i) => {
+            const checked = o === undefined ? !on : value.includes(o);
+            return (
+              <li key={o ?? "__any"} data-i={i} role="option" aria-selected={checked}
+                onMouseEnter={() => setHi(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => toggle(o)}
+                className={`flex items-center gap-2.5 h-9 px-3 rounded-[9px] text-[13.5px] text-text cursor-pointer select-none ${i === hi ? "bg-neutral-soft" : ""}`}>
+                <span className={`w-4 h-4 rounded-[5px] shrink-0 flex items-center justify-center ${checked ? "bg-accent text-white" : "shadow-[inset_0_0_0_1.5px_var(--border-strong)]"}`}>
+                  {checked && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}
+                </span>
+                <span className={`flex-1 truncate ${checked ? "font-medium" : ""}`}>{o ?? anyLabel}</span>
+              </li>
+            );
+          })}
+          {options.length === 0 && <li className="px-3 py-2 text-[13px] text-faint">No options</li>}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Toolbar button like FilterSelect that opens a slider for a minimum value, e.g. "CGPA 3.80+".
+ *  value === min means no filter. A native range input, so arrow keys, Home/End and screen readers work. */
+export function FilterRange({ label, value, onChange, min, max, step, format = (v) => `${v}+`, title, anyLabel = "Any", align = "right", size = "md" }:
+  { label: string; value: number; onChange: (v: number) => void; min: number; max: number; step: number;
+    format?: (v: number) => string; /** Heading in the popover, e.g. "Minimum CGPA". */ title?: string; anyLabel?: string; align?: "left" | "right"; size?: FilterSize }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  const on = value > min;
+  const ticks = Array.from({ length: Math.floor(max - min) + 1 }, (_, i) => min + i);
+
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); };
+  }, [open]);
+
+  return (
+    <div ref={root} className="relative shrink-0">
+      <button type="button" aria-expanded={open} aria-controls={panelId} aria-label={`${label}: ${on ? format(value) : anyLabel}`} onClick={() => setOpen(!open)}
+        className={`inline-flex items-center rounded-pill ${FILTER_SIZES[size]} whitespace-nowrap transition-colors ${on
+          ? "bg-accent-soft text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)]"
+          : "bg-surface text-text shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft"}`}>
+        <span className={on ? "text-accent-ink/70" : "text-muted"}>{label}</span>
+        <span className="ml-1.5 font-medium tabular">{on ? format(value) : anyLabel}</span>
+        <span className={`ml-2 shrink-0 transition-transform ${open ? "rotate-180" : ""} ${on ? "text-accent-ink/70" : "text-faint"}`}><I.ChevronDown size={15} /></span>
+      </button>
+      {open && (
+        <div id={panelId} role="dialog" aria-label={title ?? label}
+          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-20 mt-2 w-[280px] p-4 rounded-[14px] bg-surface/95 backdrop-blur-xl shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]`}>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[13px] font-semibold">{title ?? label}</span>
+            <span className="text-[15px] font-bold tabular text-accent-ink">{on ? value.toFixed(2) : anyLabel}</span>
+          </div>
+          <input type="range" min={min} max={max} step={step} value={value} aria-label={title ?? label} autoFocus
+            onChange={(e) => onChange(Number(e.target.value))} className="w-full mt-3 accent-accent cursor-pointer" />
+          <div className="flex justify-between text-[11px] text-faint tabular mt-0.5 px-[2px]">{ticks.map((t) => <span key={t}>{t}</span>)}</div>
+          <div className="flex justify-end mt-2"><Button variant="text" size="sm" disabled={!on} onClick={() => onChange(min)}>Reset</Button></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Small dark tooltip on hover or keyboard focus. CSS only; the trigger is focusable so keyboard users can read it too. */
+export function Tip({ text, children, align = "center" }: { text: React.ReactNode; children: React.ReactNode; align?: "center" | "right" }) {
+  const id = useId();
+  return (
+    <span className="relative inline-flex group/tip">
+      <span tabIndex={0} aria-describedby={id} className="inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent/50">{children}</span>
+      <span id={id} role="tooltip"
+        className={`pointer-events-none absolute bottom-full mb-2 z-30 w-max max-w-[280px] rounded-[9px] bg-text text-white text-[11.5px] leading-[1.45] font-medium px-2.5 py-1.5 shadow-[var(--shadow-float)]
+          opacity-0 translate-y-1 transition duration-150 group-hover/tip:opacity-100 group-hover/tip:translate-y-0 group-focus-within/tip:opacity-100 group-focus-within/tip:translate-y-0
+          ${align === "right" ? "right-0" : "left-1/2 -translate-x-1/2"}`}>{text}</span>
+    </span>
+  );
+}
+
+/** 0-100 score as a ring that fills clockwise, the number in the middle. Green from 70, blue from 40, grey below. */
+export function ScoreRing({ score, size = 32 }: { score: number; size?: number }) {
+  const r = (size - 4) / 2, c = 2 * Math.PI * r;
+  const tone = score >= 70 ? "text-good" : score >= 40 ? "text-accent" : "text-faint";
+  return (
+    <span className={`relative inline-flex items-center justify-center shrink-0 ${tone}`} style={{ width: size, height: size }} aria-label={`AI match score ${score} out of 100`}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth="3" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(Math.max(score, 0), 100) / 100)} />
+      </svg>
+      <span className="absolute text-[10.5px] font-semibold tabular text-text">{score}</span>
+    </span>
   );
 }
 

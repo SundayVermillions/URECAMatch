@@ -19,6 +19,7 @@ from app.models import (
     Proposal,
     ProposalCreate,
     ProposalStatus,
+    Role,
     Window,
 )
 from app.services import catalog, placement, windows
@@ -51,7 +52,12 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
         )
     # REQ-PROPOSE-2: the recipient must be an active project supervisor.
     sup = store.user(body.supervisor_id)
-    if sup is None or store.supervisor(body.supervisor_id) is None or sup.status != AccountStatus.active:
+    if (
+        sup is None
+        or sup.role != Role.supervisor
+        or store.supervisor(body.supervisor_id) is None
+        or sup.status != AccountStatus.active
+    ):
         raise invalid("unknown_supervisor", "Choose a project supervisor from the list.", "supervisor_id")
     if any(q.supervisor_id == sup.id and q.status == ProposalStatus.submitted for q in store.proposals_for(student_id=user.id)):
         raise conflict(

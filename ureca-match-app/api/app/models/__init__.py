@@ -167,6 +167,7 @@ class StudentProfile(BaseModel):
 class SupervisorProfile(BaseModel):
     user_id: str
     faculty: str
+    title: str = ""  # "Prof.", "Assoc. Prof.", "Asst. Prof." or "Dr."; shown in front of the name, see services/titles.py
     organisation: str = "NTU"
 
 
@@ -192,6 +193,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     role: Role
+    title: str = ""  # supervisors only; ignored for students
 
 
 class VerifyRequest(BaseModel):
@@ -234,12 +236,14 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     role: Role
+    title: str = ""  # supervisors only; ignored for other roles
 
 
 class UserUpdate(BaseModel):
     name: str | None = None
     role: Role | None = None
     status: AccountStatus | None = None
+    title: str | None = None  # supervisors only: "" clears it. Leaving it out keeps the title as it is.
 
 
 class ActiveItemKind(str, Enum):
@@ -267,6 +271,7 @@ class CleanupWarning(ErrorBody):
 class UserListItem(BaseModel):
     user: User
     school: str | None = None
+    title: str | None = None  # a supervisor's title; the name in `user` already includes it
 
 
 # ---------------------------------------------------------------- cycle and rounds

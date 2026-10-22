@@ -42,7 +42,8 @@ create table student_profiles (
 create table supervisor_profiles (
   user_id      text primary key references users(id) on delete cascade,
   faculty      text not null default '',
-  organisation text not null default 'NTU'
+  organisation text not null default 'NTU',
+  title        text not null default ''                              -- Prof., Assoc. Prof., Asst. Prof. or Dr.
 );
 
 create table verification_codes (                                 -- REQ-REG-2

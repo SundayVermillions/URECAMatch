@@ -90,9 +90,9 @@ def _seed_sql(d: dict) -> str:
         ).replace("on conflict (id)", "on conflict (user_id)")
     )
     out.append(
-        _rows("supervisor_profiles", ["user_id", "faculty", "organisation"], [s.model_dump() for s in d["supervisors"]]).replace(
-            "on conflict (id)", "on conflict (user_id)"
-        )
+        _rows(
+            "supervisor_profiles", ["user_id", "faculty", "organisation", "title"], [s.model_dump() for s in d["supervisors"]]
+        ).replace("on conflict (id)", "on conflict (user_id)")
     )
     docs = [doc.model_dump() for s in d["students"] for doc in s.documents]
     out.append(

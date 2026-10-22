@@ -2073,6 +2073,11 @@ export interface components {
             /** Password */
             password: string;
             role: components["schemas"]["Role"];
+            /**
+             * Title
+             * @default
+             */
+            title: string;
         };
         /** ResendCodeRequest */
         ResendCodeRequest: {
@@ -2257,6 +2262,11 @@ export interface components {
             /** Faculty */
             faculty: string;
             /**
+             * Title
+             * @default
+             */
+            title: string;
+            /**
              * Organisation
              * @default NTU
              */
@@ -2334,12 +2344,19 @@ export interface components {
              */
             email: string;
             role: components["schemas"]["Role"];
+            /**
+             * Title
+             * @default
+             */
+            title: string;
         };
         /** UserListItem */
         UserListItem: {
             user: components["schemas"]["User"];
             /** School */
             school?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /** UserUpdate */
         UserUpdate: {
@@ -2347,6 +2364,8 @@ export interface components {
             name?: string | null;
             role?: components["schemas"]["Role"] | null;
             status?: components["schemas"]["AccountStatus"] | null;
+            /** Title */
+            title?: string | null;
         };
         /** ValidationError */
         ValidationError: {
