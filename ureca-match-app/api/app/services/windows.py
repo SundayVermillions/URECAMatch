@@ -43,6 +43,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.before_cycle,
             window_ends_at=None,
             label="No application cycle is open",
+            now=now,
         )
     if now > cycle.closing_date:
         return Phase(
@@ -52,6 +53,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.closed,
             window_ends_at=None,
             label="The application cycle has closed",
+            now=now,
         )
     r = current_round(cycle, now)
     if r is None or now < cycle.rounds[0].application_start:
@@ -64,6 +66,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.pre_application,
             window_ends_at=ends,
             label=f"Applications open {when(ends)}",
+            now=now,
         )
     if r.application_start <= now <= r.application_end:
         return Phase(
@@ -73,6 +76,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.application,
             window_ends_at=r.application_end,
             label=f"Round {r.number} closes {when(r.application_end)}",
+            now=now,
         )
     if r.review_start <= now <= r.review_end:
         return Phase(
@@ -82,6 +86,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.review,
             window_ends_at=r.review_end,
             label=f"Round {r.number} rankings due {when(r.review_end)}",
+            now=now,
         )
     if r.review_end < now <= r.approval_end:  # REQ-APPRV-4
         return Phase(
@@ -91,6 +96,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.approval,
             window_ends_at=r.approval_end,
             label=f"Round {r.number} results out {when(r.approval_end)}",
+            now=now,
         )
     if r.published_at is None:
         return Phase(
@@ -100,6 +106,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.awaiting_results,
             window_ends_at=None,  # only until the scheduler publishes, on the next request after approval_end
             label=f"Round {r.number} results pending",
+            now=now,
         )
     responds_by = offer_deadline(cycle, r, now) or cycle.closing_date
     return Phase(
@@ -109,6 +116,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
         window=Window.results,
         window_ends_at=responds_by,
         label=f"Round {r.number} results published",
+        now=now,
     )
 
 

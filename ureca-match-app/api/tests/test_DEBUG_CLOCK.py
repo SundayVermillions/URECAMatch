@@ -40,3 +40,10 @@ def test_DEBUG_CLOCK_3_reset_returns_to_the_normal_clock(clock_on, as_admin, as_
 
 def test_DEBUG_CLOCK_4_changing_it_needs_a_signed_in_user(clock_on, anon):
     assert anon.put("/debug/clock", json={"now": "2026-10-01T00:00:00Z"}).status_code == 401
+
+
+def test_DEBUG_CLOCK_5_me_reports_the_api_clock(clock_on, as_admin):
+    # Screens that check dates themselves (Cycle settings) take "now" from /me, so it must be the API's clock
+    assert as_admin.get("/me").json()["phase"]["now"].startswith("2026-09-07T10:00")  # the demo clock
+    as_admin.put("/debug/clock", json={"now": "2027-06-01T00:00:00Z"})
+    assert as_admin.get("/me").json()["phase"]["now"].startswith("2027-06-01T00:00")  # and it follows the debug clock

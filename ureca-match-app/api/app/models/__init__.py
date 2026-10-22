@@ -168,6 +168,7 @@ class Phase(BaseModel):
     window: Window
     window_ends_at: datetime | None
     label: str  # human copy, e.g. "Round 2 closes 29 Aug"
+    now: datetime  # the API's clock (Settings.now()) this was worked out at, for screens that check dates themselves
 
 
 class Me(BaseModel):
@@ -281,6 +282,17 @@ class RoundSpec(BaseModel):
 class RoundsUpdate(BaseModel):
     """Admin defines up to three sequential rounds (REQ-ROUND-1)."""
 
+    rounds: list[RoundSpec] = Field(max_length=3)
+    rollover_unmatched: bool = True  # REQ-EXEC-3
+
+
+class ScheduleUpdate(BaseModel):
+    """Use case 1-1, 1-2: the cycle's dates and its rounds, checked as one schedule and saved together or not at all.
+    A date left empty keeps its current value."""
+
+    opening_date: datetime | None = None
+    closing_date: datetime | None = None
+    pre_application_days: int | None = None
     rounds: list[RoundSpec] = Field(max_length=3)
     rollover_unmatched: bool = True  # REQ-EXEC-3
 

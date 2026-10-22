@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Header
@@ -22,6 +23,7 @@ from app.models import (
     ApplicationStatus,
     AuditEntry,
     AuditOperation,
+    Cycle,
     ListingStatus,
     ManualAssignRequest,
     Match,
@@ -266,6 +268,22 @@ def _expire_offers(store, now) -> None:
         if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at:
             m.status = MatchStatus.timed_out
             _mark_ineligible(store, m.student_id)
+
+
+def moved_offer_deadlines(store, planned: Cycle, now: datetime) -> list[tuple[Match, datetime]]:
+    """REQ-OUTCOME-3: the open offers whose deadline moves if the cycle's schedule becomes `planned`. An offer is open
+    until the end of the next application window still open, or the cycle's close after the last round, so moving
+    that round or the closing date moves the deadline with it. Returns each such offer with its new deadline.
+    The caller holds _schedule_lock."""
+    rounds = {r.id: r for r in planned.rounds}
+    moved = []
+    for m in store.matches:
+        if m.status != MatchStatus.published or m.round_id not in rounds:
+            continue
+        deadline = windows.offer_deadline(planned, rounds[m.round_id], now) or planned.closing_date
+        if deadline != m.offer_expires_at:
+            moved.append((m, deadline))
+    return moved
 
 
 def _preference(store, student_id: str, round_id: str, listing_id: str) -> int | None:
