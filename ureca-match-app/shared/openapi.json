@@ -7698,6 +7698,11 @@
           },
           "role": {
             "$ref": "#/components/schemas/Role"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
           }
         },
         "type": "object",
@@ -8118,6 +8123,11 @@
             "type": "string",
             "title": "Faculty"
           },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
           "organisation": {
             "type": "string",
             "title": "Organisation",
@@ -8285,6 +8295,11 @@
           },
           "role": {
             "$ref": "#/components/schemas/Role"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
           }
         },
         "type": "object",
@@ -8310,6 +8325,17 @@
               }
             ],
             "title": "School"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           }
         },
         "type": "object",
@@ -8350,6 +8376,17 @@
                 "type": "null"
               }
             ]
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           }
         },
         "type": "object",

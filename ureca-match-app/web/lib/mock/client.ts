@@ -5,6 +5,7 @@ const mockFileUrls = new Map<string, string>();
 import type { ApiClient } from "../api/client";
 import * as M from "../api/models";
 import { getSession } from "../session";
+import { TITLES, composeName, splitTitle } from "../titles";
 import { parseTranscriptFile } from "../transcript";
 import catalogJson from "./catalog.json";
 import seedJson from "./seed.json";
@@ -152,11 +153,12 @@ export class MockClient implements ApiClient {
     const domain = b.email.split("@")[1]?.toLowerCase();
     if (!["e.ntu.edu.sg", "ntu.edu.sg"].includes(domain)) throw new M.ApiError(422, "email_domain", "Use your NTU e-mail address (@e.ntu.edu.sg or @ntu.edu.sg).", "email");
     if (this.db.users.some((u) => u.email.toLowerCase() === b.email.toLowerCase())) throw new M.ApiError(409, "email_taken", "An account with this e-mail already exists. Sign in instead.");
-    const u: M.User = { id: this.id(b.role.slice(0, 3)), email: b.email, name: b.name, role: b.role, status: "pending_verification", created_at: this.iso(), last_login_at: null };
+    const title = b.role === "supervisor" ? this.checkTitle(b.title) : "";
+    const u: M.User = { id: this.id(b.role.slice(0, 3)), email: b.email, name: composeName(title, b.name), role: b.role, status: "pending_verification", created_at: this.iso(), last_login_at: null };
     this.db.users.push(u);
     this.passwords[b.email.toLowerCase()] = b.password;
     if (b.role === "student") this.db.students.push({ user_id: u.id, school: "", cgpa: null, year_of_study: null, completed_modules: [], research_interests: [], profile_complete: false, eligible_for_matching: true, documents: [] });
-    else this.db.supervisors.push({ user_id: u.id, faculty: "", organisation: "NTU" });
+    else this.db.supervisors.push({ user_id: u.id, faculty: "", organisation: "NTU", title });
   }
   async verify(b: M.VerifyRequest) {
     await sleep();
@@ -227,13 +229,23 @@ export class MockClient implements ApiClient {
     this.need("admin");
     return this.db.users.filter((u) => (!f.role || u.role === f.role) && (!f.status || u.status === f.status)
       && (!f.q || (u.name + u.email).toLowerCase().includes(f.q.toLowerCase())))
-      .map((u) => ({ user: u, school: this.student(u.id)?.school ?? this.db.supervisors.find((s) => s.user_id === u.id)?.faculty ?? null }));
+      .map((u) => {
+        const sup = this.db.supervisors.find((s) => s.user_id === u.id);
+        return { user: u, school: this.student(u.id)?.school ?? sup?.faculty ?? null, title: sup && u.role === "supervisor" ? (sup.title || splitTitle(u.name)[0]) : null };
+      });
+  }
+  private checkTitle(title?: string | null) {
+    const t = (title ?? "").trim();
+    if (t && !(TITLES as readonly string[]).includes(t)) throw new M.ApiError(422, "invalid_title", `Choose a title from the list: ${TITLES.join(", ")}.`, "title");
+    return t;
   }
   async createUser(b: M.UserCreate) {
     const a = this.need("admin");
     if (this.db.users.some((u) => u.email.toLowerCase() === b.email.toLowerCase())) throw new M.ApiError(409, "email_taken", "An account with this e-mail already exists.");
-    const u: M.User = { id: this.id(b.role.slice(0, 3)), email: b.email, name: b.name, role: b.role, status: "active", created_at: this.iso(), last_login_at: null };
+    const title = b.role === "supervisor" ? this.checkTitle(b.title) : "";
+    const u: M.User = { id: this.id(b.role.slice(0, 3)), email: b.email, name: composeName(title, b.name), role: b.role, status: "active", created_at: this.iso(), last_login_at: null };
     this.db.users.push(u);
+    this.ensureProfile(u, title);
     this.passwords[b.email.toLowerCase()] = "password"; this.audit(a, "user_updated", [u.id], "created");
     return u;
   }
@@ -241,12 +253,23 @@ export class MockClient implements ApiClient {
     const a = this.need("admin"); const u = this.db.users.find((u) => u.id === id);
     if (!u) throw new M.ApiError(404, "not_found", "User was not found.");
     const roleChanging = !!b.role && b.role !== u.role;
-    const deactivating = b.status === "inactive" && u.status !== "inactive";
+    // Inactive and Unverified both block sign-in, so both count as taking the account out of use.
+    const deactivating = !!b.status && b.status !== "active" && b.status !== u.status;
     const leavingAdmin = roleChanging || (!!b.status && b.status !== "active");
-    this.guardAccountChange(u, leavingAdmin, deactivating, roleChanging, confirmCleanup, a, deactivating ? "deactivated" : `changed to ${b.role}`);
+    this.guardAccountChange(u, leavingAdmin, deactivating, roleChanging, confirmCleanup, a, deactivating ? (b.status === "inactive" ? "deactivated" : "set to unverified") : `changed to ${b.role}`);
+    const titleIn = b.title != null ? this.checkTitle(b.title) : null;
+    let newName = b.name || u.name;
     const changes: string[] = [];
-    if (b.name && b.name !== u.name) { u.name = b.name; changes.push(`name is now ${b.name}`); }
-    if (b.role && b.role !== u.role) { u.role = b.role; changes.push(`role is now ${b.role}`); }
+    if (roleChanging) { u.role = b.role!; changes.push(`role is now ${b.role}`); this.ensureProfile(u, titleIn ?? ""); }
+    const sup = this.db.supervisors.find((s) => s.user_id === u.id);
+    if (roleChanging && u.role === "student") {
+      newName = splitTitle(newName)[1]; // students carry no academic title, so it goes with the role
+      if (sup) sup.title = "";
+    } else if (u.role === "supervisor" && titleIn !== null) {
+      newName = composeName(titleIn, splitTitle(newName)[1]);
+      if (sup) sup.title = titleIn;
+    }
+    if (newName !== u.name) { u.name = newName; changes.unshift(`name is now ${newName}`); }
     if (b.status && b.status !== u.status) { u.status = b.status; changes.push(`status is now ${b.status.replace("_", " ")}`); }
     this.audit(a, "user_updated", [u.id]);
     if (changes.length) this.notify([u.id], "account_changed", "Your account was updated", `An administrator changed your account: ${changes.join("; ")}.`);
@@ -259,6 +282,11 @@ export class MockClient implements ApiClient {
     const wasActive = u.status !== "inactive";
     u.status = "inactive"; this.audit(a, "user_deactivated", [u.id]);
     if (wasActive) this.notify([u.id], "account_changed", "Your account was deactivated", "An administrator deactivated your URECAMatch account, so you can no longer sign in.");
+  }
+  /** A new role needs its profile, as when an admin creates the account. An old profile is kept. */
+  private ensureProfile(u: M.User, title = "") {
+    if (u.role === "student" && !this.student(u.id)) this.db.students.push({ user_id: u.id, school: "", cgpa: null, year_of_study: null, completed_modules: [], research_interests: [], profile_complete: false, eligible_for_matching: true, documents: [] });
+    else if (u.role === "supervisor" && !this.db.supervisors.some((s) => s.user_id === u.id)) this.db.supervisors.push({ user_id: u.id, faculty: "", organisation: "NTU", title });
   }
   /** Same rules as routers/users.py: the last active admin is a hard block, other users get a preview until confirmed. */
   private guardAccountChange(u: M.User, leavingAdmin: boolean, deactivating: boolean, roleChanging: boolean, confirm: boolean, admin: M.User, reason: string) {
@@ -288,9 +316,14 @@ export class MockClient implements ApiClient {
       items.push({ kind: "application", id: a.id, title: a.listing_title, detail: `Supervisor: ${a.supervisor_name}` });
     for (const m of this.db.matches.filter((x) => x.student_id === u.id && ["proposed", "approved", "reassigned", "published", "accepted"].includes(x.status)))
       items.push({ kind: "match", id: m.id, title: m.listing_title, detail: `Supervisor: ${m.supervisor_name}` });
-    for (const m of this.db.matches.filter((x) => x.supervisor_id === u.id && ["proposed", "approved", "reassigned", "published"].includes(x.status)))
+    for (const m of this.db.matches.filter((x) => x.supervisor_id === u.id && ["proposed", "approved", "reassigned", "published", "accepted"].includes(x.status)))
       items.push({ kind: "match", id: m.id, title: m.listing_title, detail: `Student: ${m.student_name}` });
     return items;
+  }
+  private backInPool(studentId: string) {
+    const rounds = new Set((this.activeCycle()?.rounds ?? []).map((r) => r.id));
+    if (this.db.matches.some((m) => m.student_id === studentId && rounds.has(m.round_id) && m.status !== "rejected")) return;
+    const sp = this.student(studentId); if (sp) sp.eligible_for_matching = true;
   }
   private cleanUp(admin: M.User, u: M.User, items: M.ActiveItem[], reason: string) {
     const told = new Map<string, string[]>();
@@ -304,8 +337,11 @@ export class MockClient implements ApiClient {
         tell(m.supervisor_id, `${m.student_name}'s match to ${m.listing_title} was cancelled.`);
       } else {
         this.db.applications.filter((a) => a.student_id === m.student_id && a.round_id === m.round_id && a.listing_id === m.listing_id && a.status === "matched").forEach((a) => (a.status = "unmatched"));
+        const was = m.status;
+        if (was === "accepted") { const l = this.db.listings.find((x) => x.id === m.listing_id); if (l && l.filled_slots > 0) l.filled_slots -= 1; }
         m.status = "rejected"; m.supervisor_decided_at = this.iso();
-        tell(m.student_id, `Your match to ${m.listing_title} was cancelled.`);
+        if (was === "accepted") this.backInPool(m.student_id);
+        if (was === "published" || was === "accepted") tell(m.student_id, `Your match to ${m.listing_title} was cancelled.`); // a match not yet offered was never seen
       }
     }
     const touched = new Set<string>();
@@ -356,7 +392,7 @@ export class MockClient implements ApiClient {
     this.user();
     const bare = (n: string) => n.replace(/^(Assoc\. )?(Prof\. |Dr\. )/, "");
     return this.db.supervisors.map((s) => ({ s, u: this.db.users.find((u) => u.id === s.user_id) }))
-      .filter((x) => x.u && x.u.status === "active")
+      .filter((x) => x.u && x.u.status === "active" && x.u.role === "supervisor") // an old profile is kept after a role change
       .map(({ s, u }) => ({ id: s.user_id, name: u!.name, faculty: s.faculty }))
       .sort((a, b) => bare(a.name).localeCompare(bare(b.name)));
   }
