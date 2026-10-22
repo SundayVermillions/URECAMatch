@@ -204,6 +204,7 @@ def make_users() -> tuple[list[User], list[StudentProfile], list[SupervisorProfi
                         id=f"doc-{uid}-t",
                         owner_id=uid,
                         file_name=f"Transcript_{name.replace(' ', '')}.pdf",
+                        kind="transcript",
                         file_size=rng.randint(180_000, 900_000),
                         uploaded_at=dt(12 + i % 6, 8),
                     ),

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Query
 
 from app.deps import AdminUser, SettingsDep, StoreDep
-from app.errors import conflict, not_found
+from app.errors import ApiError, conflict, not_found
 from app.models import (
     AccountStatus,
     AuditOperation,
+    CleanupWarning,
     NotificationEvent,
     Ok,
     Role,
@@ -19,10 +22,36 @@ from app.models import (
     UserListItem,
     UserUpdate,
 )
+from app.services.account_cleanup import clean_up, find_active_items, is_last_admin, summarise
 from app.services.audit import audit
 from app.services.notify import notify
 
 router = APIRouter(prefix="/admin/users", tags=["admin: users"])
+
+# Nothing is changed when this comes back. Send the same request again with confirm_cleanup=true to go ahead.
+ConfirmCleanup = Annotated[
+    bool, Query(description="Close the user's open items first. Without it, a user with open items gets a 409 preview.")
+]
+WARNING = {409: {"model": CleanupWarning, "description": "Last active admin, or the user has open items to clean up first."}}
+
+
+def _guard_account_change(store, u: User, leaving_admin: bool, deactivating: bool, role_changing: bool, confirm: bool) -> list:
+    """Run before anything is changed. The last-admin rule is a hard block that `confirm_cleanup` cannot override
+    (there must always be one active admin). Otherwise a user with open items gets a preview until the admin
+    confirms. Returns the open items to clean up once confirmed."""
+    if (leaving_admin or deactivating) and is_last_admin(store, u):
+        raise conflict("last_admin", "This is the only active administrator. Make another user an active admin first.")
+    if not (deactivating or role_changing):
+        return []
+    items = find_active_items(store, u)
+    if items and not confirm:
+        raise ApiError(
+            409,
+            "has_active_items",
+            f"{u.name} still has {summarise(items)}. Confirm to close them and notify the people involved.",
+            extra={"items": [i.model_dump(mode="json") for i in items]},
+        )
+    return items
 
 
 @router.get("", response_model=list[UserListItem])
@@ -65,11 +94,24 @@ def create_user(body: UserCreate, admin: AdminUser, store: StoreDep, settings: S
     return user
 
 
-@router.patch("/{user_id}", response_model=User)
-def update_user(user_id: str, body: UserUpdate, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> User:
+@router.patch("/{user_id}", response_model=User, responses=WARNING)
+def update_user(
+    user_id: str,
+    body: UserUpdate,
+    admin: AdminUser,
+    store: StoreDep,
+    settings: SettingsDep,
+    confirm_cleanup: ConfirmCleanup = False,
+) -> User:
     u = store.user(user_id)
     if u is None:
         raise not_found("User")
+    role_changing = body.role is not None and body.role != u.role
+    deactivating = body.status == AccountStatus.inactive and u.status != AccountStatus.inactive
+    leaving_admin = role_changing or (body.status is not None and body.status != AccountStatus.active)
+    now = settings.now()
+    if _guard_account_change(store, u, leaving_admin, deactivating, role_changing, confirm_cleanup):  # REQ-USER-3
+        clean_up(store, admin, u, now, "deactivated" if deactivating else f"changed to {body.role.value}")
     changes = []
     if body.name is not None and body.name != u.name:
         u.name = body.name
@@ -81,7 +123,6 @@ def update_user(user_id: str, body: UserUpdate, admin: AdminUser, store: StoreDe
         u.status = body.status
         changes.append(f"status is now {body.status.value.replace('_', ' ')}")
     store.save_user(u)  # in Supabase mode store.user() returns a copy, so the change must be saved
-    now = settings.now()
     audit(store, admin, AuditOperation.user_updated, [u.id], now)
     if changes:
         notify(
@@ -95,11 +136,15 @@ def update_user(user_id: str, body: UserUpdate, admin: AdminUser, store: StoreDe
     return u
 
 
-@router.post("/{user_id}/deactivate", response_model=Ok)
-def deactivate(user_id: str, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Ok:
+@router.post("/{user_id}/deactivate", response_model=Ok, responses=WARNING)
+def deactivate(
+    user_id: str, admin: AdminUser, store: StoreDep, settings: SettingsDep, confirm_cleanup: ConfirmCleanup = False
+) -> Ok:
     u = store.user(user_id)
     if u is None:
         raise not_found("User")
+    if _guard_account_change(store, u, False, True, False, confirm_cleanup):  # REQ-USER-3
+        clean_up(store, admin, u, settings.now(), "deactivated")
     was_active = u.status != AccountStatus.inactive
     u.status = AccountStatus.inactive
     if settings.api_mode == "supabase" and hasattr(store, "client") and store.client:

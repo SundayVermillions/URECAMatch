@@ -58,10 +58,12 @@ create table supporting_documents (                              -- REQ-PROF-3
   owner_id     text not null references users(id) on delete cascade,
   file_name    text not null,
   file_format  text not null default 'pdf',
+  kind         text not null default 'supporting' check (kind in ('transcript', 'supporting')),
   file_size    int  not null check (file_size <= 5242880),
   storage_path text,
   uploaded_at  timestamptz not null default now()
 );
+create unique index one_transcript_per_student on supporting_documents (owner_id) where kind = 'transcript';
 
 -- ------------------------------------------------------------------ cycle and rounds (slice D)
 create table application_cycles (

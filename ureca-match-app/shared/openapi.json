@@ -373,6 +373,82 @@
         }
       }
     },
+    "/me/transcript/parse": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Parse Transcript",
+        "description": "Read CGPA, programme, year and passed modules from a transcript to prefill the profile form. Saves nothing.",
+        "operationId": "parse_transcript_me_transcript_parse_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_parse_transcript_me_transcript_parse_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptParse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/documents": {
       "post": {
         "tags": [
@@ -730,6 +806,18 @@
             }
           },
           {
+            "name": "confirm_cleanup",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview.",
+              "default": false,
+              "title": "Confirm Cleanup"
+            },
+            "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview."
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,
@@ -783,6 +871,16 @@
               }
             }
           },
+          "409": {
+            "description": "Last active admin, or the user has open items to clean up first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupWarning"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -812,6 +910,18 @@
               "type": "string",
               "title": "User Id"
             }
+          },
+          {
+            "name": "confirm_cleanup",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview.",
+              "default": false,
+              "title": "Confirm Cleanup"
+            },
+            "description": "Close the user's open items first. Without it, a user with open items gets a 409 preview."
           },
           {
             "name": "authorization",
@@ -853,6 +963,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Last active admin, or the user has open items to clean up first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupWarning"
                 }
               }
             }
@@ -5514,6 +5634,44 @@
         ],
         "title": "AccountStatus"
       },
+      "ActiveItem": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ActiveItemKind"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "title"
+        ],
+        "title": "ActiveItem",
+        "description": "Something that is still open for a user, shown before an admin deactivates them or changes their role."
+      },
+      "ActiveItemKind": {
+        "type": "string",
+        "enum": [
+          "listing",
+          "proposal",
+          "application",
+          "match"
+        ],
+        "title": "ActiveItemKind"
+      },
       "AdminDashboard": {
         "properties": {
           "cycle": {
@@ -5719,6 +5877,11 @@
       },
       "ApplicantStudent": {
         "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "default": ""
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -5730,6 +5893,17 @@
           "school": {
             "type": "string",
             "title": "School"
+          },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
           },
           "year_of_study": {
             "anyOf": [
@@ -5989,7 +6163,7 @@
         ],
         "title": "Body_cover_supervisor_listings__listing_id__cover_post"
       },
-      "Body_upload_document_me_documents_post": {
+      "Body_parse_transcript_me_transcript_parse_post": {
         "properties": {
           "file": {
             "type": "string",
@@ -6001,7 +6175,68 @@
         "required": [
           "file"
         ],
+        "title": "Body_parse_transcript_me_transcript_parse_post"
+      },
+      "Body_upload_document_me_documents_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "transcript",
+              "supporting"
+            ],
+            "title": "Kind",
+            "default": "supporting"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
         "title": "Body_upload_document_me_documents_post"
+      },
+      "CleanupWarning": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActiveItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "items"
+        ],
+        "title": "CleanupWarning",
+        "description": "The 409 `has_active_items` body: nothing was changed. Resend with confirm_cleanup=true to close these first."
       },
       "ClockSet": {
         "properties": {
@@ -6235,6 +6470,15 @@
             "title": "File Format",
             "default": "pdf"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "transcript",
+              "supporting"
+            ],
+            "title": "Kind",
+            "default": "supporting"
+          },
           "file_size": {
             "type": "integer",
             "title": "File Size"
@@ -6316,6 +6560,11 @@
       },
       "Listing": {
         "properties": {
+          "supervisor_email": {
+            "type": "string",
+            "title": "Supervisor Email",
+            "default": ""
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -7166,6 +7415,17 @@
             "type": "string",
             "title": "School"
           },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
+          },
           "cgpa": {
             "type": "number",
             "maximum": 5.0,
@@ -7739,6 +7999,17 @@
             "type": "string",
             "title": "School"
           },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
+          },
           "cgpa": {
             "anyOf": [
               {
@@ -7903,6 +8174,53 @@
           "topics"
         ],
         "title": "TopicGroup"
+      },
+      "TranscriptParse": {
+        "properties": {
+          "cgpa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cgpa"
+          },
+          "school": {
+            "type": "string",
+            "title": "School",
+            "default": ""
+          },
+          "degree": {
+            "type": "string",
+            "title": "Degree",
+            "default": ""
+          },
+          "year_of_study": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Of Study"
+          },
+          "completed_modules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Completed Modules",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "TranscriptParse",
+        "description": "What was read from an uploaded transcript. Empty values mean not found; nothing is saved (REQ-PROF-1)."
       },
       "User": {
         "properties": {

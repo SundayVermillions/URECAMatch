@@ -26,6 +26,7 @@ export type VerifyRequest = S["VerifyRequest"];
 export type SignInRequest = S["SignInRequest"];
 export type Session = S["Session"];
 export type ProfileUpdate = S["ProfileUpdate"];
+export type TranscriptParse = S["TranscriptParse"];
 export type UserCreate = S["UserCreate"];
 export type UserUpdate = S["UserUpdate"];
 export type UserListItem = S["UserListItem"];
@@ -56,6 +57,8 @@ export type RoundSummary = S["RoundSummary"];
 export type ReassignRequest = S["ReassignRequest"];
 export type ManualAssignRequest = S["ManualAssignRequest"];
 export type AuditEntry = S["AuditEntry"];
+export type ActiveItem = S["ActiveItem"];
+export type ActiveItemKind = S["ActiveItemKind"];
 export type Notification = S["Notification"];
 export type AdminDashboard = S["AdminDashboard"];
 export type SupervisorDashboard = S["SupervisorDashboard"];
@@ -67,7 +70,7 @@ export type UserFilters = { role?: Role; status?: AccountStatus; q?: string };
 
 /** Thrown by both clients. `field` lets forms highlight the input (style sheet 04). */
 export class ApiError extends Error {
-  constructor(public status: number, public code: string, message: string, public field?: string | null) {
+  constructor(public status: number, public code: string, message: string, public field?: string | null, public items?: ActiveItem[]) {
     super(message);
   }
 }

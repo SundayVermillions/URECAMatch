@@ -11,12 +11,14 @@ export interface ApiClient {
   me(): Promise<M.Me>;
   getProfile(): Promise<M.StudentProfile>;
   updateProfile(body: M.ProfileUpdate): Promise<M.StudentProfile>;
-  uploadDocument(file: File): Promise<M.Document>;
+  uploadDocument(file: File, kind?: M.Document["kind"]): Promise<M.Document>;
   deleteDocument(id: string): Promise<void>;
+  parseTranscript(file: File): Promise<M.TranscriptParse>;
   listUsers(f?: M.UserFilters): Promise<M.UserListItem[]>;
   createUser(body: M.UserCreate): Promise<M.User>;
-  updateUser(id: string, body: M.UserUpdate): Promise<M.User>;
-  deactivateUser(id: string): Promise<void>;
+  /** A user with open items gets a 409 `has_active_items` (ApiError.items) until `confirmCleanup` is true. The last active admin is always refused. */
+  updateUser(id: string, body: M.UserUpdate, confirmCleanup?: boolean): Promise<M.User>;
+  deactivateUser(id: string, confirmCleanup?: boolean): Promise<void>;
   // slice B
   browse(f?: M.ListingFilters): Promise<M.Listing[]>;
   listing(id: string): Promise<M.Listing>;

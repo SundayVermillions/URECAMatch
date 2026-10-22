@@ -34,7 +34,7 @@ def test_REQ_USER_2_register_cannot_choose_admin(anon):
 
 def test_REQ_USER_3_deactivated_user_gets_403(as_admin, client_for):
     """Deactivating a user blocks them from acting (REQ-USER-3)."""
-    resp = as_admin.post("/admin/users/stu-1/deactivate")
+    resp = as_admin.post("/admin/users/stu-1/deactivate?confirm_cleanup=true")  # stu-1 has open applications
     assert resp.status_code == 200
 
     stu_client = client_for("stu-1")

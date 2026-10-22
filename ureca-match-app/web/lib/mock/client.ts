@@ -5,6 +5,7 @@ const mockFileUrls = new Map<string, string>();
 import type { ApiClient } from "../api/client";
 import * as M from "../api/models";
 import { getSession } from "../session";
+import { parseTranscriptFile } from "../transcript";
 import catalogJson from "./catalog.json";
 import seedJson from "./seed.json";
 import { canonicalVideo } from "../video";
@@ -50,6 +51,29 @@ const when = (iso: string) => {
   const t = new Date(ms + 8 * 3_600_000), h = t.getUTCHours();
   return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}, ${h % 12 || 12}:${String(t.getUTCMinutes()).padStart(2, "0")} ${h < 12 ? "am" : "pm"} SGT`;
 };
+
+function resolveDegreeBySchool(school?: string | null, existingDegree?: string | null): string {
+  if (existingDegree) return existingDegree;
+  switch (school?.toUpperCase()) {
+    case "EEE":
+      return "Electrical & Electronic Engineering";
+    case "MAE":
+      return "Mechanical Engineering";
+    case "CEE":
+      return "Civil Engineering";
+    case "MSE":
+      return "Materials Engineering";
+    case "NBS":
+      return "Business";
+    case "SBS":
+      return "Biological Sciences";
+    case "SPMS":
+      return "Mathematical Sciences";
+    case "CCDS":
+    default:
+      return "Computer Science";
+  }
+}
 
 export class MockClient implements ApiClient {
   db: Seed = clone(seedJson as unknown as Seed);
@@ -112,7 +136,8 @@ export class MockClient implements ApiClient {
   private decorate(l: M.Listing, u: M.User): M.Listing {
     const apps = this.db.applications.filter((a) => a.listing_id === l.id && a.status === "submitted");
     const mine = u.role === "student" ? apps.find((a) => a.student_id === u.id) : undefined;
-    return { ...l, applicant_count: apps.length, applied: !!mine, applied_rank: mine?.preference_rank ?? null };
+    const supervisor_email = l.supervisor_email || this.db.users.find((x) => x.id === l.supervisor_id)?.email || "";
+    return { ...l, supervisor_email, applicant_count: apps.length, applied: !!mine, applied_rank: mine?.preference_rank ?? null };
   }
   private notify(userIds: string[], event: M.NotificationEvent, title: string, message: string, link?: string) {
     for (const uid of userIds) this.db.notifications.push({ id: this.id("ntf"), user_id: uid, event, title, message, created_at: this.iso(), read: false, link: link ?? null });
@@ -177,16 +202,24 @@ export class MockClient implements ApiClient {
     s.documents = s.documents.filter((d) => d.id !== id);
   }
 
-  async uploadDocument(file: File): Promise<M.Document> {
+  /** Read in the browser (lib/transcript.ts), as the API does in live mode. Unknown codes are dropped because saving refuses them. */
+  async parseTranscript(file: File): Promise<M.TranscriptParse> {
+    this.need("student");
+    const t = await parseTranscriptFile(file);
+    return { ...t, completed_modules: t.completed_modules.filter((c) => courseCodes.has(c)) };
+  }
+
+  async uploadDocument(file: File, kind: M.Document["kind"] = "supporting"): Promise<M.Document> {
     const u = this.need("student");
     const st = this.student(u.id)!;
-    if (st.documents.length >= 5) throw new M.ApiError(422, "max_documents", "Maximum limit of 5 documents reached.", "file");
+    if (kind === "supporting" && st.documents.filter((d) => d.kind === "supporting").length >= 5) throw new M.ApiError(422, "max_documents", "Maximum limit of 5 supporting documents reached.", "file");
     if (file.type !== "application/pdf" || !file.name.toLowerCase().endsWith(".pdf")) throw new M.ApiError(422, "not_pdf", "Upload a PDF file.", "file");
     if (file.size > 5 * 1024 * 1024) throw new M.ApiError(422, "too_large", "The file is larger than 5 MB.", "file");
     const docId = this.id("doc");
     const url = typeof window !== "undefined" && typeof URL !== "undefined" ? URL.createObjectURL(file) : null;
     if (url) mockFileUrls.set(docId, url);
-    const d: M.Document = { id: docId, owner_id: u.id, file_name: file.name, file_format: "pdf", file_size: file.size, uploaded_at: this.iso(), url };
+    const d: M.Document = { id: docId, owner_id: u.id, file_name: file.name, file_format: "pdf", kind, file_size: file.size, uploaded_at: this.iso(), url };
+    if (kind === "transcript") st.documents = st.documents.filter((x) => x.kind !== "transcript"); // one transcript only
     st.documents.push(d);
     return d;
   }
@@ -204,16 +237,101 @@ export class MockClient implements ApiClient {
     this.passwords[b.email.toLowerCase()] = "password"; this.audit(a, "user_updated", [u.id], "created");
     return u;
   }
-  async updateUser(id: string, b: M.UserUpdate) {
+  async updateUser(id: string, b: M.UserUpdate, confirmCleanup = false) {
     const a = this.need("admin"); const u = this.db.users.find((u) => u.id === id);
     if (!u) throw new M.ApiError(404, "not_found", "User was not found.");
-    if (b.name) u.name = b.name; if (b.role) u.role = b.role; if (b.status) u.status = b.status;
-    this.audit(a, "user_updated", [u.id]); return u;
+    const roleChanging = !!b.role && b.role !== u.role;
+    const deactivating = b.status === "inactive" && u.status !== "inactive";
+    const leavingAdmin = roleChanging || (!!b.status && b.status !== "active");
+    this.guardAccountChange(u, leavingAdmin, deactivating, roleChanging, confirmCleanup, a, deactivating ? "deactivated" : `changed to ${b.role}`);
+    const changes: string[] = [];
+    if (b.name && b.name !== u.name) { u.name = b.name; changes.push(`name is now ${b.name}`); }
+    if (b.role && b.role !== u.role) { u.role = b.role; changes.push(`role is now ${b.role}`); }
+    if (b.status && b.status !== u.status) { u.status = b.status; changes.push(`status is now ${b.status.replace("_", " ")}`); }
+    this.audit(a, "user_updated", [u.id]);
+    if (changes.length) this.notify([u.id], "account_changed", "Your account was updated", `An administrator changed your account: ${changes.join("; ")}.`);
+    return u;
   }
-  async deactivateUser(id: string) {
+  async deactivateUser(id: string, confirmCleanup = false) {
     const a = this.need("admin"); const u = this.db.users.find((u) => u.id === id);
     if (!u) throw new M.ApiError(404, "not_found", "User was not found.");
+    this.guardAccountChange(u, false, true, false, confirmCleanup, a, "deactivated");
+    const wasActive = u.status !== "inactive";
     u.status = "inactive"; this.audit(a, "user_deactivated", [u.id]);
+    if (wasActive) this.notify([u.id], "account_changed", "Your account was deactivated", "An administrator deactivated your URECAMatch account, so you can no longer sign in.");
+  }
+  /** Same rules as routers/users.py: the last active admin is a hard block, other users get a preview until confirmed. */
+  private guardAccountChange(u: M.User, leavingAdmin: boolean, deactivating: boolean, roleChanging: boolean, confirm: boolean, admin: M.User, reason: string) {
+    const admins = this.db.users.filter((x) => x.role === "admin" && x.status === "active");
+    if ((leavingAdmin || deactivating) && u.role === "admin" && u.status === "active" && admins.length === 1 && admins[0].id === u.id)
+      throw new M.ApiError(409, "last_admin", "This is the only active administrator. Make another user an active admin first.");
+    if (!deactivating && !roleChanging) return;
+    const items = this.activeItems(u);
+    if (!items.length) return;
+    if (!confirm) throw new M.ApiError(409, "has_active_items", `${u.name} still has ${this.summarise(items)}. Confirm to close them and notify the people involved.`, null, items);
+    this.cleanUp(admin, u, items, reason);
+  }
+  private summarise(items: M.ActiveItem[]) {
+    return (["listing", "proposal", "application", "match"] as const)
+      .map((k) => [k, items.filter((i) => i.kind === k).length] as const).filter(([, n]) => n)
+      .map(([k, n]) => `${n} ${k}${n === 1 ? "" : "s"}`).join(", ");
+  }
+  private activeItems(u: M.User): M.ActiveItem[] {
+    const items: M.ActiveItem[] = [];
+    for (const l of this.db.listings.filter((x) => x.supervisor_id === u.id && x.status === "published")) {
+      const n = this.db.applications.filter((a) => a.listing_id === l.id && a.status === "submitted").length;
+      items.push({ kind: "listing", id: l.id, title: l.title, detail: `${n} open applications` });
+    }
+    for (const p of this.db.proposals.filter((x) => x.status === "submitted" && (x.student_id === u.id || x.supervisor_id === u.id)))
+      items.push({ kind: "proposal", id: p.id, title: p.title, detail: p.student_id === u.id ? `Supervisor: ${p.supervisor_name}` : `Student: ${p.student_name}` });
+    for (const a of this.db.applications.filter((x) => x.student_id === u.id && x.status === "submitted"))
+      items.push({ kind: "application", id: a.id, title: a.listing_title, detail: `Supervisor: ${a.supervisor_name}` });
+    for (const m of this.db.matches.filter((x) => x.student_id === u.id && ["proposed", "approved", "reassigned", "published", "accepted"].includes(x.status)))
+      items.push({ kind: "match", id: m.id, title: m.listing_title, detail: `Supervisor: ${m.supervisor_name}` });
+    for (const m of this.db.matches.filter((x) => x.supervisor_id === u.id && ["proposed", "approved", "reassigned", "published"].includes(x.status)))
+      items.push({ kind: "match", id: m.id, title: m.listing_title, detail: `Student: ${m.student_name}` });
+    return items;
+  }
+  private cleanUp(admin: M.User, u: M.User, items: M.ActiveItem[], reason: string) {
+    const told = new Map<string, string[]>();
+    const tell = (uid: string, line: string) => told.set(uid, [...(told.get(uid) ?? []), line]);
+    const ids = (k: M.ActiveItemKind) => new Set(items.filter((i) => i.kind === k).map((i) => i.id));
+    const matchIds = ids("match");
+    for (const m of this.db.matches.filter((x) => matchIds.has(x.id))) {
+      if (m.student_id === u.id) {
+        if (m.status === "accepted") { const l = this.db.listings.find((x) => x.id === m.listing_id); if (l && l.filled_slots > 0) l.filled_slots -= 1; }
+        m.status = "declined"; m.student_responded_at = this.iso();
+        tell(m.supervisor_id, `${m.student_name}'s match to ${m.listing_title} was cancelled.`);
+      } else {
+        this.db.applications.filter((a) => a.student_id === m.student_id && a.round_id === m.round_id && a.listing_id === m.listing_id && a.status === "matched").forEach((a) => (a.status = "unmatched"));
+        m.status = "rejected"; m.supervisor_decided_at = this.iso();
+        tell(m.student_id, `Your match to ${m.listing_title} was cancelled.`);
+      }
+    }
+    const touched = new Set<string>();
+    for (const l of this.db.listings.filter((x) => ids("listing").has(x.id))) {
+      l.status = "closed";
+      for (const a of this.db.applications.filter((x) => x.listing_id === l.id && x.status === "submitted")) {
+        a.status = "withdrawn"; a.preference_rank = null; touched.add(`${a.student_id}|${a.round_id}`);
+        tell(a.student_id, `${l.title} was closed, so your application was withdrawn.`);
+      }
+    }
+    for (const a of this.db.applications.filter((x) => ids("application").has(x.id))) {
+      a.status = "withdrawn"; a.preference_rank = null;
+      const l = this.db.listings.find((x) => x.id === a.listing_id); if (l) tell(l.supervisor_id, `${u.name} withdrew their application to ${a.listing_title}.`);
+    }
+    for (const key of touched) {
+      const [sid, rid] = key.split("|");
+      this.db.applications.filter((x) => x.student_id === sid && x.round_id === rid && x.status === "submitted")
+        .sort((x, y) => (x.preference_rank ?? 99) - (y.preference_rank ?? 99)).forEach((x, i) => (x.preference_rank = i + 1));
+    }
+    for (const p of this.db.proposals.filter((x) => ids("proposal").has(x.id))) {
+      p.status = "declined"; p.decided_at = this.iso();
+      if (p.student_id === u.id) tell(p.supervisor_id, `${p.student_name}'s proposal ${p.title} was withdrawn.`);
+      else tell(p.student_id, `Your proposal ${p.title} to ${p.supervisor_name} was declined.`);
+    }
+    for (const [uid, lines] of told) if (uid && uid !== u.id) this.notify([uid], "account_changed", "Your items were updated by an administrator", `${u.name}'s account was ${reason}. ${lines.join(" ")}`);
+    this.audit(admin, "user_updated", [u.id], `Cleanup before account ${reason}: closed ${this.summarise(items)}`);
   }
 
   // ---- slice B
@@ -298,7 +416,7 @@ export class MockClient implements ApiClient {
     if (b.publish !== false && this.cycleClosed()) throw new M.ApiError(422, "cycle_closed", "The application cycle has closed. Save this as a draft for the next cycle.");
     this.checkListingText(b.title, b.description);
     const video_url = this.checkDetails(b);
-    const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, title: b.title, description: b.description,
+    const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, supervisor_email: u.email, title: b.title, description: b.description,
       prerequisites: cleanCourses(b.prerequisites ?? [], "prerequisites"), topic_tags: cleanTopics(b.topic_tags ?? [], "topic_tags"), available_slots: b.available_slots, filled_slots: 0,
       offering_faculty: b.offering_faculty, research_location: b.research_location, cover_url: null,
       outcomes: (b.outcomes ?? "").trim(), skills: (b.skills ?? "").trim(), hours_per_week: b.hours_per_week ?? null, mode: b.mode ?? null, gallery_urls: [], video_url,
@@ -383,10 +501,19 @@ export class MockClient implements ApiClient {
     const u = this.need("supervisor");
     return this.db.proposals.filter((p) => p.supervisor_id === u.id).map((p): M.Proposal => {
       const su = this.db.users.find((x) => x.id === p.student_id), sp = this.student(p.student_id);
-      if (!su || !sp) return p;
-      const student: M.ApplicantStudent = { id: su.id, name: su.name, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null,
-        completed_modules: sp.completed_modules ?? [], research_interests: sp.research_interests ?? [] };
-      return { ...p, student, documents: (sp.documents ?? []).filter((d) => (p.document_ids ?? []).includes(d.id)) };
+      if (!su) return p;
+      const student: M.ApplicantStudent = {
+        id: su.id,
+        name: su.name,
+        email: su.email,
+        school: sp?.school || "CCDS",
+        degree: resolveDegreeBySchool(sp?.school, sp?.degree),
+        year_of_study: sp?.year_of_study ?? 2,
+        cgpa: sp?.cgpa ?? null,
+        completed_modules: sp?.completed_modules ?? [],
+        research_interests: sp?.research_interests ?? p.research_interests ?? []
+      };
+      return { ...p, student, documents: (sp?.documents ?? []).filter((d) => (p.document_ids ?? []).includes(d.id)) };
     });
   }
   async decideProposal(id: string, accept: boolean, note?: string) {
@@ -408,7 +535,7 @@ export class MockClient implements ApiClient {
         this.notify([m.supervisor_id], "match_rejected", "A match on your project was withdrawn",
           `${p.student_name} accepted a self-proposed project, so their match to ${m.listing_title} was withdrawn.`, "/approvals");
       }
-      const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, title: p.title, description: p.description, prerequisites: [], topic_tags: p.research_interests,
+      const l: M.Listing = { id: this.id("lst"), supervisor_id: u.id, supervisor_name: u.name, supervisor_email: u.email, title: p.title, description: p.description, prerequisites: [], topic_tags: p.research_interests,
         available_slots: 1, filled_slots: 1, offering_faculty: this.db.supervisors.find((s) => s.user_id === u.id)?.faculty ?? "", research_location: "", cover_url: null, outcomes: "", skills: "", gallery_urls: [], status: "closed", created_at: this.iso(), applicant_count: 0, applied: false, applied_rank: null };
       this.db.listings.push(l);
       this.db.matches.push({ id: this.id("mt"), round_id: this.phase().round_id ?? this.activeCycle()?.rounds[0]?.id ?? "", student_id: p.student_id, student_name: p.student_name, listing_id: l.id, listing_title: l.title, supervisor_id: u.id, supervisor_name: u.name,
@@ -460,7 +587,7 @@ export class MockClient implements ApiClient {
     return this.db.applications.filter((a) => a.listing_id === listingId && a.status === "submitted" && (!roundId || a.round_id === roundId)).flatMap((a) => {
       const u = this.db.users.find((u) => u.id === a.student_id), sp = this.student(a.student_id);
       if (!u || !sp) return [];
-      return [{ application_id: a.id, student: { id: u.id, name: u.name, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
+      return [{ application_id: a.id, student: { id: u.id, name: u.name, email: u.email, school: sp.school, degree: resolveDegreeBySchool(sp.school, sp.degree), year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
         statement: a.statement, submitted_at: a.submitted_at, documents: sp.documents, meets_prerequisites: l.prerequisites.every((m) => sp.completed_modules.includes(m)), recommended: false, rank: null }];
     });
   }
@@ -865,7 +992,7 @@ export class MockClient implements ApiClient {
     if (!su || !sp) throw new M.ApiError(404, "not_found", "Student was not found.");
     const own = this.db.applications.find((x) => x.student_id === m.student_id && x.round_id === m.round_id && x.listing_id === m.listing_id);
     const l = this.db.listings.find((x) => x.id === m.listing_id); const ranking = this.db.applicant_rankings[`${m.listing_id}:${m.round_id}`] ?? [];
-    return { application_id: own?.id ?? "", student: { id: su.id, name: su.name, school: sp.school, year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
+    return { application_id: own?.id ?? "", student: { id: su.id, name: su.name, email: su.email, school: sp.school, degree: resolveDegreeBySchool(sp.school, sp.degree), year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
       statement: own?.statement ?? "", submitted_at: own?.submitted_at ?? m.published_at ?? su.created_at, documents: sp.documents.filter((d) => own?.document_ids.includes(d.id)),
       meets_prerequisites: (l?.prerequisites ?? []).every((p) => sp.completed_modules.includes(p)), recommended: false, rank: own && ranking.includes(own.id) ? ranking.indexOf(own.id) + 1 : null };
   }

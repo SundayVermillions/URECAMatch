@@ -107,6 +107,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/transcript/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Transcript
+         * @description Read CGPA, programme, year and passed modules from a transcript to prefill the profile form. Saves nothing.
+         */
+        post: operations["parse_transcript_me_transcript_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/documents": {
         parameters: {
             query?: never;
@@ -1216,6 +1236,27 @@ export interface components {
          * @enum {string}
          */
         AccountStatus: "pending_verification" | "active" | "inactive";
+        /**
+         * ActiveItem
+         * @description Something that is still open for a user, shown before an admin deactivates them or changes their role.
+         */
+        ActiveItem: {
+            kind: components["schemas"]["ActiveItemKind"];
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+        };
+        /**
+         * ActiveItemKind
+         * @enum {string}
+         */
+        ActiveItemKind: "listing" | "proposal" | "application" | "match";
         /** AdminDashboard */
         AdminDashboard: {
             cycle: components["schemas"]["Cycle"] | null;
@@ -1302,12 +1343,19 @@ export interface components {
         };
         /** ApplicantStudent */
         ApplicantStudent: {
+            /**
+             * Email
+             * @default
+             */
+            email: string;
             /** Id */
             id: string;
             /** Name */
             name: string;
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Year Of Study */
             year_of_study: number | null;
             /** Cgpa */
@@ -1406,10 +1454,35 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_parse_transcript_me_transcript_parse_post */
+        Body_parse_transcript_me_transcript_parse_post: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_document_me_documents_post */
         Body_upload_document_me_documents_post: {
             /** File */
             file: string;
+            /**
+             * Kind
+             * @default supporting
+             * @enum {string}
+             */
+            kind: "transcript" | "supporting";
+        };
+        /**
+         * CleanupWarning
+         * @description The 409 `has_active_items` body: nothing was changed. Resend with confirm_cleanup=true to close these first.
+         */
+        CleanupWarning: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Field */
+            field?: string | null;
+            /** Items */
+            items: components["schemas"]["ActiveItem"][];
         };
         /** ClockSet */
         ClockSet: {
@@ -1530,6 +1603,12 @@ export interface components {
              * @default pdf
              */
             file_format: string;
+            /**
+             * Kind
+             * @default supporting
+             * @enum {string}
+             */
+            kind: "transcript" | "supporting";
             /** File Size */
             file_size: number;
             /**
@@ -1561,6 +1640,11 @@ export interface components {
         };
         /** Listing */
         Listing: {
+            /**
+             * Supervisor Email
+             * @default
+             */
+            supervisor_email: string;
             /** Id */
             id: string;
             /** Supervisor Id */
@@ -1844,6 +1928,8 @@ export interface components {
         ProfileUpdate: {
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Cgpa */
             cgpa: number;
             /** Year Of Study */
@@ -2093,6 +2179,8 @@ export interface components {
             user_id: string;
             /** School */
             school: string;
+            /** Degree */
+            degree?: string | null;
             /** Cgpa */
             cgpa?: number | null;
             /** Year Of Study */
@@ -2160,6 +2248,31 @@ export interface components {
             name: string;
             /** Topics */
             topics: string[];
+        };
+        /**
+         * TranscriptParse
+         * @description What was read from an uploaded transcript. Empty values mean not found; nothing is saved (REQ-PROF-1).
+         */
+        TranscriptParse: {
+            /** Cgpa */
+            cgpa?: number | null;
+            /**
+             * School
+             * @default
+             */
+            school: string;
+            /**
+             * Degree
+             * @default
+             */
+            degree: string;
+            /** Year Of Study */
+            year_of_study?: number | null;
+            /**
+             * Completed Modules
+             * @default []
+             */
+            completed_modules: string[];
         };
         /** User */
         User: {
@@ -2476,6 +2589,42 @@ export interface operations {
             };
         };
     };
+    parse_transcript_me_transcript_parse_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_parse_transcript_me_transcript_parse_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranscriptParse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_document_me_documents_post: {
         parameters: {
             query?: never;
@@ -2620,7 +2769,10 @@ export interface operations {
     };
     update_user_admin_users__user_id__patch: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Close the user's open items first. Without it, a user with open items gets a 409 preview. */
+                confirm_cleanup?: boolean;
+            };
             header?: {
                 authorization?: string | null;
                 "x-demo-user"?: string | null;
@@ -2645,6 +2797,15 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
+            /** @description Last active admin, or the user has open items to clean up first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupWarning"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2658,7 +2819,10 @@ export interface operations {
     };
     deactivate_admin_users__user_id__deactivate_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Close the user's open items first. Without it, a user with open items gets a 409 preview. */
+                confirm_cleanup?: boolean;
+            };
             header?: {
                 authorization?: string | null;
                 "x-demo-user"?: string | null;
@@ -2677,6 +2841,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Last active admin, or the user has open items to clean up first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupWarning"];
                 };
             };
             /** @description Validation Error */

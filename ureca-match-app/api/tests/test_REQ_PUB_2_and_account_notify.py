@@ -49,7 +49,7 @@ def test_REQ_USER_role_change_notifies_user(fresh_store, as_admin):
     saved = []
     original = fresh_store.save_user
     fresh_store.save_user = lambda u: saved.append(u.id) or original(u)
-    assert as_admin.patch("/admin/users/stu-2", json={"role": "supervisor"}).status_code == 200
+    assert as_admin.patch("/admin/users/stu-2?confirm_cleanup=true", json={"role": "supervisor"}).status_code == 200
     assert saved == ["stu-2"]  # persisted, not only changed in memory
     [n] = [n for n in fresh_store.notifications_for("stu-2") if n.event == NotificationEvent.account_changed]
     assert n.title == "Your account was updated"
@@ -63,7 +63,7 @@ def test_REQ_USER_no_change_no_notification(fresh_store, as_admin):
 
 
 def test_REQ_USER_deactivate_notifies_once(fresh_store, as_admin):
-    assert as_admin.post("/admin/users/stu-2/deactivate").status_code == 200
-    assert as_admin.post("/admin/users/stu-2/deactivate").status_code == 200  # already inactive
+    assert as_admin.post("/admin/users/stu-2/deactivate?confirm_cleanup=true").status_code == 200  # stu-2 has open applications
+    assert as_admin.post("/admin/users/stu-2/deactivate").status_code == 200  # already inactive, nothing left to clean up
     told = [n for n in fresh_store.notifications_for("stu-2") if n.event == NotificationEvent.account_changed]
     assert [n.title for n in told] == ["Your account was deactivated"]
