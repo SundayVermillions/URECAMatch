@@ -25,6 +25,7 @@ from app.models import (
     User,
     VerifyRequest,
 )
+from app.services import email as mail
 from app.services import windows
 from app.services.titles import check_title, compose
 from app.settings import Settings
@@ -42,6 +43,8 @@ def _issue_verification_code(email: str, store: StoreDep, settings: SettingsDep)
     store.verification_codes[email.lower()] = (code, expires_at)
     if settings.api_mode == "mock":
         print(f"[AUTH] Verification code for {email}: {code} (expires at {expires_at.isoformat()})")
+    user = store.user_by_email(email)
+    mail.send_verification_code(email, user.name if user else "", code)  # REQ-REG-2; EMAIL_MODE decides if it goes out
     return code
 
 

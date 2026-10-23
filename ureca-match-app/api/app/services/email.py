@@ -1,8 +1,11 @@
 """E-mail for notifications (NFR 5.1.2: delivered within 15 minutes). Owner: slice E.
 
-Only `notify()` calls this. EMAIL_MODE decides what happens:
+`notify()` sends every notification through here, and the sign-up code e-mail uses the same transport (`deliver`).
+EMAIL_MODE decides what happens:
   off   nothing (default; tests and local dev)
   log   print what would be sent
+  smtp  deliver over plain SMTP to SMTP_HOST:SMTP_PORT (default localhost:1025), no login. For a local catcher such
+        as Mailpit. The app refuses to start with this in production.
   send  deliver through Resend (production only)
 A failed send is logged and never fails the request: the in-app notification is already stored.
 """
@@ -11,8 +14,10 @@ from __future__ import annotations
 
 import html
 import logging
+import smtplib
 from collections.abc import Callable
 from dataclasses import dataclass
+from email.message import EmailMessage
 
 from app.db.store import Store
 from app.models import Notification, NotificationEvent, User
@@ -144,10 +149,51 @@ def send_for(store: Store, notifications: list[Notification]) -> int:
             continue
         subject, body, text = render(n, user)
         messages.append({"from": settings.email_from, "to": [user.email], "subject": subject, "html": body, "text": text})
+    return deliver(messages)
+
+
+CODE_MINUTES = 10  # how long a sign-up code stays valid (routers/auth.py)
+
+
+def render_verification_code(name: str, code: str) -> tuple[str, str, str]:
+    """Subject, HTML body and plain-text body for the sign-up code (REQ-REG-2)."""
+    lines = [
+        f"Hi {name.strip()}," if name.strip() else "Hi,",
+        "Use this code to verify your e-mail address and finish creating your URECAMatch account:",
+    ]
+    note = f"The code works for {CODE_MINUTES} minutes. If you didn't sign up, you can ignore this e-mail."
+    paragraphs = [f"<p>{html.escape(line)}</p>" for line in lines]
+    paragraphs.append(f'<p style="font-size:28px;font-weight:700;letter-spacing:6px">{html.escape(code)}</p>')
+    paragraphs.append(f"<p>{html.escape(note)}</p>")
+    paragraphs.append(f'<p style="{FOOTER_STYLE}">{html.escape(FOOTER)}</p>')
+    text = "\n\n".join([*lines, code, note, "--", FOOTER])
+    return "Your URECAMatch verification code", "\n".join(paragraphs), text
+
+
+def send_verification_code(to: str, name: str, code: str) -> int:
+    """E-mail the sign-up code. Never raises: the account exists and the code can be sent again."""
+    settings = get_settings()
+    if settings.email_mode == "off":
+        return 0
+    subject, body, text = render_verification_code(name, code)
+    try:
+        return deliver([{"from": settings.email_from, "to": [to], "subject": subject, "html": body, "text": text}])
+    except Exception:
+        log.exception("Could not send the verification code e-mail")
+        return 0
+
+
+def deliver(messages: list[dict]) -> int:
+    """Hand ready-made messages to the transport EMAIL_MODE names. Returns how many were handed over."""
+    settings = get_settings()
+    if settings.email_mode == "off" or not messages:
+        return 0
     if settings.email_mode == "log":
         for m in messages:
             log.info("email (EMAIL_MODE=log) to=%s subject=%s", m["to"][0], m["subject"])
         return len(messages)
+    if settings.email_mode == "smtp":
+        return _send_smtp(messages)
     if settings.email_mode != "send":
         log.warning("Unknown EMAIL_MODE %r; no e-mail sent", settings.email_mode)
         return 0
@@ -166,4 +212,25 @@ def send_for(store: Store, notifications: list[Notification]) -> int:
             sent += len(chunk)
         except Exception:  # the in-app notification still stands
             log.exception("Resend batch of %d e-mails failed", len(chunk))
+    return sent
+
+
+def _send_smtp(messages: list[dict]) -> int:
+    """Plain SMTP to a local catcher: no TLS, no login. Same HTML and text as Resend would send."""
+    settings = get_settings()
+    sent = 0
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
+            for m in messages:
+                msg = EmailMessage()
+                msg["From"], msg["To"], msg["Subject"] = m["from"], ", ".join(m["to"]), m["subject"]
+                msg.set_content(m["text"])
+                msg.add_alternative(m["html"], subtype="html")
+                try:
+                    server.send_message(msg)
+                    sent += 1
+                except smtplib.SMTPException:
+                    log.exception("SMTP server rejected an e-mail to %s", m["to"][0])
+    except OSError:
+        log.exception("Could not reach the SMTP server at %s:%s. Is Mailpit running?", settings.smtp_host, settings.smtp_port)
     return sent

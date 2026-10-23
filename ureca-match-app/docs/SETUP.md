@@ -74,6 +74,31 @@ Add `NEXT_PUBLIC_DEBUG_CLOCK=true` to `web/.env.local` and restart `npm run dev`
 
 In live mode the API must also allow it: put `DEBUG_CLOCK=true` in `api/.env` and restart the API. The clock moves for every user on that API, is held in memory only, and a restart resets it. Leave both flags off in production.
 
+### Testing e-mails locally
+
+See every e-mail the app sends without a Resend key. [Mailpit](https://mailpit.axllent.org) is a mailbox that runs on your computer and catches all mail. Any address works, nothing leaves your computer.
+
+1. Start Mailpit. Pick one:
+   - Docker: `docker run -d -p 8025:8025 -p 1025:1025 axllent/mailpit`
+   - No Docker: download the Windows `.exe` from the [Mailpit releases page](https://github.com/axllent/mailpit/releases) and run it.
+2. In `api/.env` set `EMAIL_MODE=smtp`. Leave `RESEND_API_KEY` empty. `SMTP_HOST` and `SMTP_PORT` default to `localhost` and `1025`, so Mailpit needs no other setting.
+3. Start the API, then open <http://localhost:8025>. Every e-mail shows up there as soon as the app sends it.
+
+What sends an e-mail:
+- Sign up, or press Resend code on the verify page: the 6-digit code.
+- Anything that creates a notification: offers, results, rejected matches, proposals, cycle changes, account changes.
+
+To check all the e-mail designs at once, send one of each to any address:
+
+```bash
+cd api
+uv run python -m app.dev.send_samples anyone@example.com
+```
+
+The script only runs when `EMAIL_MODE` is `smtp` or `log`.
+
+`EMAIL_MODE=smtp` is for your own computer only. The API will not start with it when `APP_ENV` or `VERCEL_ENV` is `production`. `EMAIL_MODE=send` (Resend) and `EMAIL_MODE=log` work as before.
+
 ## Work split
 
 Owners: Edwin (A), Robin (B), Ian (C), Nicholas (D), Benjamin (E). The full guide is `URECAMatch-Development-Guide.docx`: goal, per-slice build steps, tests, who to talk to. [DEV-PLAN.md](DEV-PLAN.md) is the live progress board. Traceability from REQ-ID to code and tests lives in [traceability.md](traceability.md).
