@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from app.models import Cycle, Phase, Round, Window
+from app.models import Cycle, CycleStatus, Phase, Round, Window
 
 SINGAPORE = timezone(timedelta(hours=8), "SGT")  # NTU's time zone (no daylight saving); users read every deadline in it
 
@@ -127,6 +127,13 @@ def offer_deadline(cycle: Cycle, r: Round, now: datetime) -> datetime | None:
     later = sorted(x.application_end for x in cycle.rounds if x.number > r.number and x.application_end > now)
     deadline = later[0] if later else cycle.closing_date
     return deadline if deadline > now else None
+
+
+def cycle_closed(cycle: Cycle | None, now: datetime) -> bool:
+    """Whether nothing may be scheduled for this cycle any more: it has no cycle, an admin closed it, or its closing
+    date has passed. A cycle can be past its closing date while its status still says in progress (the seeded one
+    is), and the schedule must not run for it then."""
+    return cycle is None or cycle.status == CycleStatus.closed or now > cycle.closing_date
 
 
 def in_application_window(cycle: Cycle | None, now: datetime) -> bool:

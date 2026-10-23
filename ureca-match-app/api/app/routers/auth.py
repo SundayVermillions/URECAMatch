@@ -38,7 +38,7 @@ class ResendCodeRequest(BaseModel):
 def _issue_verification_code(email: str, store: StoreDep, settings: SettingsDep) -> str:
     code = f"{secrets.randbelow(1_000_000):06d}"
     expires_at = settings.now() + timedelta(minutes=10)
-    store.verification_codes[email.lower()] = (code, expires_at)
+    store.issue_code(email, code, expires_at)
     if settings.api_mode == "mock":
         print(f"[AUTH] Verification code for {email}: {code} (expires at {expires_at.isoformat()})")
     return code
@@ -113,25 +113,24 @@ def verify(body: VerifyRequest, store: StoreDep, settings: SettingsDep) -> Ok:
     if user is None:
         raise invalid("unknown_email", "No account found for this e-mail.", "email")
 
-    email_key = body.email.lower()
     # 000000 accepted in mock mode only for easy testing/demo
     if settings.api_mode == "mock" and body.code == "000000":
         user.status = AccountStatus.active
-        store.verification_codes.pop(email_key, None)
+        store.save_user(user)
+        store.clear_code(body.email)
         return Ok()
 
-    stored = store.verification_codes.get(email_key)
-    if not stored:
+    result = store.check_code(body.email, body.code, settings.now())
+    if result == "none":
         raise invalid("bad_code", "No active verification code found. Request a new one.", "code")
-
-    code, expires_at = stored
-    if settings.now() > expires_at:
+    if result == "expired":
         raise invalid("code_expired", "The verification code has expired. Request a new one.", "code")
-    if body.code != code:
+    if result != "ok":
         raise invalid("bad_code", "That code is not correct. Check your e-mail and try again.", "code")
 
     user.status = AccountStatus.active
-    store.verification_codes.pop(email_key, None)
+    store.save_user(user)  # in Supabase mode store.user_by_email() returns a copy
+    store.clear_code(body.email)
     return Ok()
 
 

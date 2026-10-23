@@ -89,7 +89,7 @@ def create_cycle(body: CycleCreate, admin: AdminUser, store: StoreDep, settings:
         status=CycleStatus.draft,
         rounds=[],
     )
-    store.cycles.append(cycle)
+    store.save_cycle(cycle)
     audit(store, admin, AuditOperation.cycle_updated, [cycle.id], now, "created")
     return cycle
 
@@ -103,6 +103,7 @@ def close_cycle(cycle_id: str, admin: AdminUser, store: StoreDep, settings: Sett
     if c.status == CycleStatus.closed:
         raise conflict("already_closed", "This cycle is already closed.")
     c.status = CycleStatus.closed
+    store.save_cycle(c)
     now = settings.now()
     audit(store, admin, AuditOperation.cycle_updated, [c.id], now, "closed")
     affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]
@@ -129,6 +130,7 @@ def reopen_cycle(cycle_id: str, admin: AdminUser, store: StoreDep, settings: Set
     if active is not None:
         raise conflict("cycle_active", f"Close the {active.academic_year} cycle before reopening another.")
     c.status = CycleStatus.in_progress
+    store.save_cycle(c)
     now = settings.now()
     audit(store, admin, AuditOperation.cycle_updated, [c.id], now, "reopened")
     affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]
@@ -220,8 +222,10 @@ def _save(
         news = _news(c, planned)
         c.opening_date, c.closing_date, c.pre_application_days, c.rounds = opening, closing, pre_days, rounds
         c.rollover_unmatched = rollover  # REQ-EXEC-3
+        store.save_cycle(c)  # the cycle and its rounds; a round dropped from it is deleted
         for m, deadline in moved:
             m.offer_expires_at = deadline
+            store.save_match(m)  # in Supabase mode the store hands out copies, so each change is saved
         audit(store, admin, AuditOperation.cycle_updated, [c.id], now, note)
     if news:  # REQ-CYCLE-3, use case 1-2: students and supervisors hear about every moved date
         affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]

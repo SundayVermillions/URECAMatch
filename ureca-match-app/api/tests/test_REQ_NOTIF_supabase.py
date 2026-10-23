@@ -108,6 +108,9 @@ class TableQuery:
     def limit(self, n):
         return self
 
+    def range(self, start, end):
+        return self
+
     def order(self, column, desc=False):
         return self
 
@@ -133,8 +136,7 @@ def test_REQ_NOTIF_2_me_unread_from_supabase_drops_after_mark_read(as_student):
         for i, (user, read) in enumerate([("stu-1", False), ("stu-1", False), ("stu-1", True), ("sup-1", False)])
     ]
     s = SupabaseStore.__new__(SupabaseStore)
-    MockStore.__init__(s)
-    s.notifications = []  # the in-memory seed must not be the source in live mode
+    MockStore.__init__(s, seed=False)  # live mode never loads the in-memory seed
     s.client = TableClient({"users": [u.model_dump(mode="json") for u in seed.users], "notifications": rows})
     store_module._store = s
 
