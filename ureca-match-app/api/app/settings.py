@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     demo_now: datetime = datetime(2026, 9, 7, 10, 0, tzinfo=UTC)
     # Developer tool: lets /debug/clock replace "now" so a cycle can be tested without waiting. Off unless DEBUG_CLOCK=true.
     debug_clock: bool = False
+    # Run the schedule (matching, publishing, offer expiry) before every request. Unset means on in mock mode and off in
+    # Supabase mode, where /internal/tick is the only driver.
+    scheduler_on_request: bool | None = None
+
+    def runs_scheduler_on_request(self) -> bool:
+        return self.api_mode == "mock" if self.scheduler_on_request is None else self.scheduler_on_request
 
     @property
     def domains(self) -> list[str]:
