@@ -65,7 +65,7 @@ export default function Proposals() {
 
       <Modal open={!!confirm} onClose={() => setConfirm(null)} title={confirm?.accept ? "Accept and register this student?" : "Decline this proposal?"}
         footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button><Button variant={confirm?.accept ? "primary" : "destructive"} onClick={decide}>{confirm?.accept ? "Accept and register" : "Decline"}</Button></>}>
-        {confirm?.accept ? `${confirm.p.student_name} is registered to "${confirm.p.title}" under you. Their other applications this round are withdrawn.` : `${confirm?.p.student_name} will be notified. They can keep applying to listed projects.`}
+        {confirm?.accept ? `${confirm.p.student_name} is registered to "${confirm.p.title}" under you. Their other applications, open offers and pending proposals are withdrawn.` : `${confirm?.p.student_name} will be notified. They can keep applying to listed projects.`}
       </Modal>
     </>
   );
