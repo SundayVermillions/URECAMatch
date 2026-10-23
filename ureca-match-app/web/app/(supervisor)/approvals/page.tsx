@@ -31,9 +31,13 @@ export default function Approvals() {
   }
   const thisRound = (data ?? []).filter((m) => m.round_id === phase?.round_id);
   const earlier = (data ?? []).filter((m) => m.round_id !== phase?.round_id);
+  // The pill shows the status (SRS 3.1.6). The note says who acted, since supervisors decline with a button but the
+  // pill for that is "Rejected", while "Declined" is a student turning down the offer.
   const note = (m: Match) =>
-    m.status === "rejected" ? `Declined by you${m.supervisor_note ? `: "${m.supervisor_note}"` : ""}`
-      : m.status === "reassigned" ? "Placed by the URECA office, so it cannot be declined" : null;
+    m.status === "rejected" ? (m.supervisor_note ? `Your reason: "${m.supervisor_note}"` : null)
+      : m.status === "reassigned" ? "Placed by the URECA office, so it cannot be declined"
+      : m.status === "declined" ? "The student declined the offer"
+      : m.status === "timed_out" ? "The student didn't reply in time" : null;
   return (
     <>
       <PageHeader title="Match approvals" description="Students the matching places on your projects are offered a place when the approval window closes. Decline any student you cannot take before then." />
@@ -54,7 +58,7 @@ export default function Approvals() {
                 <button type="button" onClick={() => setProfile(m)} className="text-[12.5px] font-medium text-accent hover:text-accent-ink mt-0.5">View profile</button>
               </div>
               <div className="flex items-center gap-2 ml-auto shrink-0">
-                {m.status !== "rejected" && <Status value={m.status} />}
+                <Status value={m.status} />
                 {canDecline(m) && <Button size="sm" variant="secondary" onClick={() => setDecline(m)}>Decline</Button>}
               </div>
             </li>
@@ -68,7 +72,10 @@ export default function Approvals() {
             {earlier.map((m) => (
               <li key={m.id} className="bg-surface border border-border rounded-row flex items-center gap-3.5 px-4 py-3">
                 <Avatar name={m.student_name} size={32} />
-                <div className="flex-1 min-w-0"><div className="text-[13.5px] font-semibold">{m.student_name}</div><div className="text-[12.5px] text-muted truncate">→ {m.listing_title}</div></div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13.5px] font-semibold">{m.student_name}</div><div className="text-[12.5px] text-muted truncate">→ {m.listing_title}</div>
+                  {note(m) && <div className="text-[11.5px] text-muted mt-0.5">{note(m)}</div>}
+                </div>
                 <Status value={m.status} />
               </li>
             ))}

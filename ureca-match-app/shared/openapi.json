@@ -2856,6 +2856,7 @@
           "admin: cycle"
         ],
         "summary": "Update Cycle",
+        "description": "REQ-CYCLE-2, 3: change the cycle's dates. Rounds that have not started move with the opening date and the\npre-application window, keeping their spacing (NFR 5.4.3).",
         "operationId": "update_cycle_admin_cycles__cycle_id__put",
         "parameters": [
           {
@@ -3090,7 +3091,7 @@
           "admin: cycle"
         ],
         "summary": "Set Rounds",
-        "description": "Build the rounds from their window lengths and optional start dates (REQ-ROUND-1, use case 1-2), and reject\nrounds that overlap or fall outside the cycle (REQ-ROUND-3). A round ends when its approval window does\n(REQ-APPRV-5), and the cycle must close at least 7 days after the last one (REQ-OUTCOME-3). A round without a\nstart date opens 2 days after the previous one ends; Round 1 opens when the pre-application window ends.",
+        "description": "REQ-ROUND-1..3, use case 1-2: replace the rounds and keep the cycle's dates.",
         "operationId": "set_rounds_admin_cycles__cycle_id__rounds_put",
         "parameters": [
           {
@@ -3141,6 +3142,91 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RoundsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cycle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/cycles/{cycle_id}/schedule": {
+      "put": {
+        "tags": [
+          "admin: cycle"
+        ],
+        "summary": "Save Schedule",
+        "description": "Use case 1-1 step 5, 1-2: Cycle settings sends the cycle's dates and its rounds in one request, so they are\nchecked as one schedule and either all of it is saved or, if a check fails, none of it.",
+        "operationId": "save_schedule_admin_cycles__cycle_id__schedule_put",
+        "parameters": [
+          {
+            "name": "cycle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cycle Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleUpdate"
               }
             }
           }
@@ -6045,6 +6131,11 @@
           "label": {
             "type": "string",
             "title": "Label"
+          },
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
           }
         },
         "type": "object",
@@ -6054,7 +6145,8 @@
           "round_number",
           "window",
           "window_ends_at",
-          "label"
+          "label",
+          "now"
         ],
         "title": "Phase"
       },
@@ -6415,21 +6507,6 @@
               }
             ],
             "title": "Published At"
-          },
-          "eligible_students": {
-            "type": "integer",
-            "title": "Eligible Students",
-            "default": 0
-          },
-          "open_slots": {
-            "type": "integer",
-            "title": "Open Slots",
-            "default": 0
-          },
-          "reopened_slots": {
-            "type": "integer",
-            "title": "Reopened Slots",
-            "default": 0
           }
         },
         "type": "object",
@@ -6512,6 +6589,14 @@
           "round": {
             "$ref": "#/components/schemas/Round"
           },
+          "eligible": {
+            "type": "integer",
+            "title": "Eligible"
+          },
+          "open_slots": {
+            "type": "integer",
+            "title": "Open Slots"
+          },
           "matched": {
             "type": "integer",
             "title": "Matched"
@@ -6543,6 +6628,8 @@
         "type": "object",
         "required": [
           "round",
+          "eligible",
+          "open_slots",
           "matched",
           "unmatched",
           "excluded",
@@ -6573,6 +6660,64 @@
         ],
         "title": "RoundsUpdate",
         "description": "Admin defines up to three sequential rounds (REQ-ROUND-1)."
+      },
+      "ScheduleUpdate": {
+        "properties": {
+          "opening_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Date"
+          },
+          "closing_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closing Date"
+          },
+          "pre_application_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pre Application Days"
+          },
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/RoundSpec"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Rounds"
+          },
+          "rollover_unmatched": {
+            "type": "boolean",
+            "title": "Rollover Unmatched",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "rounds"
+        ],
+        "title": "ScheduleUpdate",
+        "description": "Use case 1-1, 1-2: the cycle's dates and its rounds, checked as one schedule and saved together or not at all.\nA date left empty keeps its current value."
       },
       "Session": {
         "properties": {

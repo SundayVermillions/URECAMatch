@@ -34,6 +34,7 @@ export type CycleCreate = S["CycleCreate"];
 export type CycleUpdate = S["CycleUpdate"];
 export type RoundSpec = S["RoundSpec"];
 export type RoundsUpdate = S["RoundsUpdate"];
+export type ScheduleUpdate = S["ScheduleUpdate"];
 export type Listing = S["Listing"];
 export type ListingCreate = S["ListingCreate"];
 export type ListingUpdate = S["ListingUpdate"];

@@ -6,13 +6,12 @@
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
-import { Avatar, Banner, Button, Chip, Empty, Field, Loading, Modal, Select, Status, Textarea, fmtDeadline } from "@/components/ui";
+import { Avatar, Banner, Button, Chip, Empty, Field, Loading, Modal, Select, Status, Textarea, fmtDeadline, statusLabel } from "@/components/ui";
 import { ApiError, type Match, type MatchStatus, type UserListItem } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
-// "declined" is used by both sides, so the chips say whose decline it was
-const STATUSES: [MatchStatus, string][] = [["proposed", "Proposed"], ["rejected", "Declined by supervisor"], ["reassigned", "Reassigned"],
-  ["published", "Offer sent"], ["accepted", "Accepted"], ["declined", "Declined by student"], ["timed_out", "Timed out"]];
+// The chips name each status exactly as its pill does (SRS 3.1.6): "Rejected" is the supervisor's, "Declined" the student's.
+const STATUSES: MatchStatus[] = ["proposed", "rejected", "reassigned", "published", "accepted", "declined", "timed_out"];
 const PLACES: MatchStatus[] = ["proposed", "approved", "reassigned", "published", "accepted"]; // a match that holds the student
 
 export default function ReviewMatches() {
@@ -56,7 +55,7 @@ export default function ReviewMatches() {
       <PageHeader title={`Round ${s?.round.number ?? ""} matches`} back={{ href: "/rounds", label: "Back to matching rounds" }} description={s ? (published ? `${s.matched} matches · results published; unassign or assign students here if needed` : `${s.matched} matched · supervisors can decline until ${fmtDeadline(s.round.approval_end)}`) : ""}
         right={s && (
           <div className="flex items-center gap-3.5">
-            {!published && <div className="text-right"><div className="text-[12px] text-muted font-semibold">Declined by supervisors</div><div className="font-bold tabular">{s.declined}</div></div>}
+            {!published && <div className="text-right"><div className="text-[12px] text-muted font-semibold">Rejected by supervisors</div><div className="font-bold tabular">{s.declined}</div></div>}
             {published ? <Status value="published" kind="round" /> : <span className="text-[12.5px] text-muted max-w-[200px]">Publishes automatically at {fmtDeadline(s.round.approval_end)}</span>}
           </div>
         )} />
@@ -64,7 +63,7 @@ export default function ReviewMatches() {
       <div className="flex items-center gap-1.5 mb-4 flex-wrap">
         <span className="eyebrow">Status</span>
         <Chip active={status === undefined} onClick={() => setStatus(undefined)}>All</Chip>
-        {STATUSES.map(([v, text]) => <Chip key={v} active={status === v} onClick={() => setStatus(v)}>{text}</Chip>)}
+        {STATUSES.map((v) => <Chip key={v} active={status === v} onClick={() => setStatus(v)}>{statusLabel(v)}</Chip>)}
         <Chip active={status === "unmatched"} onClick={() => setStatus("unmatched")}>Unmatched{unmatched.data ? ` (${unmatched.data.length})` : ""}</Chip>
       </div>
 
@@ -92,7 +91,7 @@ export default function ReviewMatches() {
                   <div className="text-[13.5px] font-semibold">{m.student_name}{m.preference_rank ? <span className="text-faint font-normal"> · preference {m.preference_rank}</span> : null}</div>
                   <div className="text-[12.5px] text-muted truncate">→ <strong className="text-text">{m.listing_title}</strong> · {m.supervisor_name}</div>
                   {m.original_listing_id && <div className="text-[11.5px] text-warn-ink mt-0.5">Reassigned · {m.justification}</div>}
-                  {m.status === "rejected" && <div className="text-[11.5px] text-bad-ink mt-0.5">Declined by {m.supervisor_name}{m.supervisor_note ? ` · "${m.supervisor_note}"` : " · no reason given"}</div>}
+                  {m.status === "rejected" && <div className="text-[11.5px] text-bad-ink mt-0.5">Rejected by {m.supervisor_name}{m.supervisor_note ? ` · "${m.supervisor_note}"` : " · no reason given"}</div>}
                 </div>
                 <span className="w-32"><Status value={m.status} /></span>
                 <span className="w-44 flex justify-end gap-2">

@@ -2048,10 +2048,7 @@
         "approval_end": "2026-09-03T08:59:59Z",
         "status": "published",
         "executed_at": "2026-09-01T09:00:00Z",
-        "published_at": "2026-09-03T09:00:00Z",
-        "eligible_students": 0,
-        "open_slots": 0,
-        "reopened_slots": 0
+        "published_at": "2026-09-03T09:00:00Z"
       },
       {
         "id": "rnd-2",
@@ -2064,10 +2061,7 @@
         "approval_end": "2026-09-14T08:59:59Z",
         "status": "application_window",
         "executed_at": null,
-        "published_at": null,
-        "eligible_students": 32,
-        "open_slots": 14,
-        "reopened_slots": 2
+        "published_at": null
       },
       {
         "id": "rnd-3",
@@ -2080,10 +2074,7 @@
         "approval_end": "2026-09-25T08:59:59Z",
         "status": "scheduled",
         "executed_at": null,
-        "published_at": null,
-        "eligible_students": 0,
-        "open_slots": 0,
-        "reopened_slots": 0
+        "published_at": null
       }
     ],
     "rollover_unmatched": true
@@ -2108,10 +2099,7 @@
           "approval_end": "2026-01-21T08:59:59Z",
           "status": "completed",
           "executed_at": "2026-01-19T09:00:00Z",
-          "published_at": "2026-01-21T09:00:00Z",
-          "eligible_students": 0,
-          "open_slots": 0,
-          "reopened_slots": 0
+          "published_at": "2026-01-21T09:00:00Z"
         },
         {
           "id": "rnd-cyc-2526s2-2",
@@ -2124,10 +2112,7 @@
           "approval_end": "2026-02-01T08:59:59Z",
           "status": "completed",
           "executed_at": "2026-01-30T09:00:00Z",
-          "published_at": "2026-02-01T09:00:00Z",
-          "eligible_students": 0,
-          "open_slots": 0,
-          "reopened_slots": 0
+          "published_at": "2026-02-01T09:00:00Z"
         },
         {
           "id": "rnd-cyc-2526s2-3",
@@ -2140,10 +2125,7 @@
           "approval_end": "2026-02-12T08:59:59Z",
           "status": "completed",
           "executed_at": "2026-02-10T09:00:00Z",
-          "published_at": "2026-02-12T09:00:00Z",
-          "eligible_students": 0,
-          "open_slots": 0,
-          "reopened_slots": 0
+          "published_at": "2026-02-12T09:00:00Z"
         }
       ],
       "rollover_unmatched": true
@@ -2167,10 +2149,7 @@
           "approval_end": "2026-09-03T08:59:59Z",
           "status": "published",
           "executed_at": "2026-09-01T09:00:00Z",
-          "published_at": "2026-09-03T09:00:00Z",
-          "eligible_students": 0,
-          "open_slots": 0,
-          "reopened_slots": 0
+          "published_at": "2026-09-03T09:00:00Z"
         },
         {
           "id": "rnd-2",
@@ -2183,10 +2162,7 @@
           "approval_end": "2026-09-14T08:59:59Z",
           "status": "application_window",
           "executed_at": null,
-          "published_at": null,
-          "eligible_students": 32,
-          "open_slots": 14,
-          "reopened_slots": 2
+          "published_at": null
         },
         {
           "id": "rnd-3",
@@ -2199,10 +2175,7 @@
           "approval_end": "2026-09-25T08:59:59Z",
           "status": "scheduled",
           "executed_at": null,
-          "published_at": null,
-          "eligible_students": 0,
-          "open_slots": 0,
-          "reopened_slots": 0
+          "published_at": null
         }
       ],
       "rollover_unmatched": true

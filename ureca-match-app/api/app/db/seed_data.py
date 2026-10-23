@@ -248,9 +248,6 @@ def make_cycle() -> Cycle:
                 # REQ-EXEC-4, REQ-PUB-3: the system runs matching when review closes and publishes when approval closes
                 executed_at=rev_end + timedelta(seconds=1) if n == 1 else None,
                 published_at=rev_end + timedelta(days=2, seconds=1) if n == 1 else None,
-                eligible_students=32 if n == 2 else 0,
-                open_slots=14 if n == 2 else 0,
-                reopened_slots=2 if n == 2 else 0,
             )
         )
         cursor = rev_start + timedelta(days=2) + timedelta(days=4)  # 2-day approval window, then a 2-day gap
@@ -288,9 +285,6 @@ def make_past_cycle() -> Cycle:
                 status=RoundStatus.completed,
                 executed_at=rev_end + timedelta(seconds=1),
                 published_at=rev_end + timedelta(days=2, seconds=1),
-                eligible_students=0,
-                open_slots=0,
-                reopened_slots=0,
             )
         )
         cursor = rev_start + timedelta(days=2) + timedelta(days=4)

@@ -70,6 +70,7 @@ export class LiveClient implements ApiClient {
   reopenCycle = (id: string) => this.req<M.Cycle>("POST", `/admin/cycles/${id}/reopen`);
   updateCycle = (id: string, b: M.CycleUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}`, b);
   setRounds = (id: string, b: M.RoundsUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}/rounds`, b);
+  saveSchedule = (id: string, b: M.ScheduleUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}/schedule`, b);
   summary = (id: string) => this.req<M.RoundSummary>("GET", `/admin/rounds/${id}/summary`);
   matches = (id: string, status?: M.MatchStatus) => this.req<M.Match[]>("GET", `/admin/rounds/${id}/matches` + this.q({ status }));
   reassign = (id: string, b: M.ReassignRequest) => this.req<M.Match>("POST", `/admin/matches/${id}/reassign`, b);

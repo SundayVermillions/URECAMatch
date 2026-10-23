@@ -239,6 +239,16 @@ def test_REQ_REV_1_unmatched_list_matches_the_summary(as_admin, at):
     assert not {u["user"]["id"] for u in unmatched} & matched
 
 
+def test_REQ_REV_1_summary_counts_the_pool_and_free_slots(as_admin, fresh_store, at):
+    before = as_admin.get("/admin/rounds/rnd-2/summary").json()  # 7 Sep: Round 2 is taking applications
+    free = sum(max(x.available_slots - x.filled_slots, 0) for x in fresh_store.listings if x.status.value == "published")
+    assert before["eligible"] == 32 and before["open_slots"] == free  # students 1 to 32 applied; no offer holds a slot yet
+    _execute_r2(as_admin, at)
+    after = as_admin.get("/admin/rounds/rnd-2/summary").json()
+    held = sum(1 for m in fresh_store.matches if m.round_id == "rnd-2" and m.status.value == "proposed")
+    assert held > 0 and after["open_slots"] == free - held and after["eligible"] == 32  # each match now holds a slot
+
+
 def test_REQ_ASSIGN_3_unassign_needs_a_reason(as_admin, at):
     m = _execute_r2(as_admin, at)[0]
     r = as_admin.post(f"/admin/matches/{m['id']}/unassign", json={"note": "short"})

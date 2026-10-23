@@ -579,7 +579,11 @@ export interface paths {
         };
         /** Get Cycle */
         get: operations["get_cycle_admin_cycles__cycle_id__get"];
-        /** Update Cycle */
+        /**
+         * Update Cycle
+         * @description REQ-CYCLE-2, 3: change the cycle's dates. Rounds that have not started move with the opening date and the
+         *     pre-application window, keeping their spacing (NFR 5.4.3).
+         */
         put: operations["update_cycle_admin_cycles__cycle_id__put"];
         post?: never;
         delete?: never;
@@ -638,12 +642,30 @@ export interface paths {
         get?: never;
         /**
          * Set Rounds
-         * @description Build the rounds from their window lengths and optional start dates (REQ-ROUND-1, use case 1-2), and reject
-         *     rounds that overlap or fall outside the cycle (REQ-ROUND-3). A round ends when its approval window does
-         *     (REQ-APPRV-5), and the cycle must close at least 7 days after the last one (REQ-OUTCOME-3). A round without a
-         *     start date opens 2 days after the previous one ends; Round 1 opens when the pre-application window ends.
+         * @description REQ-ROUND-1..3, use case 1-2: replace the rounds and keep the cycle's dates.
          */
         put: operations["set_rounds_admin_cycles__cycle_id__rounds_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/cycles/{cycle_id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Schedule
+         * @description Use case 1-1 step 5, 1-2: Cycle settings sends the cycle's dates and its rounds in one request, so they are
+         *     checked as one schedule and either all of it is saved or, if a check fails, none of it.
+         */
+        put: operations["save_schedule_admin_cycles__cycle_id__schedule_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1546,6 +1568,11 @@ export interface components {
             window_ends_at: string | null;
             /** Label */
             label: string;
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
         };
         /**
          * PreferenceRankingUpdate
@@ -1708,21 +1735,6 @@ export interface components {
             executed_at?: string | null;
             /** Published At */
             published_at?: string | null;
-            /**
-             * Eligible Students
-             * @default 0
-             */
-            eligible_students: number;
-            /**
-             * Open Slots
-             * @default 0
-             */
-            open_slots: number;
-            /**
-             * Reopened Slots
-             * @default 0
-             */
-            reopened_slots: number;
         };
         /** RoundSpec */
         RoundSpec: {
@@ -1748,6 +1760,10 @@ export interface components {
         /** RoundSummary */
         RoundSummary: {
             round: components["schemas"]["Round"];
+            /** Eligible */
+            eligible: number;
+            /** Open Slots */
+            open_slots: number;
             /** Matched */
             matched: number;
             /** Unmatched */
@@ -1764,6 +1780,26 @@ export interface components {
          * @description Admin defines up to three sequential rounds (REQ-ROUND-1).
          */
         RoundsUpdate: {
+            /** Rounds */
+            rounds: components["schemas"]["RoundSpec"][];
+            /**
+             * Rollover Unmatched
+             * @default true
+             */
+            rollover_unmatched: boolean;
+        };
+        /**
+         * ScheduleUpdate
+         * @description Use case 1-1, 1-2: the cycle's dates and its rounds, checked as one schedule and saved together or not at all.
+         *     A date left empty keeps its current value.
+         */
+        ScheduleUpdate: {
+            /** Opening Date */
+            opening_date?: string | null;
+            /** Closing Date */
+            closing_date?: string | null;
+            /** Pre Application Days */
+            pre_application_days?: number | null;
             /** Rounds */
             rounds: components["schemas"]["RoundSpec"][];
             /**
@@ -3383,6 +3419,44 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RoundsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cycle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_schedule_admin_cycles__cycle_id__schedule_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                cycle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleUpdate"];
             };
         };
         responses: {

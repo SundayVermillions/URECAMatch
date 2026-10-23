@@ -242,9 +242,6 @@ class Round(BaseModel):
     status: RoundStatus
     executed_at: datetime | None = None
     published_at: datetime | None = None
-    eligible_students: int = 0
-    open_slots: int = 0
-    reopened_slots: int = 0
 
 
 class Cycle(BaseModel):
@@ -472,6 +469,8 @@ class Match(BaseModel):
 
 class RoundSummary(BaseModel):
     round: Round
+    eligible: int  # students in the round's pool: they applied, and no earlier round placed or excluded them
+    open_slots: int  # slots on published projects that nobody holds right now, so matching can fill them
     matched: int  # students the round places; a student a supervisor declined counts as unmatched until placed again
     unmatched: int
     excluded: int

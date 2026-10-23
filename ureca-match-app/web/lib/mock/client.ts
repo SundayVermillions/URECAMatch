@@ -37,6 +37,34 @@ function checkTimeToRespond(rounds: M.Round[], closing: number) {
   if (due > closing) throw new M.ApiError(422, "outside_cycle", `Round ${last.number}'s approval window ends ${when(last.approval_end)}. Students need ${RESPOND_DAYS} days after that to answer their offers, so the cycle must close on or after ${when(new Date(due).toISOString())}.`, "closing_date");
 }
 
+// Mirrors of the helpers in routers/cycles.py.
+const DAY = 86_400_000;
+const GAP = 2 * DAY; // a round without a start date opens 2 days after the previous round's approval window
+const iso = (ms: number) => new Date(ms).toISOString();
+/** A round's application, review and approval window lengths, in days. */
+const lengthsOf = (r: M.Round) => ({
+  application_days: Math.round((Date.parse(r.application_end) + 1000 - Date.parse(r.application_start)) / DAY),
+  review_days: Math.round((Date.parse(r.review_end) + 1000 - Date.parse(r.review_start)) / DAY),
+  approval_days: Math.round((Date.parse(r.approval_end) - Date.parse(r.review_end)) / DAY),
+});
+/** Whether `s` describes round `r` as it is: the same window lengths, and its own start date or none. */
+function unchanged(s: M.RoundSpec, r: M.Round) {
+  const l = lengthsOf(r);
+  return (!s.start_date || Date.parse(s.start_date) === Date.parse(r.application_start))
+    && s.application_days === l.application_days && s.review_days === l.review_days && (s.approval_days ?? 2) === l.approval_days;
+}
+/** What students and supervisors are told about a schedule change (REQ-CYCLE-3, use case 1-2). */
+function scheduleNews(old: M.Cycle, next: M.Cycle) {
+  const news = Date.parse(next.closing_date) !== Date.parse(old.closing_date) ? [`The cycle now closes on ${when(next.closing_date)}.`] : [];
+  const dates = (r: M.Round) => [r.application_start, r.application_end, r.review_end, r.approval_end].map((d) => Date.parse(d)).join();
+  for (const r of next.rounds) {
+    const o = old.rounds.find((x) => x.number === r.number);
+    if (!o || dates(o) !== dates(r)) news.push(`Round ${r.number}: applications ${when(r.application_start)} to ${when(r.application_end)}; rankings due ${when(r.review_end)}; results out ${when(r.approval_end)}.`);
+  }
+  for (const o of old.rounds) if (!next.rounds.some((r) => r.number === o.number)) news.push(`Round ${o.number} has been removed.`);
+  return news;
+}
+
 export class MockClient implements ApiClient {
   db: Seed = clone(seedJson as unknown as Seed);
   now = DEMO_NOW;
@@ -69,8 +97,9 @@ export class MockClient implements ApiClient {
   private activeCycle(): M.Cycle | null { return this.db.cycles.find((c) => c.status !== "closed") ?? null; }
   private cycleById(id: string): M.Cycle | undefined { return this.db.cycles.find((c) => c.id === id); }
 
-  // ---- phase (mirror of services/windows.py)
-  phase(): M.Phase {
+  // ---- phase (mirror of services/windows.py), stamped with the mock's clock as `now`
+  phase(): M.Phase { return { ...this.window(), now: this.iso() }; }
+  private window(): Omit<M.Phase, "now"> {
     const c = this.activeCycle(), t = this.now.getTime();
     if (!c) return { cycle_id: null, round_id: null, round_number: null, window: "before_cycle", window_ends_at: null, label: "No application cycle is open" };
     if (t < Date.parse(c.opening_date))
@@ -399,7 +428,8 @@ export class MockClient implements ApiClient {
   async createCycle(b: M.CycleCreate) {
     const a = this.need("admin");
     if (this.activeCycle()) throw new M.ApiError(409, "cycle_active", "Close the current cycle before creating a new one.");
-    if (Date.parse(b.closing_date) <= Date.parse(b.opening_date)) throw new M.ApiError(422, "bad_dates", "Closing date must be after the opening date.");
+    if (Date.parse(b.closing_date) <= Date.parse(b.opening_date)) throw new M.ApiError(422, "bad_dates", "Closing date must be after the opening date.", "closing_date");
+    if (Date.parse(b.closing_date) <= this.now.getTime()) throw new M.ApiError(422, "date_in_past", "This closing date has already passed. Pick a later one.", "closing_date"); // use case 1-1 E3
     const clash = this.db.cycles.find((c) => Date.parse(c.opening_date) <= Date.parse(b.closing_date) && Date.parse(b.opening_date) <= Date.parse(c.closing_date));
     if (clash) throw new M.ApiError(409, "cycle_overlap", `These dates overlap the ${clash.academic_year} cycle. Cycles cannot overlap.`);
     const c: M.Cycle = { id: this.id("cyc"), academic_year: b.academic_year, opening_date: b.opening_date, closing_date: b.closing_date, pre_application_days: b.pre_application_days ?? 7, status: "draft", rounds: [], rollover_unmatched: true };
@@ -426,66 +456,98 @@ export class MockClient implements ApiClient {
   async updateCycle(id: string, b: M.CycleUpdate) {
     const a = this.need("admin"); const c = this.cycleById(id);
     if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
-    const t = this.now.getTime(), day = 86_400_000;
-    if (b.opening_date && Date.parse(c.opening_date) <= t) throw new M.ApiError(422, "date_passed", "The opening date has passed and can no longer be changed.", "opening_date");
-    if (b.closing_date && Date.parse(c.closing_date) <= t) throw new M.ApiError(422, "date_passed", "The closing date has passed and can no longer be changed.", "closing_date");
-    // mirror of update_cycle and _check_new_dates in routers/cycles.py
-    const opening = Date.parse(b.opening_date ?? c.opening_date), closing = Date.parse(b.closing_date ?? c.closing_date), pre = b.pre_application_days ?? c.pre_application_days;
-    const started = (r: M.Round) => Date.parse(r.application_start) <= t;
-    if (pre !== c.pre_application_days && c.rounds.some(started)) throw new M.ApiError(422, "date_passed", "Round 1 has started, so the pre-application window can no longer change.", "pre_application_days");
-    // rounds that have not started move with the opening date and pre-application window, keeping their spacing
-    const shift = opening + pre * day - (Date.parse(c.opening_date) + c.pre_application_days * day);
-    const move = (iso: string) => new Date(Date.parse(iso) + shift).toISOString();
-    const rounds = c.rounds.map((r) => (started(r) || !shift ? r : { ...r, application_start: move(r.application_start), application_end: move(r.application_end), review_start: move(r.review_start), review_end: move(r.review_end), approval_end: move(r.approval_end) }));
-    for (const [field, v] of [["opening_date", b.opening_date], ["closing_date", b.closing_date]] as const)
-      if (v && Date.parse(v) <= t) throw new M.ApiError(422, "date_in_past", "Pick a date that has not passed yet.", field);
+    // mirror of update_cycle: rounds that have not started move with the opening date and pre-application window
+    const t = this.now.getTime(), opening = b.opening_date ?? c.opening_date, pre = b.pre_application_days ?? c.pre_application_days;
+    const shift = Date.parse(opening) + pre * DAY - (Date.parse(c.opening_date) + c.pre_application_days * DAY);
+    const specs = c.rounds.map((r) => ({ number: r.number, ...lengthsOf(r), start_date: iso(Date.parse(r.application_start) + (Date.parse(r.application_start) > t ? shift : 0)) }));
+    return this.applySchedule(a, c, opening, b.closing_date ?? c.closing_date, pre, specs, c.rollover_unmatched);
+  }
+  async setRounds(cycleId: string, b: M.RoundsUpdate) {
+    const a = this.need("admin"); const c = this.cycleById(cycleId);
+    if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
+    return this.applySchedule(a, c, c.opening_date, c.closing_date, c.pre_application_days, b.rounds, b.rollover_unmatched ?? true, "rounds configured");
+  }
+  async saveSchedule(cycleId: string, b: M.ScheduleUpdate) {
+    const a = this.need("admin"); const c = this.cycleById(cycleId);
+    if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
+    return this.applySchedule(a, c, b.opening_date ?? c.opening_date, b.closing_date ?? c.closing_date, b.pre_application_days ?? c.pre_application_days, b.rounds, b.rollover_unmatched ?? true, "schedule saved");
+  }
+  /** Mirror of _save and _check_dates in routers/cycles.py: check the cycle as it would be after the change, then
+   *  change it and tell the people it affects. Nothing changes if a check fails. */
+  private applySchedule(a: M.User, c: M.Cycle, openingIso: string, closingIso: string, pre: number, specs: M.RoundSpec[], rollover: boolean, note?: string) {
+    if (c.status === "closed") throw new M.ApiError(409, "cycle_closed", "This cycle is closed. Reopen it to change its dates or rounds."); // REQ-CYCLE-4
+    const t = this.now.getTime(), opening = Date.parse(openingIso), closing = Date.parse(closingIso);
+    const was = { opening: Date.parse(c.opening_date), closing: Date.parse(c.closing_date) };
+    if (opening !== was.opening && was.opening <= t) throw new M.ApiError(422, "date_passed", "The opening date has passed and can no longer be changed.", "opening_date");
+    if (closing !== was.closing && was.closing <= t) throw new M.ApiError(422, "date_passed", "The closing date has passed and can no longer be changed.", "closing_date");
+    if (pre !== c.pre_application_days && c.rounds.some((r) => Date.parse(r.application_start) <= t)) throw new M.ApiError(422, "date_passed", "Round 1 has started, so the pre-application window can no longer change.", "pre_application_days");
+    for (const [field, v, old] of [["opening_date", opening, was.opening], ["closing_date", closing, was.closing]] as const)
+      if (v !== old && v <= t) throw new M.ApiError(422, "date_in_past", "Pick a date that has not passed yet.", field);
     if (pre < 0 || pre > 60) throw new M.ApiError(422, "bad_pre_application", "The pre-application window must be 0 to 60 days.", "pre_application_days");
     if (closing <= opening) throw new M.ApiError(422, "bad_dates", "Closing date must be after the opening date.", "closing_date");
     const clash = this.db.cycles.find((o) => o.id !== c.id && Date.parse(o.opening_date) <= closing && opening <= Date.parse(o.closing_date));
     if (clash) throw new M.ApiError(409, "cycle_overlap", `These dates overlap the ${clash.academic_year} cycle. Cycles cannot overlap.`);
-    if (rounds.length) {
-      const first = [...rounds].sort((x, y) => Date.parse(x.application_start) - Date.parse(y.application_start))[0];
-      const last = [...rounds].sort((x, y) => Date.parse(y.approval_end) - Date.parse(x.approval_end))[0];
-      if (Date.parse(first.application_start) < opening + pre * day) throw new M.ApiError(422, "outside_cycle", `Round ${first.number} starts ${fmt(first.application_start)}, before the pre-application window ends. Change the rounds first.`);
-      if (Date.parse(last.approval_end) > closing) throw new M.ApiError(422, "outside_cycle", `Round ${last.number} ends ${fmt(last.approval_end)}, after this closing date. Pick a later date or shorten the rounds first.`, "closing_date");
-      checkTimeToRespond(rounds, closing); // moving the opening date later moves the rounds closer to the close
+    const rounds = this.planRounds(c, opening, closing, pre, specs);
+    const planned: M.Cycle = { ...c, opening_date: openingIso, closing_date: closingIso, pre_application_days: pre, rounds };
+    // REQ-OUTCOME-3, mirror of moved_offer_deadlines in routers/matching.py: open offers follow the next round or the close
+    const byId = new Map(rounds.map((r) => [r.id, r]));
+    const moved: [M.Match, string][] = [];
+    for (const m of this.db.matches) {
+      const r = byId.get(m.round_id);
+      if (m.status !== "published" || !r) continue;
+      const d = this.offerDeadline(r, planned) ?? planned.closing_date;
+      if (Date.parse(d) !== Date.parse(m.offer_expires_at ?? "")) moved.push([m, d]);
     }
-    const changes = [closing !== Date.parse(c.closing_date) ? `The cycle now closes on ${when(new Date(closing).toISOString())}.` : "", shift && rounds.length ? `Round 1 now opens ${when(rounds[0].application_start)}.` : ""].filter(Boolean);
-    Object.assign(c, { opening_date: new Date(opening).toISOString(), closing_date: new Date(closing).toISOString(), pre_application_days: pre, rounds });
-    if (changes.length) this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle dates changed", changes.join(" "));
-    this.audit(a, "cycle_updated", [c.id]); return c;
+    const news = scheduleNews(c, planned);
+    Object.assign(c, { opening_date: openingIso, closing_date: closingIso, pre_application_days: pre, rounds, rollover_unmatched: rollover });
+    for (const [m, d] of moved) m.offer_expires_at = d;
+    this.audit(a, "cycle_updated", [c.id], note);
+    if (news.length) this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle dates changed", news.join(" "));
+    for (const [m, d] of moved) this.notify([m.student_id], "cycle_changed", "Your offer deadline has changed", `Respond to your offer for ${m.listing_title} by ${when(d)}.`, "/my-applications");
+    return c;
   }
-  async setRounds(cycleId: string, b: M.RoundsUpdate) {
-    const a = this.need("admin"); const c = this.cycleById(cycleId); const day = 86_400_000, gap = 2 * day;
-    if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
-    const numbers = b.rounds.map((s) => s.number).sort((x, y) => x - y);
+  /** Mirror of _plan_rounds in routers/cycles.py (REQ-ROUND-1..3, REQ-APPRV-5): a round that has started stays as it
+   *  is; the others are built from their window lengths and start date, or open 2 days after the round before. */
+  private planRounds(c: M.Cycle, opening: number, closing: number, pre: number, specs: M.RoundSpec[]) {
+    const t = this.now.getTime();
+    const numbers = specs.map((s) => s.number).sort((x, y) => x - y);
     if (numbers.some((n, i) => n !== i + 1)) throw new M.ApiError(422, "bad_rounds", "Number the rounds 1, 2, 3 in order, with no gaps or repeats.", "rounds");
-    const dropped = c.rounds.find((r) => !numbers.includes(r.number) && Date.parse(r.application_start) <= this.now.getTime());
-    if (dropped) throw new M.ApiError(422, "round_started", `Round ${dropped.number} has already started, so it cannot be removed.`, "rounds"); // REQ-ROUND-2
-    // mirror of set_rounds: optional start dates (use case 1-2), otherwise 2 days after the previous round's approval window
-    const earliest = Date.parse(c.opening_date) + c.pre_application_days * day;
-    let cursor = earliest; let prev: M.Round | null = null;
+    const dropped = c.rounds.filter((r) => !numbers.includes(r.number));
+    const started = dropped.find((r) => Date.parse(r.application_start) <= t);
+    if (started) throw new M.ApiError(422, "round_started", `Round ${started.number} has already started, so it cannot be removed.`, "rounds"); // REQ-ROUND-2
+    const earliest = opening + pre * DAY;
     const rounds: M.Round[] = [];
-    for (const spec of [...b.rounds].sort((x, y) => x.number - y.number)) {
-      const old = c.rounds.find((r) => r.number === spec.number);
-      if (old && Date.parse(old.application_start) <= this.now.getTime()) { rounds.push(old); cursor = Date.parse(old.approval_end) + 1000 + gap; prev = old; continue; }
-      let appStart = cursor;
-      if (spec.start_date) {
-        appStart = Date.parse(spec.start_date);
-        if (appStart <= this.now.getTime()) throw new M.ApiError(422, "date_in_past", `Round ${spec.number} would start in the past. Pick a later start date.`, "rounds");
+    for (const spec of [...specs].sort((x, y) => x.number - y.number)) {
+      const old = c.rounds.find((r) => r.number === spec.number), prev = rounds[rounds.length - 1];
+      let r: M.Round;
+      if (old && Date.parse(old.application_start) <= t) {
+        if (!unchanged(spec, old)) throw new M.ApiError(422, "round_started", `Round ${old.number} has already started, so its dates can no longer change.`, "rounds");
+        r = old;
+      } else {
+        const start = spec.start_date ? Date.parse(spec.start_date) : prev ? Date.parse(prev.approval_end) + 1000 + GAP : earliest;
+        if (start <= t) throw new M.ApiError(422, "date_in_past", spec.start_date ? `Round ${spec.number} would start in the past. Pick a later start date.` : `Round ${spec.number} would start ${when(iso(start))} by default, which has passed. Pick a start date.`, "rounds");
+        if (start < earliest) throw new M.ApiError(422, "outside_cycle", `Round ${spec.number} would start before the pre-application window ends on ${fmt(iso(earliest))}.`);
+        if (prev && start <= Date.parse(prev.approval_end)) throw new M.ApiError(422, "rounds_overlap", `Round ${spec.number} would start before Round ${prev.number} ends on ${fmt(prev.approval_end)}.`, "rounds");
+        const revStart = start + spec.application_days * DAY, revEnd = revStart + spec.review_days * DAY - 1000;
+        r = { id: old?.id ?? this.id("rnd"), cycle_id: c.id, number: spec.number, application_start: iso(start), application_end: iso(revStart - 1000), review_start: iso(revStart),
+          review_end: iso(revEnd), approval_end: iso(revEnd + (spec.approval_days ?? 2) * DAY), status: "scheduled", executed_at: null, published_at: null };
       }
-      if (appStart < earliest) throw new M.ApiError(422, "outside_cycle", `Round ${spec.number} would start before the pre-application window ends on ${fmt(new Date(earliest).toISOString())}.`);
-      if (prev && appStart <= Date.parse(prev.approval_end)) throw new M.ApiError(422, "rounds_overlap", `Round ${spec.number} would start before Round ${prev.number} ends on ${fmt(prev.approval_end)}.`, "rounds");
-      const appEnd = appStart + spec.application_days * day - 1000, revStart = appStart + spec.application_days * day, revEnd = revStart + spec.review_days * day - 1000;
-      const approvalEnd = revEnd + (spec.approval_days ?? 2) * day; // REQ-APPRV-5
-      if (approvalEnd > Date.parse(c.closing_date)) throw new M.ApiError(422, "outside_cycle", `Round ${spec.number} would end after the cycle closes on ${fmt(c.closing_date)}.`);
-      prev = { id: old?.id ?? this.id("rnd"), cycle_id: c.id, number: spec.number, application_start: new Date(appStart).toISOString(), application_end: new Date(appEnd).toISOString(),
-        review_start: new Date(revStart).toISOString(), review_end: new Date(revEnd).toISOString(), approval_end: new Date(approvalEnd).toISOString(), status: "scheduled", executed_at: null, published_at: null, eligible_students: 0, open_slots: 0, reopened_slots: 0 };
-      rounds.push(prev);
-      cursor = approvalEnd + 1000 + gap;
+      if (Date.parse(r.approval_end) > closing) throw new M.ApiError(422, "outside_cycle", `Round ${r.number} ends ${when(r.approval_end)}, after the cycle closes on ${when(iso(closing))}. ${r === old ? "Pick a later closing date." : "Shorten the round or pick a later closing date."}`);
+      rounds.push(r);
     }
-    checkTimeToRespond(rounds, Date.parse(c.closing_date));
-    c.rounds = rounds; c.rollover_unmatched = b.rollover_unmatched ?? true; this.audit(a, "cycle_updated", [c.id], "rounds configured"); return c;
+    for (const r of dropped) { // an upcoming round can go, unless students have already been moved into it
+      const held = this.held(r);
+      if (held) throw new M.ApiError(422, "round_in_use", `Round ${r.number} already holds ${held}, so it cannot be removed.`, "rounds");
+    }
+    checkTimeToRespond(rounds, closing);
+    return rounds;
+  }
+  /** Mirror of _held in routers/cycles.py: what removing an upcoming round would strand (REQ-EXEC-3, REQ-ASSIGN-1). */
+  private held(r: M.Round) {
+    const carried = this.db.applications.filter((a) => a.round_id === r.id && a.status === "submitted").length;
+    if (carried) return `${carried} application${carried === 1 ? "" : "s"} carried over from an earlier round`;
+    const assigned = this.db.matches.filter((m) => m.round_id === r.id).length;
+    return assigned ? `${assigned} student${assigned === 1 ? "" : "s"} assigned by the URECA office` : "";
   }
   private round(id: string) { const r = (this.activeCycle()?.rounds ?? []).find((r) => r.id === id); if (!r) throw new M.ApiError(404, "not_found", "Round was not found."); return r; }
   // mirror of HOLDS_SLOT, _open_slots and _ruled_out in routers/matching.py
@@ -505,8 +567,8 @@ export class MockClient implements ApiClient {
   }
   private markIneligible(studentId: string) { const sp = this.student(studentId); if (sp) sp.eligible_for_matching = false; }
   // mirror of windows.offer_deadline (REQ-OUTCOME-3): the next application window still open, else the closing date
-  private offerDeadline(r: M.Round): string | null {
-    const c = this.activeCycle()!; const t = this.now.getTime();
+  private offerDeadline(r: M.Round, c: M.Cycle = this.activeCycle()!): string | null {
+    const t = this.now.getTime();
     const later = c.rounds.filter((x) => x.number > r.number && Date.parse(x.application_end) > t).sort((x, y) => Date.parse(x.application_end) - Date.parse(y.application_end));
     const d = later[0]?.application_end ?? c.closing_date;
     return Date.parse(d) > t ? d : null;
@@ -576,7 +638,10 @@ export class MockClient implements ApiClient {
     const excluded = [...applied].filter((sid) => !placed.has(sid) && (earlier.has(sid) || this.student(sid)?.eligible_for_matching === false));
     const prefs = ms.map((m) => m.preference_rank).filter((p): p is number => !!p);
     const declined = ms.filter((m) => m.status === "rejected").length; // REQ-APPRV-2: declined and not reassigned since
-    return { round: r, matched: placed.size, unmatched: [...applied].filter((sid) => !placed.has(sid) && !excluded.includes(sid)).length, excluded: excluded.length, avg_preference: prefs.length ? Math.round((prefs.reduce((s, p) => s + p, 0) / prefs.length) * 100) / 100 : null, declined };
+    // the round's pool (applied, not placed or excluded by an earlier round) and the slots nobody holds right now
+    const eligible = [...applied].filter((sid) => !excluded.includes(sid)).length;
+    const open_slots = this.db.listings.filter((l) => l.status === "published").reduce((n, l) => n + this.openSlots(l), 0);
+    return { round: r, eligible, open_slots, matched: placed.size, unmatched: [...applied].filter((sid) => !placed.has(sid) && !excluded.includes(sid)).length, excluded: excluded.length, avg_preference: prefs.length ? Math.round((prefs.reduce((s, p) => s + p, 0) / prefs.length) * 100) / 100 : null, declined };
   }
   async matches(roundId: string, status?: M.MatchStatus) { this.need("admin"); return this.db.matches.filter((m) => m.round_id === roundId && (!status || m.status === status)); }
   async reassign(id: string, b: M.ReassignRequest) {

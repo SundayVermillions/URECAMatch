@@ -122,12 +122,12 @@ test("one URECA cycle end to end", async ({ page }) => {
     await row.getByRole("button", { name: "Decline" }).click();
     await page.getByLabel("Reason for the URECA office").fill("E2E: lab is full this term.");
     await page.getByRole("button", { name: "Decline" }).last().click(); // the modal's confirm
-    await expect(row.getByText(/Declined by you/)).toBeVisible();
+    await expect(row.getByText("Rejected", { exact: true })).toBeVisible(); // the status pill (SRS Figure 3.8)
 
     await signIn(page, ADMIN);
     await page.goto("/rounds");
     await page.getByRole("button", { name: "Review matches" }).click();
-    await page.getByRole("button", { name: "Declined by supervisor" }).click(); // only the student just declined
+    await page.getByRole("button", { name: "Rejected", exact: true }).click(); // only the student just declined
     await page.getByRole("button", { name: "Reassign" }).first().click();
     await page.getByLabel("Move to project").selectOption({ index: 1 });
     await page.getByLabel("Justification").fill("E2E: supervisor declined; moved to another project.");

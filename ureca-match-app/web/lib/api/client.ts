@@ -48,6 +48,7 @@ export interface ApiClient {
   reopenCycle(id: string): Promise<M.Cycle>;
   updateCycle(id: string, body: M.CycleUpdate): Promise<M.Cycle>;
   setRounds(cycleId: string, body: M.RoundsUpdate): Promise<M.Cycle>;
+  saveSchedule(cycleId: string, body: M.ScheduleUpdate): Promise<M.Cycle>; // Cycle settings: dates and rounds in one save
   summary(roundId: string): Promise<M.RoundSummary>;
   matches(roundId: string, status?: M.MatchStatus): Promise<M.Match[]>;
   reassign(matchId: string, body: M.ReassignRequest): Promise<M.Match>;

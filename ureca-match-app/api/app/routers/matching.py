@@ -169,6 +169,8 @@ def summary(round_id: str, admin: AdminUser, store: StoreDep) -> RoundSummary:
     prefs = [m.preference_rank for m in ms if m.preference_rank]
     return RoundSummary(
         round=r,
+        eligible=len(applied - excluded),  # before matching runs, the students it will consider
+        open_slots=sum(_open_slots(store, lst) for lst in store.all_listings() if lst.status == ListingStatus.published),
         matched=len(placed),  # a student a supervisor declined is not matched until they are placed again
         unmatched=len(applied - placed - excluded),
         excluded=len(excluded),
