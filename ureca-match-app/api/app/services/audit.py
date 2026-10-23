@@ -23,5 +23,5 @@ def audit(
         affected_records=affected,
         note=note,
     )
-    store.audit.append(entry)
+    store.add_audit(entry)
     return entry

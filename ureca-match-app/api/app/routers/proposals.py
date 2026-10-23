@@ -225,6 +225,7 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
     # (they can no longer accept it) and any match not yet published. Its slot is released for other students.
     for m in placement.open_matches(store, p.student_id):
         m.status, m.student_responded_at = MatchStatus.declined, now
+        store.save_match(m)
         notify(
             store,
             [m.supervisor_id],
@@ -234,9 +235,7 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
             now,
             "/approvals",
         )
-    # Slice D (matches) and slice C (applications) are still in memory in Supabase mode.
-    # TODO(slice D/C): save through the store once those tables are migrated.
-    store.matches.append(
+    store.add_matches(
         Match(
             id=store.next_id("mt"),
             round_id=round_id,
