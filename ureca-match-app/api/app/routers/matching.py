@@ -414,11 +414,14 @@ def _publish(store, r, now, outbox: Outbox) -> None:
     first with one atomic update, and the claim is given back if the step fails before the offers are saved."""
     if r.executed_at is None or r.published_at is not None or now <= r.approval_end:  # REQ-PUB-1, REQ-PUB-3
         return
+    expires = windows.offer_deadline(store.cycle, r, now) if store.cycle else None  # REQ-OUTCOME-3
+    if expires is None:
+        return  # the cycle has closed: an offer would already be expired, so none is made and nothing is published
     if not store.claim_round(r, "published_at", now):
         return  # another server is publishing it, or has
     committed: list[bool] = []
     try:
-        _publish_round(store, r, now, outbox, committed)
+        _publish_round(store, r, now, expires, outbox, committed)
     except Exception:
         if not committed:
             store.release_round(r, "published_at")
@@ -427,10 +430,9 @@ def _publish(store, r, now, outbox: Outbox) -> None:
     store.save_round(r)
 
 
-def _publish_round(store, r, now, outbox: Outbox, committed: list[bool]) -> None:
+def _publish_round(store, r, now, expires, outbox: Outbox, committed: list[bool]) -> None:
     ms = [m for m in store.matches if m.round_id == r.id]
     nxt = next((x for x in store.cycle.rounds if x.number == r.number + 1), None)
-    expires = windows.offer_deadline(store.cycle, r, now) or store.cycle.closing_date  # REQ-OUTCOME-3
     offers = [m for m in ms if m.status in (MatchStatus.proposed, MatchStatus.approved, MatchStatus.reassigned)]
     offered = {m.student_id: m.listing_id for m in offers}  # accepted by default; student id -> listing id
     # Every application still under review in this round gets its outcome, offer or not, so none carries
@@ -734,6 +736,8 @@ def advance(store, now) -> None:
     Notifications go out after the lock is released, even if a later step fails, since the earlier steps are done."""
     outbox: Outbox = []
     try:
+        if windows.cycle_closed(store.cycle, now):
+            return  # nothing is matched, published or expired for a cycle that has closed
         if not _due(store, now):
             return
         with _schedule_lock:
@@ -753,7 +757,11 @@ def advance(store, now) -> None:
 
 def keep_schedule(store: StoreDep, settings: SettingsDep) -> None:
     """Runs before every request (main.py), so the first request after a window closes acts on it. A failing step
-    must not fail an unrelated request: it is logged, and the next request tries it again."""
+    must not fail an unrelated request: it is logged, and the next request tries it again.
+    Off by default in Supabase mode (SCHEDULER_ON_REQUEST), where /internal/tick drives the schedule and the round
+    claim keeps each step to one run."""
+    if not settings.runs_scheduler_on_request():
+        return
     try:
         advance(store, settings.now())
     except Exception:
