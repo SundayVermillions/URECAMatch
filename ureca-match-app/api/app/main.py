@@ -26,6 +26,9 @@ from app.routers import (
     rankings,
     users,
 )
+from app.settings import get_settings
+
+get_settings()  # fail at start-up, not on the first request, if the settings are unsafe (EMAIL_MODE=smtp in production)
 
 app = FastAPI(
     title="URECAMatch API",
