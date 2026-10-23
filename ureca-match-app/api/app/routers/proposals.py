@@ -163,9 +163,7 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
     # would be missing from every round summary and match list).
     upcoming = windows.current_round(store.cycle, now) if store.cycle else None
     round_id = phase.round_id or (upcoming.id if upcoming else "")
-    # Slice D (matches) and slice C (applications) are still in memory in Supabase mode.
-    # TODO(slice D/C): save through the store once those tables are migrated.
-    store.matches.append(
+    store.add_matches(
         Match(
             id=store.next_id("mt"),
             round_id=round_id,
@@ -181,9 +179,10 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
             student_responded_at=now,
         )
     )
-    for a in store.applications:
-        if a.student_id == p.student_id and a.status == ApplicationStatus.submitted:
-            a.status = ApplicationStatus.withdrawn
+    open_apps = [a for a in store.applications_for(student_id=p.student_id) if a.status == ApplicationStatus.submitted]
+    for a in open_apps:
+        a.status = ApplicationStatus.withdrawn
+    store.save_applications(*open_apps)
     sp = store.student(p.student_id)
     if sp:
         sp.eligible_for_matching = False
