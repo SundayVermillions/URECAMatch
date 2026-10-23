@@ -30,7 +30,7 @@ from app.models import (
     RoundSummary,
     UserListItem,
 )
-from app.services import placement
+from app.services import placement, windows
 from app.services.audit import audit
 from app.services.matching.algorithm import ListingPrefs, StudentPrefs, match
 from app.services.notify import notify
@@ -75,6 +75,33 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
         raise conflict("review_open", f"Matching can run after the review window closes on {when(r.review_end)}.")
     if r.executed_at is not None:  # REQ-EXEC-2
         raise conflict("already_executed", "Matching has already been run for this round.")
+    # One atomic update claims the round, so when several servers get here only one runs matching (REQ-EXEC-2).
+    if not store.claim_round(r, "executed_at", now):
+        raise conflict("already_executed", "Matching has already been run for this round.")
+    try:
+        new = _propose_matches(store, r, now)
+        store.add_matches(*new)
+    except Exception:
+        store.release_round(r, "executed_at")  # nothing was saved, so matching can be run again
+        raise
+    r.status = RoundStatus.awaiting_publication
+    store.save_round(r)
+    audit(store, admin, AuditOperation.matching_executed, [round_id], now, f"{len(new)} matched")  # REQ-AUDIT-1
+    notify(
+        store,
+        sorted({m.supervisor_id for m in new}),
+        NotificationEvent.matches_proposed,
+        "Proposed matches ready for approval",
+        f"Round {r.number} matches await your decision.",
+        now,
+        "/approvals",
+    )
+    return summary(round_id, admin, store)
+
+
+def _propose_matches(store, r, now) -> list[Match]:
+    """REQ-EXEC-1..3: run the stable-matching algorithm for round `r`. Returns the proposed matches without saving them."""
+    round_id = r.id
     _expire_offers(store, now)  # do not wait for the daily cron: a lapsed offer frees its slot for this run
     apps = [a for a in store.applications_for(round_id=round_id) if a.status == ApplicationStatus.submitted]
     ruled_out = _ruled_out(store)
@@ -95,10 +122,11 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
         ranked_students = [app_by_id[aid].student_id for aid in store.ranking(lst.id, round_id) if aid in app_by_id]
         l_prefs.append(ListingPrefs(lst.id, _open_slots(store, lst), ranked_students))
     result = match(s_prefs, l_prefs)
+    new = []
     for sid, lid in result.pairs.items():
         lst = store.listing(lid)
         pref = next((a.preference_rank for a in apps if a.student_id == sid and a.listing_id == lid), None)
-        store.matches.append(
+        new.append(
             Match(
                 id=store.next_id("mt"),
                 round_id=round_id,
@@ -112,18 +140,7 @@ def execute(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
                 preference_rank=pref,
             )
         )
-    r.executed_at, r.status = now, RoundStatus.awaiting_publication
-    audit(store, admin, AuditOperation.matching_executed, [round_id], now, f"{len(result.pairs)} matched")  # REQ-AUDIT-1
-    notify(
-        store,
-        sorted({m.supervisor_id for m in store.matches if m.round_id == round_id and m.status == MatchStatus.proposed}),
-        NotificationEvent.matches_proposed,
-        "Proposed matches ready for approval",
-        f"Round {r.number} matches await your decision.",
-        now,
-        "/approvals",
-    )
-    return summary(round_id, admin, store)
+    return new
 
 
 @router.get("/admin/rounds/{round_id}/summary", response_model=RoundSummary)
@@ -195,6 +212,7 @@ def reassign(match_id: str, body: ReassignRequest, admin: AdminUser, store: Stor
     m.original_listing_id = m.original_listing_id or m.listing_id
     m.listing_id, m.listing_title, m.supervisor_id, m.supervisor_name = lst.id, lst.title, lst.supervisor_id, lst.supervisor_name
     m.status, m.justification = MatchStatus.reassigned, body.justification  # REQ-ASSIGN-1, 2
+    store.save_match(m)
     audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
     _offer_now(store, m, deadline, now)
     return m
@@ -221,6 +239,7 @@ def _offer_now(store, m: Match, deadline, now) -> None:
     if deadline is None:
         return  # published with the rest of the round
     m.status, m.published_at, m.offer_expires_at = MatchStatus.published, now, deadline
+    store.save_match(m)
     notify(
         store,
         [m.student_id],
@@ -237,6 +256,7 @@ def _expire_offers(store, now) -> None:
     for m in store.matches:
         if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at:
             m.status = MatchStatus.timed_out
+            store.save_match(m)
             _mark_ineligible(store, m.student_id, now, "did not answer a match offer in time")
 
 
@@ -281,9 +301,10 @@ def manual_assign(round_id: str, body: ManualAssignRequest, admin: AdminUser, st
         for k, v in placement.items():
             setattr(m, k, v)
         m.supervisor_decided_at = m.published_at = m.offer_expires_at = m.student_responded_at = None
+        store.save_match(m)
     else:
         m = Match(id=store.next_id("mt"), round_id=round_id, student_id=body.student_id, student_name=student.name, **placement)
-        store.matches.append(m)
+        store.add_matches(m)
     audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
     _offer_now(store, m, deadline, now)
     return m
@@ -316,7 +337,7 @@ def unassign(match_id: str, body: MatchDecision, admin: AdminUser, store: StoreD
         for a in won:
             a.status = ApplicationStatus.unmatched
         store.save_applications(*won)
-    store.matches.remove(m)
+    store.remove_match(m)
     if was == MatchStatus.accepted and m.student_id not in _ruled_out(store):  # back in the pool
         sp = store.student(m.student_id)
         if sp and not sp.eligible_for_matching:
@@ -359,23 +380,46 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
     now = settings.now()
     nxt = next((x for x in store.cycle.rounds if x.number == r.number + 1), None)
     expires = _offer_deadline(store, r)  # REQ-OUTCOME-3
-    offered: dict[str, str] = {}  # student id -> listing id
-    for m in ms:
-        if m.status in (MatchStatus.approved, MatchStatus.reassigned):
-            m.status, m.published_at, m.offer_expires_at = MatchStatus.published, now, expires
-            offered[m.student_id] = m.listing_id
-    # Every application still under review in this round gets its outcome, offer or not, so none carries
-    # into the next round as if it were still live.
-    apps = [a for a in store.applications_for(round_id=round_id) if a.status == ApplicationStatus.submitted]
-    unmatched = sorted({a.student_id for a in apps if a.student_id not in offered})
-    for a in apps:
-        a.status = ApplicationStatus.matched if offered.get(a.student_id) == a.listing_id else ApplicationStatus.unmatched
-    store.save_applications(*apps)
-    r.published_at, r.status = now, RoundStatus.published
+    if expires <= now:  # an offer made now would already have lapsed
+        raise conflict("cycle_closed", "The offer deadline has passed, so no offers can be made for this round.")
+    # One atomic update claims the round, so when several servers get here only one publishes it (REQ-PUB-1).
+    if not store.claim_round(r, "published_at", now):
+        raise conflict("already_published", f"Round {r.number} results are already published.")
+    committed = False
+    try:
+        # Offers are copies until they are saved, so a failure leaves the matches as they were.
+        offers = [
+            m.model_copy(update={"status": MatchStatus.published, "published_at": now, "offer_expires_at": expires})
+            for m in ms
+            if m.status in (MatchStatus.approved, MatchStatus.reassigned)
+        ]
+        offered = {m.student_id: m.listing_id for m in offers}  # student id -> listing id
+        # Every application still under review in this round gets its outcome, offer or not, so none carries
+        # into the next round as if it were still live.
+        apps = [a for a in store.applications_for(round_id=round_id) if a.status == ApplicationStatus.submitted]
+        unmatched = sorted({a.student_id for a in apps if a.student_id not in offered})
+        # Only students who may still take part are told they can apply again (REQ-OUTCOME-2, 4).
+        ruled_out = _ruled_out(store)
+        can_retry = [
+            s for s in unmatched if s not in ruled_out and ((sp := store.student(s)) is None or sp.eligible_for_matching)
+        ]
+        # The rollover copies go first: they skip copies that already exist, so a retry after a failure is safe.
+        carried = _roll_over(store, apps, can_retry, nxt, now) if nxt and store.cycle.rollover_unmatched else set()
+        for a in apps:
+            a.status = ApplicationStatus.matched if offered.get(a.student_id) == a.listing_id else ApplicationStatus.unmatched
+        # One operation: an application is only "matched" if its match row is saved with it (REQ-PUB-1).
+        store.publish_outcomes(offers, apps)
+        committed = True
+    except Exception:
+        if not committed:
+            store.release_round(r, "published_at")  # nothing was saved, so publishing can be run again
+        raise
+    r.status = RoundStatus.published
+    store.save_round(r)
     audit(store, admin, AuditOperation.results_published, [round_id], now)
     notify(
         store,
-        [m.student_id for m in ms if m.status == MatchStatus.published],
+        [m.student_id for m in offers],
         NotificationEvent.offer_received,
         "You have a match offer",
         f"Respond by {when(expires)}.",
@@ -383,10 +427,6 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
         "/my-applications",
     )  # REQ-PUB-2
     # REQ-PUB-2 "all affected users": students who applied and got no offer, and supervisors with matches.
-    # Only students who may still take part are told they can apply again (REQ-OUTCOME-2, 4).
-    ruled_out = _ruled_out(store)
-    can_retry = [s for s in unmatched if s not in ruled_out and ((sp := store.student(s)) is None or sp.eligible_for_matching)]
-    carried = _roll_over(store, apps, can_retry, nxt, now) if nxt and store.cycle.rollover_unmatched else set()
     later = f"Round {nxt.number}" if nxt else ""
     for group, next_step in (
         (
@@ -406,7 +446,7 @@ def publish(round_id: str, admin: AdminUser, store: StoreDep, settings: Settings
             "/my-applications",
         )
     for sup_id in sorted({m.supervisor_id for m in ms}):
-        n_offered = sum(1 for m in ms if m.supervisor_id == sup_id and m.status == MatchStatus.published)
+        n_offered = sum(1 for m in offers if m.supervisor_id == sup_id)
         students = "1 student on your listings was" if n_offered == 1 else f"{n_offered} students on your listings were"
         notify(
             store,
@@ -540,6 +580,7 @@ def _decide(match_id: str, user, store, settings, approve: bool, note: str | Non
     m.status = MatchStatus.approved if approve else MatchStatus.rejected  # REQ-APPRV-2: rejection frees the slot
     m.supervisor_decided_at = now
     m.supervisor_note = (note or "").strip() or None
+    store.save_match(m)
     if not approve:  # REQ-APPRV-2: recorded for admin review, and admins are told so they can reassign
         reason = f' Reason: "{m.supervisor_note}"' if m.supervisor_note else ""
         notify(
@@ -586,6 +627,7 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     if placement.is_placed(store, user.id):  # already registered to a self-proposed project
         raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot accept this offer.")
     m.status, m.student_responded_at = MatchStatus.accepted, settings.now()  # REQ-OUTCOME-1
+    store.save_match(m)
     # In Supabase mode the store returns copies, so every change below is saved explicitly.
     lst = store.listing(m.listing_id)
     if lst:
@@ -616,6 +658,7 @@ def decline_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> 
     if m is None or m.status != MatchStatus.published:
         raise conflict("no_offer", "There is no open offer to respond to.")
     m.status, m.student_responded_at = MatchStatus.declined, settings.now()  # REQ-OUTCOME-2
+    store.save_match(m)
     _mark_ineligible(store, user.id, settings.now(), "declined a match offer")
     return m
 
@@ -633,13 +676,19 @@ def tick(store: StoreDep, settings: SettingsDep, authorization: Annotated[str | 
         if current_user(store, settings, authorization=authorization).role != Role.admin:  # 401 if no valid session
             raise forbidden("Only the scheduler or an admin can advance rounds.")
     now = settings.now()
+    if windows.cycle_closed(store.cycle, now):
+        return Ok()  # nothing changes for a cycle that has closed, so a new server cannot repeat old work
     if store.cycle:
         for r in store.cycle.rounds:
             if r.published_at:
                 continue
+            status = r.status
             if r.application_start <= now <= r.application_end:
-                r.status = RoundStatus.application_window
+                status = RoundStatus.application_window
             elif r.review_start <= now <= r.review_end:
-                r.status = RoundStatus.review_window
+                status = RoundStatus.review_window
+            if status != r.status:
+                r.status = status
+                store.save_round(r)
     _expire_offers(store, now)
     return Ok()

@@ -68,7 +68,7 @@ def create_cycle(body: CycleCreate, admin: AdminUser, store: StoreDep, settings:
         status=CycleStatus.draft,
         rounds=[],
     )
-    store.cycles.append(cycle)
+    store.save_cycle(cycle)
     audit(store, admin, AuditOperation.cycle_updated, [cycle.id], settings.now(), "created")
     return cycle
 
@@ -82,6 +82,7 @@ def close_cycle(cycle_id: str, admin: AdminUser, store: StoreDep, settings: Sett
     if c.status == CycleStatus.closed:
         raise conflict("already_closed", "This cycle is already closed.")
     c.status = CycleStatus.closed
+    store.save_cycle(c)
     now = settings.now()
     audit(store, admin, AuditOperation.cycle_updated, [c.id], now, "closed")
     affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]
@@ -108,6 +109,7 @@ def reopen_cycle(cycle_id: str, admin: AdminUser, store: StoreDep, settings: Set
     if active is not None:
         raise conflict("cycle_active", f"Close the {active.academic_year} cycle before reopening another.")
     c.status = CycleStatus.in_progress
+    store.save_cycle(c)
     now = settings.now()
     audit(store, admin, AuditOperation.cycle_updated, [c.id], now, "reopened")
     affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]
@@ -150,6 +152,7 @@ def update_cycle(cycle_id: str, body: CycleUpdate, admin: AdminUser, store: Stor
     if shift and rounds:  # use case 1-2: affected users hear about moved rounds too
         changes.append(f"Round 1 now opens {when(rounds[0].application_start)}.")
     c.opening_date, c.closing_date, c.pre_application_days, c.rounds = opening, closing, pre_days, rounds
+    store.save_cycle(c)
     if changes:
         affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]
         notify(store, affected, NotificationEvent.cycle_changed, "Application cycle dates changed", " ".join(changes), now)
@@ -262,5 +265,6 @@ def set_rounds(cycle_id: str, body: RoundsUpdate, admin: AdminUser, store: Store
         cursor = rev_end + SECOND + GAP
     c.rounds = rounds
     c.rollover_unmatched = body.rollover_unmatched  # REQ-EXEC-3
+    store.save_cycle(c)
     audit(store, admin, AuditOperation.cycle_updated, [c.id], now, "rounds configured")
     return c

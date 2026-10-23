@@ -111,6 +111,7 @@ def clean_up(store: Store, admin: User, user: User, now: datetime, reason: str) 
                 lst.filled_slots -= 1
                 store.save_listing(lst)
         m.status, m.student_responded_at = MatchStatus.declined, now
+        store.save_match(m)
         told[m.supervisor_id].append(f"{m.student_name}'s match to {m.listing_title} was cancelled.")
     for m in _matches_on_listings(store, user):
         won = [
@@ -128,6 +129,7 @@ def clean_up(store: Store, admin: User, user: User, now: datetime, reason: str) 
                 lst.filled_slots -= 1
                 store.save_listing(lst)
         m.status, m.supervisor_decided_at = MatchStatus.rejected, now
+        store.save_match(m)
         if was == MatchStatus.accepted:
             _back_in_pool(store, m.student_id)
         if was in (MatchStatus.published, MatchStatus.accepted):  # the student never saw a match that was not yet offered
