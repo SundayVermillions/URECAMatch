@@ -56,11 +56,11 @@ def create_user(body: UserCreate, admin: AdminUser, store: StoreDep, settings: S
         status=AccountStatus.active,
         created_at=settings.now(),
     )  # REQ-USER-1, REQ-USER-2 (admin-only route)
-    store.users.append(user)
+    store.save_user(user)
     if body.role == Role.student:
-        store.students.append(StudentProfile(user_id=user.id, school=""))
+        store.save_student(StudentProfile(user_id=user.id, school=""))
     elif body.role == Role.supervisor:
-        store.supervisors.append(SupervisorProfile(user_id=user.id, faculty=""))
+        store.save_supervisor(SupervisorProfile(user_id=user.id, faculty=""))
     audit(store, admin, AuditOperation.user_updated, [user.id], settings.now(), "created")
     return user
 

@@ -84,9 +84,25 @@ def _ruled_out(store, before=None) -> set[str]:
 
 def _run_matching(store, r, now, outbox: Outbox) -> None:
     """REQ-EXEC-1..4: run the stable-matching algorithm for round `r` once its review window has closed. The matches
-    start the approval window: each is offered when it ends unless the supervisor declines it (REQ-APPRV-4)."""
+    start the approval window: each is offered when it ends unless the supervisor declines it (REQ-APPRV-4).
+    The round is claimed first with one atomic update, so when several servers reach this point only the one that
+    wins the claim runs matching. If it fails before the matches are saved, the claim is given back for a retry."""
     if now <= r.review_end or r.executed_at is not None:  # REQ-EXEC-1, REQ-EXEC-2
         return
+    if not store.claim_round(r, "executed_at", now):
+        return  # another server is running it, or has
+    committed: list[bool] = []
+    try:
+        _match_round(store, r, now, outbox, committed)
+    except Exception:
+        if not committed:
+            store.release_round(r, "executed_at")
+        raise
+    r.status = RoundStatus.approval_window
+    store.save_round(r)
+
+
+def _match_round(store, r, now, outbox: Outbox, committed: list[bool]) -> None:
     _expire_offers(store, now)  # a lapsed offer frees its slot for this run
     apps = [a for a in store.applications_for(round_id=r.id) if a.status == ApplicationStatus.submitted]
     ruled_out = _ruled_out(store)
@@ -125,10 +141,9 @@ def _run_matching(store, r, now, outbox: Outbox) -> None:
                 preference_rank=pref,
             )
         )
-    # Every read that can fail is done. Add the matches and mark the round in one go, so a failure above leaves
-    # nothing half-run for the next request to build on.
-    store.matches.extend(new)
-    r.executed_at, r.status = now, RoundStatus.approval_window
+    # Every read that can fail is done. The matches go in with one insert; once it succeeds the claim stays.
+    store.add_matches(*new)
+    committed.append(True)
     audit(store, SYSTEM, AuditOperation.matching_executed, [r.id], now, f"{len(new)} matched")  # REQ-AUDIT-1, 3
     for sup_id in sorted({m.supervisor_id for m in new}):
         n = sum(1 for m in new if m.supervisor_id == sup_id)
@@ -229,6 +244,7 @@ def reassign(match_id: str, body: ReassignRequest, admin: AdminUser, store: Stor
         m.supervisor_id, m.supervisor_name = lst.supervisor_id, lst.supervisor_name
         m.preference_rank = _preference(store, m.student_id, m.round_id, lst.id)  # for the new project, not the old one
         m.status, m.justification = MatchStatus.reassigned, body.justification  # REQ-ASSIGN-1, 2
+        store.save_match(m)
         audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
         _offer_now(store, m, deadline, now)
     return m
@@ -249,6 +265,7 @@ def _offer_now(store, m: Match, deadline, now) -> None:
     if deadline is None:
         return  # published with the rest of the round
     m.status, m.published_at, m.offer_expires_at = MatchStatus.published, now, deadline
+    store.save_match(m)
     notify(
         store,
         [m.student_id],
@@ -265,6 +282,7 @@ def _expire_offers(store, now) -> None:
     for m in store.matches:
         if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at:
             m.status = MatchStatus.timed_out
+            store.save_match(m)
             _mark_ineligible(store, m.student_id)
 
 
@@ -316,11 +334,12 @@ def manual_assign(round_id: str, body: ManualAssignRequest, admin: AdminUser, st
             for k, v in placement.items():
                 setattr(m, k, v)
             m.supervisor_decided_at = m.published_at = m.offer_expires_at = m.student_responded_at = None
+            store.save_match(m)
         else:
             m = Match(
                 id=store.next_id("mt"), round_id=round_id, student_id=body.student_id, student_name=student.name, **placement
             )
-            store.matches.append(m)
+            store.add_matches(m)
         audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
         _offer_now(store, m, deadline, now)
     return m
@@ -354,7 +373,7 @@ def unassign(match_id: str, body: MatchDecision, admin: AdminUser, store: StoreD
             for a in won:
                 a.status = ApplicationStatus.unmatched
             store.save_applications(*won)
-        store.matches.remove(m)
+        store.remove_match(m)
         if was == MatchStatus.accepted and m.student_id not in _ruled_out(store):  # back in the pool
             sp = store.student(m.student_id)
             if sp and not sp.eligible_for_matching:
@@ -391,9 +410,24 @@ def _publish(store, r, now, outbox: Outbox) -> None:
     """REQ-PUB-1..3: when the approval window closes, every match nobody declined becomes an offer (REQ-APPRV-4).
     Runs once per round, and only after matching has run. The writes that can fail come first, while nothing in
     memory has changed, so if one fails the next request starts again cleanly: the rollover copies (which skip copies
-    that already exist), then the applications' outcomes. Only then do the matches and the round change."""
+    that already exist), then the offers and the applications' outcomes together. Like matching, the round is claimed
+    first with one atomic update, and the claim is given back if the step fails before the offers are saved."""
     if r.executed_at is None or r.published_at is not None or now <= r.approval_end:  # REQ-PUB-1, REQ-PUB-3
         return
+    if not store.claim_round(r, "published_at", now):
+        return  # another server is publishing it, or has
+    committed: list[bool] = []
+    try:
+        _publish_round(store, r, now, outbox, committed)
+    except Exception:
+        if not committed:
+            store.release_round(r, "published_at")
+        raise
+    r.status = RoundStatus.published
+    store.save_round(r)
+
+
+def _publish_round(store, r, now, outbox: Outbox, committed: list[bool]) -> None:
     ms = [m for m in store.matches if m.round_id == r.id]
     nxt = next((x for x in store.cycle.rounds if x.number == r.number + 1), None)
     expires = windows.offer_deadline(store.cycle, r, now) or store.cycle.closing_date  # REQ-OUTCOME-3
@@ -410,10 +444,12 @@ def _publish(store, r, now, outbox: Outbox) -> None:
     carried = _roll_over(store, apps, can_retry, nxt, now) if nxt and store.cycle.rollover_unmatched else set()
     for a in apps:
         a.status = ApplicationStatus.matched if offered.get(a.student_id) == a.listing_id else ApplicationStatus.unmatched
-    store.save_applications(*apps)
-    for m in offers:
-        m.status, m.published_at, m.offer_expires_at = MatchStatus.published, now, expires
-    r.published_at, r.status = now, RoundStatus.published
+    # One operation: an application is only "matched" if its match row is saved with it (REQ-PUB-1).
+    published = [
+        m.model_copy(update={"status": MatchStatus.published, "published_at": now, "offer_expires_at": expires}) for m in offers
+    ]
+    store.publish_outcomes(published, apps)
+    committed.append(True)
     audit(store, SYSTEM, AuditOperation.results_published, [r.id], now, f"{len(offers)} offers")  # REQ-AUDIT-3
     outbox.append(
         (
@@ -607,6 +643,7 @@ def decline_match(match_id: str, body: MatchDecision, user: SupervisorUser, stor
         # REQ-APPRV-2: the reason stays on the match for admin review. Admins are not notified of each decline: the
         # student is simply unmatched when results publish, and the admins' results notice gives the count.
         m.supervisor_note = (body.note or "").strip() or None
+        store.save_match(m)
     return m
 
 
@@ -630,6 +667,7 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     if m is None or m.status != MatchStatus.published:
         raise conflict("no_offer", "There is no open offer to respond to.")
     m.status, m.student_responded_at = MatchStatus.accepted, settings.now()  # REQ-OUTCOME-1
+    store.save_match(m)
     # In Supabase mode the store returns copies, so every change below is saved explicitly.
     lst = store.listing(m.listing_id)
     if lst:
@@ -657,6 +695,7 @@ def decline_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> 
     if m is None or m.status != MatchStatus.published:
         raise conflict("no_offer", "There is no open offer to respond to.")
     m.status, m.student_responded_at = MatchStatus.declined, settings.now()  # REQ-OUTCOME-2
+    store.save_match(m)
     _mark_ineligible(store, user.id)
     return m
 
@@ -703,8 +742,9 @@ def advance(store, now) -> None:
                     continue
                 _run_matching(store, r, now, outbox)
                 _publish(store, r, now, outbox)
-                if r.published_at is None and (status := _status_for(r, now)) is not None:
+                if r.published_at is None and (status := _status_for(r, now)) is not None and status != r.status:
                     r.status = status
+                    store.save_round(r)
             _expire_offers(store, now)
     finally:
         for user_ids, event, title, message, link in outbox:
