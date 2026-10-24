@@ -75,7 +75,7 @@ flowchart LR
   end
 
   Resend["Resend<br/>(e-mail)"]
-  Cron["Vercel Cron<br/>daily 16:00 UTC"]
+  Cron["Vercel Cron<br/>daily 09:05 UTC"]
 
   Live -- "HTTPS JSON<br/>Authorization: Bearer JWT" --> Entry
   SupaS --> PG
@@ -143,9 +143,17 @@ Submitting an application does not notify anyone or write to the audit log. Step
 
 ### 5.3 Global control flow
 
-The system is event-driven at the tier boundary and procedure-driven inside each request. Every user action is one synchronous HTTP request and response; there are no background workers, queues or threads. Long steps also run inside a request: the matching run is executed inside the first request that arrives after a round's review window closes, and e-mails are handed to Resend inside the request that created the notification.
+The system is event-driven at the tier boundary and procedure-driven inside each request. Every user action is one synchronous HTTP request and response; there are no background workers, queues or threads. Long steps also run inside a request: the matching run is executed inside the first call to the schedule after a round's review window closes, and e-mails are handed to Resend inside the request that created the notification.
 
-Time-based changes happen on the first request after they fall due. `main.py` registers `keep_schedule` as an app-wide dependency, so before any handler runs, `advance()` in `routers/matching.py` goes through the active cycle's rounds in order: it runs matching for a round whose review window has closed (REQ-EXEC-4), publishes a round whose approval window has closed (REQ-PUB-3), keeps round statuses current, and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). Each step runs once, under a lock, so a second request changes nothing. Nobody has to be online when a window closes. As a backstop for quiet days, `api/vercel.json` registers a Vercel Cron job for `/internal/tick` at `0 16 * * *` (16:00 UTC, midnight in Singapore), called with `GET` and `Authorization: Bearer <CRON_SECRET>`; the admin Matching Rounds screen (`web/app/(admin)/rounds/page.tsx`) also calls it with `POST` and the admin's session. Most window logic does not depend on either, because guards compute the phase from dates on every request through `windows.phase()`.
+Time-based changes happen the next time the schedule runs after they fall due. `advance()` in `routers/matching.py` goes through the active cycle's rounds in order: it runs matching for a round whose review window has closed (REQ-EXEC-4), publishes a round whose approval window has closed (REQ-PUB-3), keeps round statuses current, and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). It does nothing once the cycle has closed (`windows.cycle_closed()`). Each step runs once, under a lock and a round claim, so a second call changes nothing. Nobody has to be online when a window closes.
+
+Three things run the schedule:
+
+- `api/vercel.json` registers a Vercel Cron job for `/internal/tick` at `5 9 * * *` (09:05 UTC, 5:05 pm in Singapore), called with `GET` and `Authorization: Bearer <CRON_SECRET>`. Every window the admin screens create opens and closes at 5 pm in Singapore, so each step runs five minutes after it falls due, which lets a request sent just before a deadline finish first. On Vercel's Hobby plan a daily job may start at any time within its hour.
+- The admin Matching Rounds screen (`web/app/(admin)/rounds/page.tsx`) calls it with `POST` and the admin's session.
+- In mock mode, `main.py` registers `keep_schedule` as an app-wide dependency, so `advance()` also runs before every request. In Supabase mode this is off unless `SCHEDULER_ON_REQUEST` is set, and the cron drives the schedule.
+
+Answering an offer does not wait for the schedule: the accept and decline handlers check the deadline themselves. Most window logic does not depend on the schedule at all, because guards compute the phase from dates on every request through `windows.phase()`.
 
 ### 5.4 Boundary conditions
 
@@ -162,7 +170,7 @@ Time-based changes happen on the first request after they fall due. `main.py` re
 flowchart LR
   U["User browser"] -- HTTPS --> W["Vercel: ureca-match-web<br/>https://ureca-match-web.vercel.app<br/>Next.js, NEXT_PUBLIC_API_MODE=live"]
   U -- "HTTPS JSON" --> A["Vercel: ureca-match-api (Python)<br/>https://ureca-match-api.vercel.app<br/>API_MODE=supabase"]
-  C["Vercel Cron"] -- "GET /internal/tick<br/>daily 16:00 UTC" --> A
+  C["Vercel Cron"] -- "GET /internal/tick<br/>daily 09:05 UTC" --> A
   A --> S["Supabase, Singapore<br/>Postgres, Auth, Storage"]
   A -- "EMAIL_MODE=send" --> R["Resend"]
 ```
@@ -170,7 +178,7 @@ flowchart LR
 | Part | Platform | Configuration |
 |---|---|---|
 | Web | Vercel project `ureca-match-web`, https://ureca-match-web.vercel.app | Framework preset Next.js; `NEXT_PUBLIC_API_MODE=live`; `NEXT_PUBLIC_API_URL` points at the API. |
-| API | Vercel project `ureca-match-api` (Python), https://ureca-match-api.vercel.app | `api/vercel.json` routes all paths to `api/index.py` and defines the cron: `GET /internal/tick` daily at 16:00 UTC. `API_MODE=supabase`. Supabase keys, `CRON_SECRET` and `RESEND_API_KEY` are stored as Vercel secrets. |
+| API | Vercel project `ureca-match-api` (Python), https://ureca-match-api.vercel.app | `api/vercel.json` routes all paths to `api/index.py` and defines the cron: `GET /internal/tick` daily at 09:05 UTC (5:05 pm in Singapore). `API_MODE=supabase`. Supabase keys, `CRON_SECRET` and `RESEND_API_KEY` are stored as Vercel secrets. |
 | Data | Supabase, Singapore region | Schema from `supabase/schema.sql`, demo rows from `supabase/seed.sql`, auth users from `app.db.seed_auth`. |
 | E-mail | Resend | `EMAIL_MODE=send`. Until a sender domain is verified, Resend only delivers mail from its test sender `onboarding@resend.dev` (the `EMAIL_FROM` default), and only to the Resend account owner. |
 
@@ -199,5 +207,5 @@ Continuous integration runs on every pull request and every push to `main` (`.gi
 - Until a sender domain is verified in Resend, e-mail can only come from `onboarding@resend.dev`, which delivers only to the Resend account owner.
 - `supabase/policies.sql` (RLS and storage policies) is applied in Supabase; PR #27 pending merge. Until then `supabase/schema.sql` refers to a file that is not on `main`.
 - The planned GitHub Actions deploy workflow does not exist yet.
-- Fixed (`694a659`, PR #25): Vercel Cron calls `/internal/tick` with `GET`, but `tick()` only accepted `POST`. It now accepts `GET` with `Bearer <CRON_SECRET>`; the job runs daily at 16:00 UTC.
+- Fixed (`694a659`, PR #25): Vercel Cron calls `/internal/tick` with `GET`, but `tick()` only accepted `POST`. It now accepts `GET` with `Bearer <CRON_SECRET>`.
 - Fixed (`694a659`, PR #25): `web/app/(admin)/rounds/page.tsx` calls `tick()` with the admin's token, which got `401`, and the web client treated it as an expired session and signed the admin out. An admin session is now accepted.

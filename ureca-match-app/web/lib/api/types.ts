@@ -1011,7 +1011,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** My Match */
+        /**
+         * My Match
+         * @description The student's latest match result: in the active cycle, or in the latest cycle once every cycle is closed.
+         */
         get: operations["my_match_me_match_get"];
         put?: never;
         post?: never;
@@ -1066,8 +1069,9 @@ export interface paths {
         put?: never;
         /**
          * Tick
-         * @description Called daily by Vercel Cron and whenever an admin opens Matching Rounds, so the schedule also moves on a
-         *     quiet day. Unlike keep_schedule, a failing step fails this call, so the cron log shows it.
+         * @description Called by Vercel Cron daily at 5:05 pm SGT, just after windows open and close, and whenever an admin opens
+         *     Matching Rounds. In Supabase mode this is what moves the schedule. Unlike keep_schedule, a failing step fails this
+         *     call, so the cron log shows it.
          */
         post: operations["tick_internal_tick_post"];
         delete?: never;

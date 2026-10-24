@@ -1,8 +1,9 @@
 """Slice D: matching, approval window, review, reassign, publish, offers, audit, scheduler.
 REQ-EXEC-1..4, REQ-REV-1, REQ-PUB-1..3, REQ-ASSIGN-1..3, REQ-APPRV-1..4, REQ-OUTCOME-1..4, REQ-AUDIT-1..3.
 
-Nobody clicks "run matching" or "publish". advance() runs before every request and from the daily cron: the first
-request after a review window closes runs matching, and the first after an approval window closes publishes.
+Nobody clicks "run matching" or "publish". advance() runs matching once a review window has closed and publishes once
+an approval window has closed. The daily cron calls it just after 5 pm SGT, when windows open and close, and so does
+an admin opening Matching Rounds. In mock mode it also runs before every request (SCHEDULER_ON_REQUEST).
 """
 
 from __future__ import annotations
@@ -63,13 +64,9 @@ def _round(store, round_id: str):
     return r
 
 
-# A match in one of these states holds a slot until the student accepts (then it is in filled_slots) or it ends.
-HOLDS_SLOT = (MatchStatus.proposed, MatchStatus.approved, MatchStatus.reassigned, MatchStatus.published)
-
-
 def _open_slots(store, lst) -> int:
     """Slots nobody holds: accepted students are counted in filled_slots, pending matches and open offers hold one each."""
-    held = sum(1 for m in store.matches if m.listing_id == lst.id and m.status in HOLDS_SLOT)
+    held = sum(1 for m in store.matches if m.listing_id == lst.id and m.status in placement.OPEN)
     return max(lst.available_slots - lst.filled_slots - held, 0)
 
 
@@ -672,33 +669,61 @@ def decline_match(match_id: str, body: MatchDecision, user: SupervisorUser, stor
 # ------------------------------------------------------------------ student
 
 
-@router.get("/me/match", response_model=Match | None)
-def my_match(user: StudentUser, store: StoreDep) -> Match | None:
+def _results(store, student_id: str) -> tuple[list[Match], dict[str, int]]:
+    """The match results a student can see: in the active cycle or, once every cycle is closed, the latest one.
+    Also returns the number of each of that cycle's rounds."""
+    c = store.cycle or max(store.cycles, key=lambda x: x.opening_date, default=None)
+    number = {r.id: r.number for r in c.rounds} if c else {}
     visible = [
         m
         for m in store.matches
-        if m.student_id == user.id
+        if m.student_id == student_id
+        and m.round_id in number
         and m.status in (MatchStatus.published, MatchStatus.accepted, MatchStatus.declined, MatchStatus.timed_out)
     ]
-    return visible[-1] if visible else None
+    return visible, number
+
+
+@router.get("/me/match", response_model=Match | None)
+def my_match(user: StudentUser, store: StoreDep) -> Match | None:
+    """The student's latest match result: in the active cycle, or in the latest cycle once every cycle is closed."""
+    visible, number = _results(store, user.id)
+    # By round, never by list order: in Supabase mode match ids are random and rows come back in id order. In the
+    # same round, the project the student holds or the offer they can answer comes before a match that ended.
+    live = (MatchStatus.accepted, MatchStatus.published)
+    return max(visible, key=lambda m: (number[m.round_id], m.status in live), default=None)
+
+
+def _answerable_offer(user, store, now) -> Match:
+    """The student's open offer while it can still be answered (REQ-OUTCOME-3). A lapsed offer may not be timed out
+    yet: in Supabase mode the schedule runs on the daily cron, and it does nothing once the cycle has closed."""
+    visible, number = _results(store, user.id)
+    m = max((m for m in visible if m.status == MatchStatus.published), key=lambda m: number[m.round_id], default=None)
+    if m is None:
+        raise conflict("no_offer", "There is no open offer to respond to.")
+    if m.offer_expires_at and now > m.offer_expires_at:
+        raise conflict("offer_expired", f"The deadline to respond to this offer was {when(m.offer_expires_at)}.")
+    if windows.cycle_closed(store.cycle, now):
+        raise conflict("cycle_closed", "The application cycle has closed, so this offer can no longer be answered.")
+    return m
 
 
 @router.post("/me/match/accept", response_model=Match)
 def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> Match:
-    m = my_match(user, store)
-    if m is None or m.status != MatchStatus.published:
-        raise conflict("no_offer", "There is no open offer to respond to.")
-    if placement.is_placed(store, user.id):  # already registered to a self-proposed project
-        raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot accept this offer.")
-    m.status, m.student_responded_at = MatchStatus.accepted, settings.now()  # REQ-OUTCOME-1
-    store.save_match(m)
+    now = settings.now()
+    with _schedule_lock:  # the scheduler must not time the offer out between these checks and the change
+        m = _answerable_offer(user, store, now)
+        if placement.is_placed(store, user.id):  # already registered to a self-proposed project
+            raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot accept this offer.")
+        m.status, m.student_responded_at = MatchStatus.accepted, now  # REQ-OUTCOME-1
+        store.save_match(m)
     # In Supabase mode the store returns copies, so every change below is saved explicitly.
     lst = store.listing(m.listing_id)
     if lst:
         lst.filled_slots += 1
         store.save_listing(lst)
     # placed: exclude from later rounds (REQ-OUTCOME-1), and withdraw any proposal still waiting
-    _mark_ineligible(store, user.id, settings.now(), "accepted a match offer")
+    _mark_ineligible(store, user.id, now, "accepted a match offer")
     # Use case 2-5: accepting closes the student's other open applications.
     others = [a for a in store.applications_for(student_id=user.id) if a.status == ApplicationStatus.submitted]
     for a in others:
@@ -718,12 +743,12 @@ def _mark_ineligible(store, student_id: str, now, reason: str) -> None:
 
 @router.post("/me/match/decline", response_model=Match)
 def decline_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> Match:
-    m = my_match(user, store)
-    if m is None or m.status != MatchStatus.published:
-        raise conflict("no_offer", "There is no open offer to respond to.")
-    m.status, m.student_responded_at = MatchStatus.declined, settings.now()  # REQ-OUTCOME-2
-    store.save_match(m)
-    _mark_ineligible(store, user.id, settings.now(), "declined a match offer")
+    now = settings.now()
+    with _schedule_lock:  # the scheduler must not time the offer out between these checks and the change
+        m = _answerable_offer(user, store, now)
+        m.status, m.student_responded_at = MatchStatus.declined, now  # REQ-OUTCOME-2
+        store.save_match(m)
+    _mark_ineligible(store, user.id, now, "declined a match offer")
     return m
 
 
@@ -796,8 +821,9 @@ def keep_schedule(store: StoreDep, settings: SettingsDep) -> None:
 @router.get("/internal/tick", response_model=Ok, include_in_schema=False)  # Vercel Cron only sends GET
 @router.post("/internal/tick", response_model=Ok)
 def tick(store: StoreDep, settings: SettingsDep, authorization: Annotated[str | None, Header()] = None) -> Ok:
-    """Called daily by Vercel Cron and whenever an admin opens Matching Rounds, so the schedule also moves on a
-    quiet day. Unlike keep_schedule, a failing step fails this call, so the cron log shows it."""
+    """Called by Vercel Cron daily at 5:05 pm SGT, just after windows open and close, and whenever an admin opens
+    Matching Rounds. In Supabase mode this is what moves the schedule. Unlike keep_schedule, a failing step fails this
+    call, so the cron log shows it."""
     # Cron sends `Bearer <CRON_SECRET>`. The admin page sends the admin's own session token.
     if settings.api_mode != "mock" and authorization != f"Bearer {settings.cron_secret}":
         if current_user(store, settings, authorization=authorization).role != Role.admin:  # 401 if no valid session

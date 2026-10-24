@@ -922,7 +922,7 @@ export class MockClient implements ApiClient {
     return assigned ? `${assigned} student${assigned === 1 ? "" : "s"} assigned by the URECA office` : "";
   }
   private round(id: string) { const r = (this.activeCycle()?.rounds ?? []).find((r) => r.id === id); if (!r) throw new M.ApiError(404, "not_found", "Round was not found."); return r; }
-  // mirror of HOLDS_SLOT, _open_slots and _ruled_out in routers/matching.py
+  // mirror of _open_slots (with placement.OPEN) and _ruled_out in routers/matching.py
   private openSlots(l: M.Listing) {
     const held = this.db.matches.filter((m) => m.listing_id === l.id && ["proposed", "approved", "reassigned", "published"].includes(m.status)).length;
     return Math.max(l.available_slots - l.filled_slots - held, 0);
@@ -1145,14 +1145,26 @@ export class MockClient implements ApiClient {
     m.status = "rejected"; m.supervisor_decided_at = this.iso(); m.supervisor_note = note?.trim() || null;
     return m;
   }
+  /** Mirror of matching._results: the matches a student can see, in the active cycle or, once every cycle is closed, the latest one. */
+  private results(studentId: string) {
+    const c = this.activeCycle() ?? [...this.db.cycles].sort((a, b) => Date.parse(b.opening_date) - Date.parse(a.opening_date))[0];
+    const number = new Map((c?.rounds ?? []).map((r) => [r.id, r.number]));
+    const visible = this.db.matches.filter((m) => m.student_id === studentId && number.has(m.round_id) && ["published", "accepted", "declined", "timed_out"].includes(m.status));
+    return { visible, number };
+  }
   async myMatch() {
-    const u = this.need("student");
-    const visible = this.db.matches.filter((m) => m.student_id === u.id && ["published", "accepted", "declined", "timed_out"].includes(m.status));
-    return visible[visible.length - 1] ?? null;
+    const u = this.need("student"); const { visible, number } = this.results(u.id);
+    // mirror of my_match: the newest round wins; in the same round, the project held or the open offer comes first
+    const rank = (m: M.Match) => number.get(m.round_id)! * 2 + (m.status === "accepted" || m.status === "published" ? 1 : 0);
+    return visible.reduce<M.Match | null>((best, m) => (best === null || rank(m) > rank(best) ? m : best), null);
   }
   async respondToOffer(accept: boolean) {
-    const u = this.need("student"); const m = await this.myMatch();
-    if (!m || m.status !== "published") throw new M.ApiError(409, "no_offer", "There is no open offer to respond to.");
+    const u = this.need("student"); const { visible, number } = this.results(u.id);
+    // mirror of _answerable_offer (REQ-OUTCOME-3): the open offer, answerable until its deadline while the cycle is open
+    const m = visible.filter((x) => x.status === "published").reduce<M.Match | null>((best, x) => (best === null || number.get(x.round_id)! > number.get(best.round_id)! ? x : best), null);
+    if (!m) throw new M.ApiError(409, "no_offer", "There is no open offer to respond to.");
+    if (m.offer_expires_at && this.now.getTime() > Date.parse(m.offer_expires_at)) throw new M.ApiError(409, "offer_expired", `The deadline to respond to this offer was ${when(m.offer_expires_at)}.`);
+    if (this.cycleClosed()) throw new M.ApiError(409, "cycle_closed", "The application cycle has closed, so this offer can no longer be answered.");
     if (accept && this.isPlaced(u.id)) throw new M.ApiError(409, "already_placed", "You have already accepted a project this cycle, so you cannot accept this offer.");
     m.status = accept ? "accepted" : "declined"; m.student_responded_at = this.iso();
     this.markIneligible(u.id, accept ? "accepted a match offer" : "declined a match offer"); // REQ-OUTCOME-1 (placed) and REQ-OUTCOME-2 (declined)
@@ -1165,8 +1177,10 @@ export class MockClient implements ApiClient {
   }
   async tick() { this.advance(); }
   /** Mirror of advance() (REQ-EXEC-4, REQ-PUB-3, REQ-OUTCOME-3): round by round, run matching once review closes,
-   *  publish once approval closes, keep statuses current, then time out lapsed offers. Safe to call again. */
+   *  publish once approval closes, keep statuses current, then time out lapsed offers. Safe to call again.
+   *  Like the API, it does nothing once the cycle has closed (windows.cycle_closed). */
   private advance() {
+    if (this.cycleClosed()) return;
     const t = this.now.getTime();
     for (const r of [...(this.activeCycle()?.rounds ?? [])].sort((x, y) => x.number - y.number)) {
       if (r.published_at) continue;

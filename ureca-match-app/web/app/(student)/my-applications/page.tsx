@@ -44,6 +44,11 @@ export default function MyApplications() {
   }
   const m = offer.data;
   const offerRound = m && cycle.data?.rounds.find((r) => r.id === m.round_id)?.number;
+  // REQ-OUTCOME-3: an offer can be answered until its deadline while the cycle is open. The server may not have timed a
+  // lapsed offer out yet, so the card compares the deadline with the server's clock (phase.now), not the browser's.
+  const lapsed = m?.status === "published" && !!me && !!m.offer_expires_at && Date.parse(me.phase.now) > Date.parse(m.offer_expires_at);
+  const cycleOver = me?.phase.window === "closed" || me?.phase.window === "before_cycle";
+  const answerable = m?.status === "published" && !lapsed && !cycleOver;
 
   return (
     <>
@@ -57,13 +62,14 @@ export default function MyApplications() {
               <div className="eyebrow mb-1">Match offer{offerRound ? ` · Round ${offerRound}` : ""}</div>
               <div className="font-display text-[17px] font-bold">{m.listing_title}</div>
               <div className="text-[13px] text-muted mt-0.5">{m.supervisor_name}{m.preference_rank ? ` · your preference ${m.preference_rank}` : ""}</div>
-              {m.status === "published" && <div className="text-[12.5px] text-muted mt-2">Respond by <strong>{fmtDeadline(m.offer_expires_at)}</strong>. You cannot apply to other projects while this offer is open. Declining reopens the slot for others and makes you ineligible for later rounds this cycle. No response by the deadline counts as a decline.</div>}
+              {answerable && <div className="text-[12.5px] text-muted mt-2">Respond by <strong>{fmtDeadline(m.offer_expires_at)}</strong>. You cannot apply to other projects while this offer is open. Declining reopens the slot for others and makes you ineligible for later rounds this cycle. No response by the deadline counts as a decline.</div>}
+              {m.status === "published" && !answerable && <div className="text-[12.5px] text-muted mt-2">{lapsed ? <>The deadline to respond passed on <strong>{fmtDeadline(m.offer_expires_at)}</strong>, so this offer can no longer be answered.</> : "The application cycle has closed, so this offer can no longer be answered."}</div>}
               {m.status === "accepted" && <div className="mt-2"><Banner tone="good" title="Accepted.">You are registered to this project. Your other applications this cycle are withdrawn.</Banner></div>}
               {(m.status === "declined" || m.status === "timed_out") && <div className="mt-2"><Banner tone="bad" title={m.status === "declined" ? "Declined." : "Timed out."}>You are not eligible for further rounds this cycle.</Banner></div>}
             </div>
             <div className="flex flex-col gap-2 shrink-0">
               <Status value={m.status} />
-              {m.status === "published" && <><Button onClick={() => setConfirm("accept")}>Accept offer</Button><Button variant="secondary" onClick={() => setConfirm("decline")}>Decline</Button></>}
+              {answerable && <><Button onClick={() => setConfirm("accept")}>Accept offer</Button><Button variant="secondary" onClick={() => setConfirm("decline")}>Decline</Button></>}
             </div>
           </div>
         </Card>
