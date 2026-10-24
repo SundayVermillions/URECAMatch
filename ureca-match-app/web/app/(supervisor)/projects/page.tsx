@@ -87,7 +87,7 @@ export default function SupervisorProjects() {
 
       <Modal open={!!closing} onClose={() => setClosing(null)} title="Close this listing?"
         footer={<><Button variant="secondary" onClick={() => setClosing(null)}>Keep open</Button><Button variant="destructive" onClick={() => { const l = closing!; setClosing(null); run(() => call((api) => api.closeListing(l.id))); }}>Close listing</Button></>}>
-        <strong className="text-text font-medium">{closing?.title}</strong> disappears from student browsing. Existing applications and matches are kept. This cannot be undone.
+        <strong className="text-text font-medium">{closing?.title}</strong> disappears from student browsing. Applications still under review are withdrawn and those students are told. Accepted students and open offers are kept. This cannot be undone.
       </Modal>
     </>
   );
