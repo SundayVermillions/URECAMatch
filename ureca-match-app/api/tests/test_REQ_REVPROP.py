@@ -68,6 +68,23 @@ def test_REQ_REVPROP_1_student_cannot_list_supervisor_proposals(as_student):
     assert as_student.get("/supervisor/proposals").status_code == 403
 
 
+# prp-2: stu-9 proposed to sup-1 with doc-stu-9-t attached and never applied to a sup-1 listing,
+# so only the proposal can grant access (SRS 5.3.3).
+def test_REQ_REVPROP_1_supervisor_can_view_proposal_document(as_supervisor, fresh_store):
+    applied_to = {fresh_store.listing(a.listing_id).supervisor_id for a in fresh_store.applications_for(student_id="stu-9")}
+    assert "sup-1" not in applied_to
+    r = as_supervisor.get("/documents/doc-stu-9-t/view")
+    assert r.status_code == 200 and r.json()["url"]
+
+
+def test_REQ_REVPROP_1_document_not_attached_to_proposal_is_refused(as_supervisor):
+    assert as_supervisor.get("/documents/doc-stu-9-cv/view").status_code == 403
+
+
+def test_REQ_REVPROP_1_other_supervisor_cannot_view_proposal_document(client_for):
+    assert client_for("sup-4").get("/documents/doc-stu-9-t/view").status_code == 403
+
+
 # ---------------------------------------------------------------- REQ-REVPROP-2
 # An accepted proposal becomes a Match. Slice D's round summary and match list filter by
 # round_id, so the match must carry a real round. Rounds: rnd-1 25 Aug, rnd-2 5 Sep, rnd-3 16 Sep.

@@ -14,6 +14,9 @@ const DEMO = [
   { id: "sup-1", label: "Supervisor · Prof. Marcus Chua" },
   { id: "adm-1", label: "Admin · Jonathan Teo" },
 ];
+// Demo buttons sign in by user id (X-Demo-User), which only an API in API_MODE=mock accepts.
+// NEXT_PUBLIC_DEMO_ACCOUNTS=true shows them in live mode too, for a local live web app against a local mock API.
+const SHOW_DEMO = API_MODE === "mock" || process.env.NEXT_PUBLIC_DEMO_ACCOUNTS === "true";
 
 export default function SignIn() {
   return (
@@ -114,7 +117,7 @@ function SignInForm() {
         </Link>
       </div>
 
-      {API_MODE === "mock" && (
+      {SHOW_DEMO && (
         <div className="border-t border-border pt-4 mt-1">
           <div className="eyebrow mb-2">Demo accounts (password: password)</div>
           <div className="flex flex-col gap-1.5">

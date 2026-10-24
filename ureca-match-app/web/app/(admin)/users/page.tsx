@@ -4,8 +4,14 @@ import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { I } from "@/components/shell/icons";
 import { Avatar, Banner, Button, Chip, Field, Input, Loading, Modal, Select, Status } from "@/components/ui";
-import { ApiError, type AccountStatus, type Role, type UserListItem } from "@/lib/api/models";
+import { ApiError, type AccountStatus, type ActiveItem, type ActiveItemKind, type Role, type UserListItem } from "@/lib/api/models";
+import { TITLES, composeName, splitTitle } from "@/lib/titles";
 import { useApi, useCall } from "@/lib/use-api";
+
+const KIND_LABEL: Record<ActiveItemKind, string> = { listing: "Open project listings", proposal: "Pending proposals", application: "Applications", match: "Matches" };
+
+/** What the API said would be closed, and how to send the same request again once the admin accepts (REQ-USER-3). */
+type Cleanup = { who: string; items: ActiveItem[]; send: (confirm: boolean) => Promise<unknown>; done: () => void };
 
 export default function Users() {
   const call = useCall();
@@ -16,20 +22,36 @@ export default function Users() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<UserListItem | null>(null);
   const [deactivating, setDeactivating] = useState<UserListItem | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", role: "student" as Role });
+  const [form, setForm] = useState({ name: "", email: "", role: "student" as Role, title: "" });
   const [error, setError] = useState<ApiError | null>(null);
+  const [cleanup, setCleanup] = useState<Cleanup | null>(null);
 
   async function create(e: React.FormEvent) {
     e.preventDefault(); setError(null);
-    try { await call((api) => api.createUser(form)); setCreating(false); setForm({ name: "", email: "", role: "student" }); reload(); } catch (err) { setError(err as ApiError); }
+    try { await call((api) => api.createUser(form)); setCreating(false); setForm({ name: "", email: "", role: "student", title: "" }); reload(); } catch (err) { setError(err as ApiError); }
+  }
+  /** Try without the flag first. A user with open items comes back as a preview; resend with the flag once the admin accepts. */
+  async function submit(who: string, send: (confirm: boolean) => Promise<unknown>, done: () => void, confirm = false) {
+    setError(null);
+    try { await send(confirm); setCleanup(null); done(); reload(); }
+    catch (err) {
+      const e = err as ApiError;
+      if (e.code === "has_active_items" && e.items?.length && !confirm) setCleanup({ who, items: e.items, send, done });
+      else { setCleanup(null); setError(e); }
+    }
   }
   async function saveEdit(e: React.FormEvent) {
-    e.preventDefault(); if (!editing) return; setError(null);
-    try { await call((api) => api.updateUser(editing.user.id, { name: editing.user.name, role: editing.user.role, status: editing.user.status })); setEditing(null); reload(); } catch (err) { setError(err as ApiError); }
+    e.preventDefault(); if (!editing) return;
+    const { id, name, role, status } = editing.user;
+    const title = editing.title ?? "";
+    // The form edits the name without its title. Students carry no title, so only a supervisor sets one; an admin keeps the one they had.
+    const body = role === "supervisor" ? { name, role, status, title } : { name: role === "student" ? name : composeName(title, name), role, status };
+    await submit(composeName(role === "supervisor" ? title : "", name), (confirm) => call((api) => api.updateUser(id, body, confirm)), () => setEditing(null));
   }
   async function deactivate() {
     if (!deactivating) return;
-    try { await call((api) => api.deactivateUser(deactivating.user.id)); setDeactivating(null); reload(); } catch (err) { setError(err as ApiError); }
+    const { id, name } = deactivating.user;
+    await submit(name, (confirm) => call((api) => api.deactivateUser(id, confirm)), () => setDeactivating(null));
   }
 
   return (
@@ -52,7 +74,7 @@ export default function Users() {
             <span className="text-[12.5px] text-muted">{u.school ?? ""}</span>
             <Status value={u.user.status} />
             <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="secondary" onClick={() => setEditing({ ...u, user: { ...u.user } })}>Edit</Button>
+              <Button size="sm" variant="secondary" onClick={() => setEditing({ ...u, user: { ...u.user, name: u.title ? splitTitle(u.user.name)[1] : u.user.name } })}>Edit</Button>
               {u.user.status !== "inactive" && <Button size="sm" variant="secondary" onClick={() => setDeactivating(u)}>Deactivate</Button>}
             </div>
           </div>
@@ -62,24 +84,60 @@ export default function Users() {
       <Modal open={creating} onClose={() => setCreating(false)} title="New user">
         <form onSubmit={create} className="flex flex-col gap-3 text-text">
           {error && !error.field && <Banner tone="bad">{error.message}</Banner>}
-          <Field label="Full name"><Input id="new-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></Field>
+          {form.role === "supervisor" && (
+            <Field label="Title" hint="Shown in front of the name">
+              <Select id="new-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}>
+                <option value="">No title</option>
+                {TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Select>
+            </Field>
+          )}
+          <Field label="Full name" hint={form.role === "supervisor" ? "Without the title" : undefined}><Input id="new-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></Field>
           <Field label="NTU e-mail" error={error?.field === "email" ? error.message : null}><Input id="new-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required invalid={error?.field === "email"} /></Field>
           <Field label="Role" hint="Only admins can create admin accounts."><Select id="new-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}><option value="student">Student</option><option value="supervisor">Project Supervisor</option><option value="admin">Admin</option></Select></Field>
           <div className="flex justify-end gap-2 mt-2"><Button type="button" variant="secondary" onClick={() => setCreating(false)}>Cancel</Button><Button type="submit">Create</Button></div>
         </form>
       </Modal>
-      <Modal open={!!editing} onClose={() => setEditing(null)} title="Edit user">
+      <Modal open={!!editing && !cleanup} onClose={() => setEditing(null)} title="Edit user">
         {editing && (
           <form onSubmit={saveEdit} className="flex flex-col gap-3 text-text">
-            <Field label="Full name"><Input id="edit-name" value={editing.user.name} onChange={(e) => setEditing({ ...editing, user: { ...editing.user, name: e.target.value } })} /></Field>
+            {error && !error.field && <Banner tone="bad">{error.message}</Banner>}
+            {editing.user.role === "supervisor" && (
+              <Field label="Title" hint="Shown in front of the name">
+                <Select id="edit-title" value={editing.title ?? ""} onChange={(e) => setEditing({ ...editing, title: e.target.value })}>
+                  <option value="">No title</option>
+                  {TITLES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </Select>
+              </Field>
+            )}
+            <Field label="Full name" hint={editing.user.role === "supervisor" ? "Without the title" : undefined}><Input id="edit-name" value={editing.user.name} onChange={(e) => setEditing({ ...editing, user: { ...editing.user, name: e.target.value } })} /></Field>
             <Field label="Role"><Select id="edit-role" value={editing.user.role} onChange={(e) => setEditing({ ...editing, user: { ...editing.user, role: e.target.value as Role } })}><option value="student">Student</option><option value="supervisor">Project Supervisor</option><option value="admin">Admin</option></Select></Field>
             <Field label="Status"><Select id="edit-status" value={editing.user.status} onChange={(e) => setEditing({ ...editing, user: { ...editing.user, status: e.target.value as AccountStatus } })}><option value="active">Active</option><option value="inactive">Inactive</option><option value="pending_verification">Unverified</option></Select></Field>
             <div className="flex justify-end gap-2 mt-2"><Button type="button" variant="secondary" onClick={() => setEditing(null)}>Cancel</Button><Button type="submit">Save</Button></div>
           </form>
         )}
       </Modal>
-      <Modal open={!!deactivating} onClose={() => setDeactivating(null)} title={`Deactivate ${deactivating?.user.name}?`} footer={<><Button variant="secondary" onClick={() => setDeactivating(null)}>Cancel</Button><Button variant="destructive" onClick={deactivate}>Deactivate</Button></>}>
-        They are signed out everywhere and cannot sign in again until reactivated. Their applications and matches are kept.
+      <Modal open={!!deactivating && !cleanup} onClose={() => setDeactivating(null)} title={`Deactivate ${deactivating?.user.name}?`} footer={<><Button variant="secondary" onClick={() => setDeactivating(null)}>Cancel</Button><Button variant="destructive" onClick={deactivate}>Deactivate</Button></>}>
+        {error && !error.field && <div className="mb-3"><Banner tone="bad">{error.message}</Banner></div>}
+        They are signed out everywhere and cannot sign in again until reactivated. If they still have open items, you will see them before anything changes.
+      </Modal>
+      <Modal open={!!cleanup} onClose={() => setCleanup(null)} title={`${cleanup?.who} still has open items`}
+        footer={<><Button variant="secondary" onClick={() => setCleanup(null)}>Cancel</Button><Button variant="destructive" onClick={() => cleanup && submit(cleanup.who, cleanup.send, cleanup.done, true)}>Close items and continue</Button></>}>
+        {cleanup && (
+          <div className="flex flex-col gap-3 text-text">
+            <p className="text-muted">Continuing will close or withdraw everything below and notify the people involved. Nothing has been changed yet.</p>
+            {(["listing", "proposal", "application", "match"] as const).filter((k) => cleanup.items.some((i) => i.kind === k)).map((k) => (
+              <div key={k}>
+                <div className="eyebrow mb-1">{KIND_LABEL[k]}</div>
+                <ul className="flex flex-col gap-1">
+                  {cleanup.items.filter((i) => i.kind === k).map((i) => (
+                    <li key={i.id} className="text-[13px] border border-border rounded-row px-3 py-1.5"><span className="font-semibold">{i.title}</span>{i.detail && <span className="text-muted"> · {i.detail}</span>}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
       </Modal>
     </>
   );

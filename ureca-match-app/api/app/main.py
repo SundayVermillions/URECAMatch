@@ -15,6 +15,7 @@ from app.errors import ApiError
 from app.routers import (
     applications,
     auth,
+    catalog,
     cycles,
     debug,
     listings,
@@ -25,6 +26,9 @@ from app.routers import (
     rankings,
     users,
 )
+from app.settings import get_settings
+
+get_settings()  # fail at start-up, not on the first request, if the settings are unsafe (EMAIL_MODE=smtp in production)
 
 app = FastAPI(
     title="URECAMatch API",
@@ -44,7 +48,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth, profile, users, listings, proposals, applications, rankings, cycles, matching, notifications, debug):
+for r in (auth, profile, users, listings, proposals, applications, rankings, cycles, matching, notifications, catalog, debug):
     app.include_router(r.router)
 
 

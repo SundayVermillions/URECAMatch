@@ -29,6 +29,21 @@
   --bad-ink: #c2000b;
   --bad-soft: #ffeeed;
   --neutral-soft: #f0f0f2;
+
+  /* Applicants and ranking page palette (2026-10), used under .ap-theme: the app's own neutrals and blue accent. */
+  --ap-bg: #f5f5f7;
+  --ap-card: #ffffff;
+  --ap-ink: #1d1d1f;
+  --ap-muted: #6e6e73;
+  --ap-line: #e8e8ed;
+  --ap-accent: #0071e3;
+  --ap-accent-ink: #0066cc;
+  --ap-soft: #eaf3fd;
+  --ap-hover: #fbfbfd;
+  --ap-panel: #ffffff;
+  --ap-rank: #0066cc;
+  --ap-warn: #c77700;
+  --ap-good: #1a7431;
 }
 
 @theme inline {
@@ -55,6 +70,19 @@
   --color-bad-ink: var(--bad-ink);
   --color-bad-soft: var(--bad-soft);
   --color-neutral-soft: var(--neutral-soft);
+  --color-ap-bg: var(--ap-bg);
+  --color-ap-card: var(--ap-card);
+  --color-ap-ink: var(--ap-ink);
+  --color-ap-muted: var(--ap-muted);
+  --color-ap-line: var(--ap-line);
+  --color-ap-accent: var(--ap-accent);
+  --color-ap-accent-ink: var(--ap-accent-ink);
+  --color-ap-soft: var(--ap-soft);
+  --color-ap-hover: var(--ap-hover);
+  --color-ap-panel: var(--ap-panel);
+  --color-ap-rank: var(--ap-rank);
+  --color-ap-warn: var(--ap-warn);
+  --color-ap-good: var(--ap-good);
 
   /* One family, like SF Pro on Apple platforms. Hierarchy comes from size and weight. */
   --font-display: var(--font-inter), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -112,7 +140,45 @@
 .eyebrow { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--faint); }
 .tabular { font-variant-numeric: tabular-nums; }
 
+/* Applicants and ranking page scope. Remaps the shared roles so shared components (FilterSelect, Tip...)
+   inside it take the page palette, and squares off pill shapes to 6px. */
+.ap-theme {
+  --accent: var(--ap-accent);
+  --accent-ink: var(--ap-accent-ink);
+  --accent-soft: var(--ap-soft);
+  --accent-border: #cde2fa;
+  --border: var(--ap-line);
+  --border-strong: var(--ap-line);
+  --text: var(--ap-ink);
+  --muted: var(--ap-muted);
+  --faint: var(--ap-muted);
+  --surface: var(--ap-card);
+  --sunken: var(--ap-bg);
+  color: var(--ap-ink);
+}
+/* The shell caps pages at 1080px; this page needs the width for the list beside the ranking. */
+div:has(> .ap-theme) { max-width: 1600px; }
+.ap-theme .rounded-pill, .ap-theme .rounded-button { border-radius: 6px; }
+.ap-theme h1, .ap-theme h2 { font-weight: 600; letter-spacing: -0.02em; }
+.ap-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ap-muted); }
+.ap-link { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ap-muted); }
+.ap-link:hover { color: var(--ap-ink); }
+.ap-skeleton { background: linear-gradient(90deg, var(--ap-line) 0%, var(--ap-bg) 50%, var(--ap-line) 100%); background-size: 480px 100%; animation: uri-shimmer 1.2s linear infinite; border-radius: 4px; }
+
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Uri, the recommendation guide on Browse (components/student/uri.tsx, uri-picks.tsx). */
+@keyframes uri-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes uri-shadow { 0%, 100% { transform: scaleX(1); opacity: .22; } 50% { transform: scaleX(.82); opacity: .14; } }
+@keyframes uri-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.08); } }
+@keyframes uri-wave { 0%, 55%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(-26deg); } 20%, 40% { transform: rotate(6deg); } }
+@keyframes uri-glow { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.18); } }
+@keyframes uri-aurora { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(36px, -22px) scale(1.18); } }
+@keyframes uri-rise { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes uri-caret { 50% { opacity: 0; } }
+@keyframes uri-shimmer { from { background-position: -480px 0; } to { background-position: 480px 0; } }
+@keyframes uri-twinkle { 0%, 100% { opacity: .15; transform: scale(.6); } 50% { opacity: .9; transform: scale(1); } }
+@keyframes uri-dots { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
 /* Liquid glass capsule (components/shell/liquid-glass.tsx).
@@ -136,6 +202,55 @@
       0 8px 20px -6px rgba(0, 0, 0, 0.12),              /* float shadow */
       0 1px 2px rgba(0, 0, 0, 0.05);
     transition: transform 520ms cubic-bezier(0.3, 1.35, 0.55, 1); /* slight spring overshoot when sliding */
+  }
+  /* Glass panel: the same material as .liquid-glass for a large surface (Uri's picks on Browse).
+     A frosted body instead of the refraction filter, which is tuned for small shapes and would
+     distort the content inside. Colour comes from the ambient light placed behind the panel. */
+  .glass-panel {
+    position: relative;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.4) 100%);
+    -webkit-backdrop-filter: blur(30px) saturate(175%);
+    backdrop-filter: blur(30px) saturate(175%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),               /* specular highlight on the top rim */
+      inset 0 -1px 0 rgba(255, 255, 255, 0.65),           /* light caught on the bottom rim */
+      inset 2px 2px 2px -2px rgba(255, 200, 225, 0.55),   /* chromatic edge: warm, top-left */
+      inset -2px -2px 2px -2px rgba(150, 190, 255, 0.6),  /* chromatic edge: cool, bottom-right */
+      inset 0 -40px 60px -50px rgba(100, 120, 200, 0.22), /* thickness: cool shading at the base */
+      0 0 0 0.5px rgba(0, 0, 0, 0.06),                    /* outer hairline so the edge reads on white */
+      0 30px 60px -32px rgba(40, 60, 130, 0.3),           /* float shadow */
+      0 2px 6px rgba(0, 0, 0, 0.04);
+  }
+  /* Glare across the top, like light on a curved surface. */
+  .glass-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(75% 95% at 18% -10%, rgba(255, 255, 255, 0.7), transparent 55%);
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+  /* A 1px rim that is bright where light hits (top-left, bottom-right) and fades between. */
+  .glass-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(140deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.15) 35%, rgba(255, 255, 255, 0.05) 65%, rgba(255, 255, 255, 0.9));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  /* Thin gradient rim (Uri's best-fit card): the colours of the light behind the glass panel. */
+  .grad-rim {
+    padding: 2px;
+    background: linear-gradient(135deg, #8fbaff 0%, #b9a6ff 50%, #ffc9a8 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
   }
   /* Soft glare in the upper-left, like light across a curved surface. */
   .liquid-glass::before {

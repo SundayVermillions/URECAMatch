@@ -24,6 +24,7 @@ APPROVAL_CLOSED = datetime(2026, 9, 14, 9, tzinfo=UTC)  # Round 2's results are 
 def fresh_store(monkeypatch):
     monkeypatch.setenv("API_MODE", "mock")
     monkeypatch.setattr(get_settings(), "email_mode", "off")  # tests never send e-mail, whatever .env says
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "")  # nor call Gemini with a real key from .env
     store_module.reset_store()
     yield store_module.get_store()
     store_module.reset_store()

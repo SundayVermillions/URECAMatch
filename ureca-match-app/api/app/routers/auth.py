@@ -25,7 +25,9 @@ from app.models import (
     User,
     VerifyRequest,
 )
+from app.services import email as mail
 from app.services import windows
+from app.services.titles import check_title, compose
 from app.settings import Settings
 
 router = APIRouter(tags=["auth"])
@@ -41,6 +43,8 @@ def _issue_verification_code(email: str, store: StoreDep, settings: SettingsDep)
     store.issue_code(email, code, expires_at)
     if settings.api_mode == "mock":
         print(f"[AUTH] Verification code for {email}: {code} (expires at {expires_at.isoformat()})")
+    user = store.user_by_email(email)
+    mail.send_verification_code(email, user.name if user else "", code)  # REQ-REG-2; EMAIL_MODE decides if it goes out
     return code
 
 
@@ -65,6 +69,8 @@ def register(body: RegisterRequest, store: StoreDep, settings: SettingsDep) -> O
     if body.role == Role.admin:  # REQ-USER-2
         raise invalid("role_not_allowed", "Admin accounts are created by an existing admin.", "role")
 
+    title = check_title(body.title) if body.role == Role.supervisor else ""
+    full_name = compose(title, body.name)
     user_id = store.next_id(body.role.value[:3])
 
     if settings.api_mode == "supabase" and hasattr(store, "client") and store.client:
@@ -74,7 +80,7 @@ def register(body: RegisterRequest, store: StoreDep, settings: SettingsDep) -> O
                     "email": body.email,
                     "password": body.password,
                     "email_confirm": True,
-                    "user_metadata": {"role": body.role.value, "name": body.name},
+                    "user_metadata": {"role": body.role.value, "name": full_name},
                 }
             )
             if auth_res.user and auth_res.user.id:
@@ -90,7 +96,7 @@ def register(body: RegisterRequest, store: StoreDep, settings: SettingsDep) -> O
     user = User(
         id=user_id,
         email=body.email,
-        name=body.name,
+        name=full_name,
         role=body.role,
         status=AccountStatus.pending_verification,
         created_at=settings.now(),
@@ -100,7 +106,7 @@ def register(body: RegisterRequest, store: StoreDep, settings: SettingsDep) -> O
         sp = StudentProfile(user_id=user.id, school="", profile_complete=False, documents=[])
         store.save_student(sp)
     else:
-        sup = SupervisorProfile(user_id=user.id, faculty="")
+        sup = SupervisorProfile(user_id=user.id, faculty="", title=title)
         store.save_supervisor(sup)
 
     _issue_verification_code(body.email, store, settings)  # REQ-REG-2

@@ -16,6 +16,7 @@ from app.db import store as store_module
 from app.main import app
 from app.models import Match, MatchStatus
 from app.routers.matching import _publish
+from app.services import windows
 from app.settings import Settings, get_settings, set_clock_override
 from tests.conftest import REVIEW_CLOSED
 from tests.test_PERSISTENCE_supabase import make_store
@@ -119,3 +120,47 @@ def db():
     d = FakeDB()
     seed_database(d.client())
     return d
+
+
+# ------------------------------------------------------------------ from main's version (#55), still true here
+
+
+def test_REQ_OUTCOME_3_cycle_closed_by_date_or_status_or_missing(fresh_store):
+    c = fresh_store.cycle
+    assert not windows.cycle_closed(c, c.closing_date)
+    assert windows.cycle_closed(c, c.closing_date + timedelta(seconds=1))
+    assert windows.cycle_closed(None, c.opening_date)
+    c.status = type(c.status)("closed")
+    assert windows.cycle_closed(c, c.opening_date)
+
+
+def _tick(monkeypatch, when: datetime) -> None:
+    monkeypatch.setattr(get_settings(), "demo_now", when)
+    assert TestClient(app).post("/internal/tick").status_code == 200
+
+
+def _an_offer(store):
+    """Turn a seeded match into an open offer."""
+    offer = store.matches[0]
+    offer.status = MatchStatus.published
+    return offer
+
+
+def test_REQ_EXEC_4_tick_changes_nothing_once_the_cycle_has_closed(fresh_store, monkeypatch):
+    c = fresh_store.cycle
+    offer = _an_offer(fresh_store)
+    offer.offer_expires_at = c.closing_date - timedelta(days=1)  # lapsed, but the cycle it belongs to is over
+    notes = len(fresh_store.notifications)
+    statuses = [r.status for r in c.rounds]
+    _tick(monkeypatch, c.closing_date + timedelta(days=1))
+    assert offer.status == MatchStatus.published  # not timed out by a tick on a closed cycle
+    assert len(fresh_store.notifications) == notes
+    assert [r.status for r in fresh_store.cycle.rounds] == statuses
+
+
+def test_REQ_EXEC_4_tick_still_times_out_lapsed_offers_while_the_cycle_is_open(fresh_store, monkeypatch):
+    c = fresh_store.cycle
+    offer = _an_offer(fresh_store)
+    offer.offer_expires_at = c.opening_date + timedelta(days=1)
+    _tick(monkeypatch, c.opening_date + timedelta(days=2))
+    assert offer.status == MatchStatus.timed_out

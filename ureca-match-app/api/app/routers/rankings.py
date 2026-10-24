@@ -6,7 +6,16 @@ from fastapi import APIRouter
 
 from app.deps import CurrentUser, SettingsDep, StoreDep, SupervisorUser
 from app.errors import forbidden, invalid, not_found
-from app.models import Applicant, ApplicantRanking, ApplicantRankingUpdate, ApplicantStudent, ApplicationStatus, Document
+from app.models import (
+    Applicant,
+    ApplicantRanking,
+    ApplicantRankingUpdate,
+    ApplicantScore,
+    ApplicantStudent,
+    ApplicationStatus,
+    Document,
+)
+from app.services import ai_match as ai_match_service
 from app.services import windows
 from app.services.storage import get_storage
 
@@ -28,9 +37,11 @@ def _applicants(store, listing_id: str, round_id: str | None) -> list[Applicant]
             Applicant(
                 application_id=a.id,
                 student=ApplicantStudent(
+                    email=u.email if u else "",
                     id=u.id,
                     name=u.name,
                     school=sp.school,
+                    degree=sp.degree,
                     year_of_study=sp.year_of_study,
                     cgpa=sp.cgpa,
                     completed_modules=sp.completed_modules,
@@ -75,6 +86,19 @@ def applicants(
     for r in rows:
         r.rank = ranking.index(r.application_id) + 1 if r.application_id in ranking else None
     return rows
+
+
+@router.post("/supervisor/listings/{listing_id}/applicants/ai-match", response_model=list[ApplicantScore])
+def ai_match(listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> list[ApplicantScore]:
+    """Fit score and reason for each applicant this round (REQ-VRANK-1). Gemini when GEMINI_API_KEY is set, else local.
+    Only the listing's own supervisor: the scores are built from applicants' personal data (SRS 5.3.3)."""
+    lst = store.listing(listing_id)
+    if lst is None:
+        raise not_found("Project")
+    if lst.supervisor_id != user.id:
+        raise forbidden()
+    phase = windows.phase(store.cycle, settings.now())
+    return ai_match_service.score_applicants(settings, lst, _applicants(store, listing_id, phase.round_id))
 
 
 @router.get("/supervisor/applicants/{application_id}", response_model=Applicant)
@@ -124,16 +148,18 @@ def put_ranking(
     )
 
 
-def _may_view(store, user, owner_id: str) -> bool:
-    """Owner, admins, and the supervisor of any listing the owner applied to (REQ-VRANK-3)."""
+def _may_view(store, user, owner_id: str, document_id: str) -> bool:
+    """Owner, admins, the supervisor of any listing the owner applied to (REQ-VRANK-3), and the
+    supervisor a proposal with this document attached was sent to (REQ-REVPROP-1). SRS 5.3.3."""
     if user.id == owner_id or user.role.value == "admin":
         return True
     if user.role.value != "supervisor":
         return False
-    return any(
+    applied = any(
         (lst := store.listing(a.listing_id)) is not None and lst.supervisor_id == user.id
         for a in store.applications_for(student_id=owner_id)
     )
+    return applied or any(document_id in p.document_ids for p in store.proposals_for(student_id=owner_id, supervisor_id=user.id))
 
 
 @router.get("/documents/{document_id}/view", response_model=Document)
@@ -143,7 +169,7 @@ def view_document(document_id: str, user: CurrentUser, store: StoreDep, settings
     for sp in store.students:
         for d in sp.documents:
             if d.id == document_id:
-                if not _may_view(store, user, sp.user_id):
+                if not _may_view(store, user, sp.user_id, d.id):
                     raise forbidden()
                 # Mock storage serves a sample PDF for every document; live storage needs the uploaded file.
                 has_file = d.storage_path is not None or settings.api_mode == "mock"

@@ -16,3 +16,7 @@ __pycache__/
 .env*.local
 # os
 .DS_Store
+
+# real URECA data pulled from NTU pages: contains student names and a matric number in the links. Never commit.
+data/raw/
+data/ureca-projects.json

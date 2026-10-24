@@ -1,31 +1,65 @@
-"""Slice B: project listings.  REQ-BROWSE-1..3, REQ-PROJ-1..3."""
+"""Slice B: project listings.  REQ-BROWSE-1..4, REQ-PROJ-1..3."""
 
 from __future__ import annotations
 
+import re
 from typing import Annotated
+from uuid import uuid4
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Query, UploadFile
 
-from app.deps import CurrentUser, SettingsDep, StoreDep, SupervisorUser
-from app.errors import forbidden, invalid, not_found
-from app.models import AccountStatus, Listing, ListingCreate, ListingStatus, ListingUpdate, Ok, Role, SupervisorSummary
-from app.services import windows
+from app.deps import CurrentUser, SettingsDep, StoreDep, StudentUser, SupervisorUser
+from app.errors import conflict, forbidden, invalid, not_found
+from app.models import (
+    AccountStatus,
+    Application,
+    ApplicationStatus,
+    Listing,
+    ListingCreate,
+    ListingStatus,
+    ListingUpdate,
+    NotificationEvent,
+    Ok,
+    Recommendation,
+    Role,
+    SupervisorSummary,
+)
+from app.services import catalog, placement, recommend, windows
+from app.services.notify import notify
 from app.services.storage import get_storage
 
 router = APIRouter(tags=["listings"])
 
 
-def _decorate(lst: Listing, store, user) -> Listing:
-    """Attach per-viewer fields (applied, rank, applicant count) without mutating the stored row."""
-    apps = [a for a in store.applications if a.listing_id == lst.id and a.status.value == "submitted"]
+def _submitted_by_listing(store) -> dict[str, list[Application]]:
+    """Applications under review, grouped by project. Read through applications_for(), which is the database in Supabase
+    mode (store.applications is only the in-memory seed there), and read once so Browse does not query once per card."""
+    out: dict[str, list[Application]] = {}
+    for a in store.applications_for():
+        if a.status == ApplicationStatus.submitted:
+            out.setdefault(a.listing_id, []).append(a)
+    return out
+
+
+def _decorate(lst: Listing, store, user, by_listing: dict[str, list[Application]] | None = None) -> Listing:
+    """Attach per-viewer fields (applied, rank, applicant count) without mutating the stored row.
+    Pass `by_listing` when decorating many projects, so the applications are read once."""
+    apps = (by_listing if by_listing is not None else _submitted_by_listing(store)).get(lst.id, [])
     mine = next((a for a in apps if a.student_id == user.id), None) if user.role == Role.student else None
     return lst.model_copy(
         update={
             "applicant_count": len(apps),
+            "held_slots": _held_slots(lst, store),
             "applied": mine is not None,
             "applied_rank": mine.preference_rank if mine else None,
         }
     )
+
+
+def _held_slots(lst: Listing, store) -> int:
+    """Matches and offers on this project that the student has not answered yet. Each one holds a slot until the
+    student accepts (it then counts in filled_slots) or it ends, so the supervisor cannot take that slot away."""
+    return sum(1 for m in store.matches if m.listing_id == lst.id and m.status in placement.OPEN)
 
 
 @router.get("/listings", response_model=list[Listing])
@@ -40,6 +74,7 @@ def browse(
     """REQ-BROWSE-1: open in every phase, including before the cycle opens.
     REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive."""
     out = []
+    by_listing = _submitted_by_listing(store)
     for lst in store.all_listings():
         if lst.status != ListingStatus.published:  # REQ-BROWSE-3
             continue
@@ -52,8 +87,27 @@ def browse(
             continue
         if supervisor and supervisor.lower() not in lst.supervisor_name.lower():
             continue
-        out.append(_decorate(lst, store, user))
+        out.append(_decorate(lst, store, user, by_listing))
     return out
+
+
+@router.get("/me/recommendations", response_model=list[Recommendation])
+def recommendations(user: StudentUser, store: StoreDep, limit: int = Query(default=6, ge=1, le=50)) -> list[Recommendation]:
+    """REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.
+    Empty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).
+    Projects already applied to or with no open slot are left out."""
+    sp = store.student(user.id)
+    if sp is None or not sp.research_interests or not sp.eligible_for_matching or placement.is_placed(store, user.id):
+        return []
+    by_listing = _submitted_by_listing(store)
+    open_listings = [
+        d
+        for d in (
+            _decorate(lst, store, user, by_listing) for lst in store.all_listings() if lst.status == ListingStatus.published
+        )
+        if not d.applied and d.filled_slots < d.available_slots
+    ]
+    return recommend.recommend(open_listings, sp, limit)
 
 
 @router.get("/listings/{listing_id}", response_model=Listing)
@@ -70,14 +124,15 @@ def supervisors(user: CurrentUser, store: StoreDep) -> list[SupervisorSummary]:
     out = []
     for s in store.supervisors:
         u = store.user(s.user_id)
-        if u and u.status == AccountStatus.active:
+        if u and u.status == AccountStatus.active and u.role == Role.supervisor:  # an old profile is kept after a role change
             out.append(SupervisorSummary(id=u.id, name=u.name, faculty=s.faculty))
     return sorted(out, key=lambda x: x.name.removeprefix("Assoc. ").removeprefix("Prof. ").removeprefix("Dr. "))
 
 
 @router.get("/supervisor/listings", response_model=list[Listing])
 def my_listings(user: SupervisorUser, store: StoreDep) -> list[Listing]:
-    return [_decorate(lst, store, user) for lst in store.all_listings() if lst.supervisor_id == user.id]
+    by_listing = _submitted_by_listing(store)
+    return [_decorate(lst, store, user, by_listing) for lst in store.all_listings() if lst.supervisor_id == user.id]
 
 
 @router.post("/supervisor/listings", response_model=Listing, status_code=201)
@@ -86,17 +141,23 @@ def create(body: ListingCreate, user: SupervisorUser, store: StoreDep, settings:
     if body.publish and _cycle_closed(store, settings):
         raise invalid("cycle_closed", "The application cycle has closed. Save this as a draft for the next cycle.")
     _check_text(body.title, body.description)
+    _check_faculty(body.offering_faculty)
     lst = Listing(
         id=store.next_id("lst"),
         supervisor_id=user.id,
         supervisor_name=user.name,
         title=body.title,
         description=body.description,
-        prerequisites=body.prerequisites,
-        topic_tags=body.topic_tags,
+        prerequisites=catalog.clean_courses(body.prerequisites, "prerequisites"),  # NTU course codes only
+        topic_tags=catalog.clean_topics(body.topic_tags, "topic_tags"),  # standard topics only
         available_slots=body.available_slots,
         offering_faculty=body.offering_faculty,
         research_location=body.research_location,
+        outcomes=body.outcomes.strip(),
+        skills=body.skills.strip(),
+        hours_per_week=body.hours_per_week,
+        mode=body.mode,
+        video_url=_video_url(body.video_url),
         created_at=settings.now(),
         status=ListingStatus.published if body.publish else ListingStatus.draft,
     )  # REQ-PROJ-1
@@ -110,16 +171,31 @@ def update(listing_id: str, body: ListingUpdate, user: SupervisorUser, store: St
         raise not_found("Project")
     if lst.supervisor_id != user.id:
         raise forbidden()
+    if lst.status == ListingStatus.closed:
+        raise conflict("listing_closed", "This project is closed, so it can no longer be edited.")
     if _cycle_closed(store, settings):  # REQ-PROJ-2
         raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
     _check_text(body.title, body.description)
-    if body.available_slots is not None and body.available_slots < lst.filled_slots:  # REQ-PROJ-3
+    _check_faculty(body.offering_faculty)
+    # REQ-PROJ-3: never below the students who accepted plus the offers still open. Otherwise those offers could be
+    # accepted into a project that has no room, leaving it over capacity.
+    floor = lst.filled_slots + _held_slots(lst, store)
+    if body.available_slots is not None and body.available_slots < floor:
         raise invalid(
             "slots_below_matched",
-            f"{lst.filled_slots} students are already matched. Slots cannot go below that.",
+            f"{floor} students are already matched or have an open offer. Slots cannot go below that.",
             "available_slots",
         )
     changes = body.model_dump(exclude_none=True)
+    if body.prerequisites is not None:
+        changes["prerequisites"] = catalog.clean_courses(body.prerequisites, "prerequisites")
+    if body.topic_tags is not None:
+        changes["topic_tags"] = catalog.clean_topics(body.topic_tags, "topic_tags")
+    for k in ("hours_per_week", "mode", "video_url"):  # optional details: an explicit null clears them
+        if k in body.model_fields_set:
+            changes[k] = getattr(body, k)
+    if "video_url" in changes:
+        changes["video_url"] = _video_url(changes["video_url"])
     if changes.pop("publish", False) and lst.status == ListingStatus.draft:  # REQ-PROJ-1: publish a draft
         lst.status = ListingStatus.published
     for k, v in changes.items():
@@ -132,6 +208,11 @@ def _cycle_closed(store, settings) -> bool:
     return bool(store.cycle and settings.now() > store.cycle.closing_date)
 
 
+def _check_faculty(faculty: str | None) -> None:
+    if faculty is not None and not faculty.strip():
+        raise invalid("faculty_required", "Choose the faculty that offers this project.", "offering_faculty")
+
+
 def _check_text(title: str | None, description: str | None) -> None:
     """Same minimums as ListingCreate, checked after trimming spaces so a title of spaces is rejected too."""
     if title is not None and len(title.strip()) < 5:
@@ -141,14 +222,44 @@ def _check_text(title: str | None, description: str | None) -> None:
 
 
 @router.post("/supervisor/listings/{listing_id}/close", response_model=Listing)
-def close(listing_id: str, user: SupervisorUser, store: StoreDep) -> Listing:
+def close(listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Listing:
+    """Closing hides the project from students and keeps its matches. Applications still under review are withdrawn
+    (a closed project cannot be matched), each affected student's remaining preferences move up, and they are told."""
     lst = store.listing(listing_id)
     if lst is None:
         raise not_found("Project")
     if lst.supervisor_id != user.id:
         raise forbidden()
+    if lst.status == ListingStatus.closed:
+        return lst
     lst.status = ListingStatus.closed
-    return store.save_listing(lst)
+    store.save_listing(lst)
+    now = settings.now()
+    stranded = [a for a in store.applications_for(listing_id=lst.id) if a.status == ApplicationStatus.submitted]
+    for a in stranded:
+        a.status, a.preference_rank = ApplicationStatus.withdrawn, None
+    changed = list(stranded)
+    for student_id, round_id in {(a.student_id, a.round_id) for a in stranded}:
+        active = [
+            x for x in store.applications_for(student_id=student_id, round_id=round_id) if x.status == ApplicationStatus.submitted
+        ]
+        left = sorted(active, key=lambda x: x.preference_rank or 99)
+        for i, x in enumerate(left, start=1):
+            x.preference_rank = i
+        changed += left
+    if changed:
+        store.save_applications(*changed)
+    for a in stranded:
+        notify(
+            store,
+            [a.student_id],
+            NotificationEvent.proposal_decided,
+            "A project you applied to was closed",
+            f"{lst.supervisor_name} closed {lst.title}, so your application was withdrawn. Your other preferences moved up.",
+            now,
+            "/my-applications",
+        )
+    return lst
 
 
 @router.post("/supervisor/listings/{listing_id}/cover", response_model=Listing)
@@ -156,24 +267,86 @@ async def cover(
     listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep, file: Annotated[UploadFile, File()]
 ) -> Listing:
     """Upload or replace a listing's cover image. Changing the cover is an edit, so REQ-PROJ-2 applies."""
-    lst = store.listing(listing_id)
-    if lst is None or lst.supervisor_id != user.id:
-        raise not_found("Project")
-    if _cycle_closed(store, settings):  # REQ-PROJ-2
-        raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
-    content_type = file.content_type or ""
-    if content_type not in COVER_TYPES:
-        raise invalid("not_image", "Upload a JPEG or PNG image.", "file")
-    data = await file.read()
-    if len(data) > MAX_COVER_BYTES:
-        raise invalid("too_large", "The image is larger than 5 MB.", "file")
-    path = get_storage().put("covers", f"{listing_id}.{COVER_TYPES[content_type]}", data, content_type=content_type)
+    lst = _editable(listing_id, user, store, settings)
+    data, content_type = await _read_image(file)
+    path = get_storage().put("covers", f"{listing_id}.{IMAGE_TYPES[content_type]}", data, content_type=content_type)
     lst.cover_url = _public_cover_url(path, settings)
     return store.save_listing(lst)
 
 
-COVER_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
-MAX_COVER_BYTES = 5 * 1024 * 1024
+@router.post("/supervisor/listings/{listing_id}/gallery", response_model=Listing)
+async def add_photo(
+    listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep, file: Annotated[UploadFile, File()]
+) -> Listing:
+    """Add a photo to the listing's gallery (lab, equipment, sample results). Same rules as the cover."""
+    lst = _editable(listing_id, user, store, settings)
+    if len(lst.gallery_urls) >= MAX_GALLERY:
+        raise invalid("gallery_full", f"A project can show up to {MAX_GALLERY} photos. Remove one first.", "file")
+    data, content_type = await _read_image(file)
+    name = f"gallery/{listing_id}-{uuid4().hex[:8]}.{IMAGE_TYPES[content_type]}"  # a new name, so no cache-busting needed
+    path = get_storage().put("covers", name, data, content_type=content_type)
+    lst.gallery_urls = [*lst.gallery_urls, _public_cover_url(path, settings)]
+    return store.save_listing(lst)
+
+
+@router.delete("/supervisor/listings/{listing_id}/gallery/{index}", response_model=Listing)
+def remove_photo(listing_id: str, index: int, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Listing:
+    lst = _editable(listing_id, user, store, settings)
+    if not 0 <= index < len(lst.gallery_urls):
+        raise not_found("Photo")
+    lst.gallery_urls = [u for i, u in enumerate(lst.gallery_urls) if i != index]
+    return store.save_listing(lst)
+
+
+def _editable(listing_id: str, user, store, settings) -> Listing:
+    """The supervisor's own listing, while the cycle is open (REQ-PROJ-2)."""
+    lst = store.listing(listing_id)
+    if lst is None or lst.supervisor_id != user.id:
+        raise not_found("Project")
+    if lst.status == ListingStatus.closed:
+        raise conflict("listing_closed", "This project is closed, so it can no longer be edited.")
+    if _cycle_closed(store, settings):
+        raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
+    return lst
+
+
+def _sniff_image(data: bytes) -> str | None:
+    """What the bytes really are, whatever the upload says. The covers bucket is public, so only real images go in."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    return None
+
+
+async def _read_image(file: UploadFile) -> tuple[bytes, str]:
+    data = await file.read(MAX_IMAGE_BYTES + 1)  # never read more than the limit allows
+    if len(data) > MAX_IMAGE_BYTES:
+        raise invalid("too_large", "The image is larger than 5 MB.", "file")
+    content_type = _sniff_image(data)
+    if content_type is None:
+        raise invalid("not_image", "Upload a JPEG or PNG image.", "file")
+    return data, content_type
+
+
+IMAGE_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_GALLERY = 4
+
+_YOUTUBE = re.compile(r"^(?:https?://)?(?:www\.|m\.)?(?:youtube\.com/(?:watch\?(?:.*&)?v=|shorts/|embed/)|youtu\.be/)([\w-]{11})")
+_VIMEO = re.compile(r"^(?:https?://)?(?:www\.)?vimeo\.com/(?:video/)?(\d+)")
+
+
+def _video_url(url: str | None) -> str | None:
+    """YouTube or Vimeo only, stored in one canonical form so the page can embed it. Blank clears it."""
+    url = (url or "").strip()
+    if not url:
+        return None
+    if m := _YOUTUBE.match(url):
+        return f"https://www.youtube.com/watch?v={m.group(1)}"
+    if m := _VIMEO.match(url):
+        return f"https://vimeo.com/{m.group(1)}"
+    raise invalid("video_not_supported", "Paste a YouTube or Vimeo link.", "video_url")
 
 
 def _public_cover_url(path: str, settings) -> str:

@@ -37,7 +37,7 @@ from app.models import (
     RoundSummary,
     UserListItem,
 )
-from app.services import windows
+from app.services import placement, windows
 from app.services.audit import SYSTEM, audit
 from app.services.matching.algorithm import ListingPrefs, StudentPrefs, match
 from app.services.notify import notify
@@ -287,7 +287,7 @@ def _expire_offers(store, now) -> None:
         if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at:
             m.status = MatchStatus.timed_out
             store.save_match(m)
-            _mark_ineligible(store, m.student_id)
+            _mark_ineligible(store, m.student_id, now, "did not answer a match offer in time")
 
 
 def moved_offer_deadlines(store, planned: Cycle, now: datetime) -> list[tuple[Match, datetime]]:
@@ -688,6 +688,8 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     m = my_match(user, store)
     if m is None or m.status != MatchStatus.published:
         raise conflict("no_offer", "There is no open offer to respond to.")
+    if placement.is_placed(store, user.id):  # already registered to a self-proposed project
+        raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot accept this offer.")
     m.status, m.student_responded_at = MatchStatus.accepted, settings.now()  # REQ-OUTCOME-1
     store.save_match(m)
     # In Supabase mode the store returns copies, so every change below is saved explicitly.
@@ -695,7 +697,8 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     if lst:
         lst.filled_slots += 1
         store.save_listing(lst)
-    _mark_ineligible(store, user.id)  # placed: exclude from later rounds (REQ-OUTCOME-1)
+    # placed: exclude from later rounds (REQ-OUTCOME-1), and withdraw any proposal still waiting
+    _mark_ineligible(store, user.id, settings.now(), "accepted a match offer")
     # Use case 2-5: accepting closes the student's other open applications.
     others = [a for a in store.applications_for(student_id=user.id) if a.status == ApplicationStatus.submitted]
     for a in others:
@@ -704,11 +707,13 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     return m
 
 
-def _mark_ineligible(store, student_id: str) -> None:
+def _mark_ineligible(store, student_id: str, now, reason: str) -> None:
+    """The student leaves the rest of the cycle (REQ-OUTCOME-1, 2, 4). Proposals still waiting are withdrawn with them."""
     sp = store.student(student_id)
     if sp and sp.eligible_for_matching:
         sp.eligible_for_matching = False
         store.save_student(sp)
+    placement.withdraw_pending_proposals(store, student_id, now, reason)
 
 
 @router.post("/me/match/decline", response_model=Match)
@@ -718,7 +723,7 @@ def decline_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> 
         raise conflict("no_offer", "There is no open offer to respond to.")
     m.status, m.student_responded_at = MatchStatus.declined, settings.now()  # REQ-OUTCOME-2
     store.save_match(m)
-    _mark_ineligible(store, user.id)
+    _mark_ineligible(store, user.id, settings.now(), "declined a match offer")
     return m
 
 

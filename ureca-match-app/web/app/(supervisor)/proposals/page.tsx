@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { I } from "@/components/shell/icons";
+import { DocumentViewer } from "@/components/supervisor/document-viewer";
 import { Avatar, Banner, Button, Card, Drawer, Empty, Loading, Modal, Pill, Segmented, Status, fmtDate } from "@/components/ui";
 import { ApiError, type Document, type Proposal } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
@@ -80,6 +81,13 @@ function ProposalCard({ p, onView, onDecide }: { p: Proposal; onView: () => void
         <Avatar name={p.student_name} size={40} tone="navy" />
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-semibold text-text">{p.student_name}</div>
+          {p.student?.email && (
+            <div className="text-[12.5px] text-accent">
+              <a href={`mailto:${p.student.email}`} className="hover:underline">
+                {p.student.email}
+              </a>
+            </div>
+          )}
           <div className="text-[13px] text-muted">
             {p.student ? <>{p.student.school} · Year {p.student.year_of_study ?? "-"} · CGPA <span className="font-semibold text-text tabular">{p.student.cgpa?.toFixed(2) ?? "-"}</span></> : "Profile not completed"}
           </div>
@@ -160,8 +168,9 @@ function StudentProfile({ p }: { p: Proposal }) {
 }
 
 function DocumentRow({ d, first }: { d: Document; first: boolean }) {
+  const [opened, setOpened] = useState(false); // load the signed link on first open only
   return (
-    <details className={`group ${first ? "" : "border-t border-border"}`}>
+    <details className={`group ${first ? "" : "border-t border-border"}`} onToggle={(e) => { if (e.currentTarget.open) setOpened(true); }}>
       <summary className="flex items-center gap-3 px-3.5 py-3 cursor-pointer list-none hover:bg-bg transition-colors">
         <span className="w-8 h-8 rounded-[8px] bg-bad-soft text-bad-ink inline-flex items-center justify-center shrink-0"><I.File size={15} /></span>
         <span className="flex-1 min-w-0">
@@ -170,9 +179,7 @@ function DocumentRow({ d, first }: { d: Document; first: boolean }) {
         </span>
         <span className="text-faint -rotate-90 group-open:rotate-0 transition-transform"><I.ChevronDown size={15} /></span>
       </summary>
-      <div className="border-t border-border bg-bg h-[320px] flex items-center justify-center text-[12.5px] text-faint px-6 text-center">
-        The in-app PDF viewer arrives with REQ-VRANK-3 (slice C). It will reuse the same viewer as the applicants page.
-      </div>
+      {opened && <DocumentViewer id={d.id} name={d.file_name} />}
     </details>
   );
 }

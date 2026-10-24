@@ -17,6 +17,7 @@ ENDPOINTS = [(m.upper(), p) for p, ops in OPENAPI["paths"].items() for m in ops]
 #   public: POST /auth/register, /auth/verify, /auth/resend, /auth/sign-in; GET /health;
 #           POST /internal/tick (guarded by the cron secret, not a role); GET /debug/clock (DEBUG_CLOCK gate)
 #   auth-only, any active role: GET /me, /cycle, /listings, /listings/{listing_id}, /supervisors,
+#           /catalog/topics, /catalog/courses,
 #           /documents/{document_id}/view (owner or supervisor rule, see REQ-VRANK-3),
 #           /me/notifications; POST /me/notifications/{notification_id}/read; PUT, DELETE /debug/clock
 PUBLIC = {
@@ -34,6 +35,8 @@ AUTH_ONLY = {
     ("GET", "/listings"),
     ("GET", "/listings/{listing_id}"),
     ("GET", "/supervisors"),
+    ("GET", "/catalog/topics"),
+    ("GET", "/catalog/courses"),
     ("GET", "/documents/{document_id}/view"),
     ("GET", "/me/notifications"),
     ("POST", "/me/notifications/{notification_id}/read"),
@@ -41,11 +44,15 @@ AUTH_ONLY = {
     ("DELETE", "/debug/clock"),
 }
 STUDENT_ONLY = {
+    ("GET", "/me/recommendations"),
     ("GET", "/me/profile"),
     ("PUT", "/me/profile"),
     ("POST", "/me/documents"),
+    ("POST", "/me/transcript/parse"),
+    ("DELETE", "/me/documents/{document_id}"),
     ("POST", "/proposals"),
     ("GET", "/me/proposals"),
+    ("POST", "/me/proposals/{proposal_id}/withdraw"),
     ("GET", "/me/applications"),
     ("POST", "/applications"),
     ("DELETE", "/applications/{application_id}"),

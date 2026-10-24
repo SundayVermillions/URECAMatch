@@ -15,7 +15,7 @@ from app.models import (
     Ok,
     PreferenceRankingUpdate,
 )
-from app.services import windows
+from app.services import placement, windows
 
 router = APIRouter(tags=["applications"])
 
@@ -45,9 +45,11 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
     sp = store.student(user.id)
     if sp and not sp.profile_complete:  # REQ-APPLY-1 (use case 2-2 precondition 4)
         raise conflict("profile_incomplete", "Complete your profile before applying. Go to My Profile to finish it.")
+    if placement.is_placed(store, user.id):  # one project per cycle, whether from an offer or a proposal
+        raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot apply to another.")
     if sp and not sp.eligible_for_matching:
-        raise conflict("not_eligible", "You declined an earlier offer, so you cannot apply again this cycle.")
-    if any(m.student_id == user.id and m.status == MatchStatus.published for m in store.matches):  # REQ-APPLY-3
+        raise conflict("not_eligible", "You declined or did not answer an earlier offer, so you cannot apply again this cycle.")
+    if any(m.status == MatchStatus.published for m in placement.open_matches(store, user.id)):  # REQ-APPLY-3, this cycle only
         raise conflict("offer_open", "You have a project offer to answer, so you cannot apply this round. See My Applications.")
     if lst.filled_slots >= lst.available_slots:
         raise conflict("fully_allocated", "All slots on this project are filled.")

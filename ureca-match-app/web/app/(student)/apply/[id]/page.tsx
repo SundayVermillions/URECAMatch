@@ -9,6 +9,7 @@ import { I } from "@/components/shell/icons";
 import { Banner, Button, Card, DeadlineChip, Field, Loading, Textarea } from "@/components/ui";
 import { ApiError } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
+import { useStanding } from "@/lib/use-standing";
 
 export default function Apply() {
   const { id } = useParams<{ id: string }>();
@@ -20,8 +21,16 @@ export default function Apply() {
   const [docs, setDocs] = useState<string[]>(() => (me?.student?.documents ?? []).map((d) => d.id));
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
-  if (loading && !l) return <Loading />;
+  const standing = useStanding();
+  if ((loading && !l) || standing.loading) return <Loading />;
   if (!l) return null;
+  if (standing.viewOnly) return ( // placed or ineligible: no form, just the reason (reached by a direct link)
+    <>
+      <PageHeader title={`Apply: ${l.title}`} back={{ href: `/projects/${id}`, label: "Back to project" }} description={`${l.supervisor_name} · ${l.offering_faculty}`} />
+      <Banner tone={standing.placedIn ? "good" : "warn"} title={standing.placedIn ? "You have a project." : "You cannot apply this cycle."}
+        action={<Link href="/my-applications" className="text-[12.5px] font-semibold underline whitespace-nowrap">My applications</Link>}>{standing.reason}</Banner>
+    </>
+  );
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError(null);

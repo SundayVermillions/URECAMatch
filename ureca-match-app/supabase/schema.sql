@@ -11,7 +11,7 @@ create type cycle_status as enum ('draft', 'pre_application', 'in_progress', 'cl
 create type round_status as enum ('scheduled', 'application_window', 'review_window', 'approval_window', 'awaiting_publication', 'published', 'completed');
 create type listing_status as enum ('draft', 'published', 'closed');
 create type application_status as enum ('submitted', 'withdrawn', 'matched', 'unmatched');
-create type proposal_status as enum ('submitted', 'accepted', 'declined');
+create type proposal_status as enum ('submitted', 'accepted', 'declined', 'withdrawn');
 create type match_status as enum ('proposed', 'approved', 'rejected', 'reassigned', 'published', 'accepted', 'declined', 'timed_out');
 create type notification_event as enum ('cycle_changed', 'round_opened', 'results_published', 'offer_received', 'proposal_decided', 'matches_proposed', 'match_approved', 'match_rejected', 'account_changed');
 create type audit_operation as enum ('matching_executed', 'manual_reassignment', 'results_published', 'user_updated', 'user_deactivated', 'cycle_updated');
@@ -42,7 +42,8 @@ create table student_profiles (
 create table supervisor_profiles (
   user_id      text primary key references users(id) on delete cascade,
   faculty      text not null default '',
-  organisation text not null default 'NTU'
+  organisation text not null default 'NTU',
+  title        text not null default ''                              -- Prof., Assoc. Prof., Asst. Prof. or Dr.
 );
 
 create table verification_codes (                                 -- REQ-REG-2
@@ -52,17 +53,19 @@ create table verification_codes (                                 -- REQ-REG-2
   expires_at timestamptz not null,
   used       boolean not null default false
 );
-create index on verification_codes (user_id, expires_at desc) where used = false;
+create index if not exists verification_codes_open on verification_codes (user_id, expires_at desc) where used = false;
 
 create table supporting_documents (                              -- REQ-PROF-3
   id           text primary key,
   owner_id     text not null references users(id) on delete cascade,
   file_name    text not null,
   file_format  text not null default 'pdf',
+  kind         text not null default 'supporting' check (kind in ('transcript', 'supporting')),
   file_size    int  not null check (file_size <= 5242880),
   storage_path text,
   uploaded_at  timestamptz not null default now()
 );
+create unique index one_transcript_per_student on supporting_documents (owner_id) where kind = 'transcript';
 
 -- ------------------------------------------------------------------ cycle and rounds (slice D)
 create table application_cycles (
@@ -92,6 +95,21 @@ create table matching_rounds (
          and review_end < approval_end)
 );
 
+-- ------------------------------------------------------------------ reference lists (slice B)
+-- Pickers for listing topic tags and prerequisites, student modules and interests. Rows come from
+-- api/app/db/catalog via seed.sql; the API refuses values that are not in these lists.
+create table topics (
+  name        text primary key,
+  topic_group text not null
+);
+create table courses (                                             -- NTU Content of Courses
+  code         text primary key,
+  title        text not null,
+  au           numeric,
+  dept         text not null default '',
+  last_offered text not null default ''                           -- e.g. 2026_2
+);
+
 -- ------------------------------------------------------------------ listings (slice B)
 create table project_listings (
   id                text primary key,
@@ -105,6 +123,12 @@ create table project_listings (
   offering_faculty  text not null,
   research_location text not null default '',
   cover_url         text,
+  outcomes          text not null default '',                   -- what the student will do
+  skills            text not null default '',                   -- skills they will gain
+  hours_per_week    int check (hours_per_week between 1 and 40),
+  mode              text check (mode in ('on_site', 'hybrid', 'remote')),
+  gallery_urls      text[] not null default '{}',               -- up to 4 photos, public covers bucket
+  video_url         text,                                       -- YouTube or Vimeo, canonical form
   status            listing_status not null default 'draft',
   created_at        timestamptz not null default now()
 );

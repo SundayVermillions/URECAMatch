@@ -1,13 +1,16 @@
 "use client";
-/** QueryUrecaListings (SRS 4.9). REQ-BROWSE-1..3. Screen: BrowseProjectPage. */
+/** QueryUrecaListings (SRS 4.9). REQ-BROWSE-1..4. Screen: BrowseProjectPage.
+ *  Students also get "Uri's picks" (REQ-BROWSE-4): recommendations on top, a match badge on each card, and a Best match sort. */
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { ApplicantStack, Avatar, Banner, Button, DeadlineChip, Empty, FilterSelect, Input, Loading, isHighDemand } from "@/components/ui";
+import { UriPicks } from "@/components/student/uri-picks";
+import { ApplicantStack, Avatar, Banner, Button, DeadlineChip, Empty, FilterSelect, Loading, isHighDemand } from "@/components/ui";
 import type { Listing } from "@/lib/api/models";
 import { useApi } from "@/lib/use-api";
+import { useStanding } from "@/lib/use-standing";
 
 const SCHOOLS = ["CCDS", "EEE", "SBS", "MAE", "SPMS"];
 
@@ -26,7 +29,19 @@ export default function Browse() {
     return Array.from(new Set((all.data ?? []).map((l) => l.supervisor_name))).sort((a, b) => bare(a).localeCompare(bare(b)));
   }, [all.data]);
   const applied = (data ?? []).filter((l) => l.applied).length;
-  const canApply = me?.phase.window === "application";
+  const standing = useStanding();
+  // REQ-BROWSE-4: every open project that fits, scored. The panel shows the top three; cards show their score.
+  const interests = me?.student?.research_interests ?? [];
+  const isStudent = me?.user.role === "student";
+  const recs = useApi((api) => (isStudent && !standing.viewOnly && interests.length ? api.recommendations(50) : Promise.resolve([])),
+    [isStudent, standing.viewOnly, interests.join("|")]);
+  const scores = useMemo(() => new Map((recs.data ?? []).map((r) => [r.listing.id, r.score])), [recs.data]);
+  const [sort, setSort] = useState<string | undefined>();
+  const grid = useRef<HTMLDivElement>(null);
+  const shown = useMemo(() => sort === "Best match" && data
+    ? [...data].sort((a, b) => (scores.get(b.id) ?? -1) - (scores.get(a.id) ?? -1)) : data, [sort, data, scores]);
+  const windowOpen = me?.phase.window === "application";
+  const canApply = windowOpen && !standing.viewOnly && !standing.loading; // placed or ineligible students browse view only
   const filtered = !!(q || school || tag || supervisor);
   const early = me?.phase.window === "before_cycle" || me?.phase.window === "pre_application"; // REQ-BROWSE-1
 
@@ -34,7 +49,27 @@ export default function Browse() {
     <>
       <PageHeader title="Browse projects" description="Find a research project that fits you. Open one to read the details and apply."
         right={me && <DeadlineChip>{me.phase.label}</DeadlineChip>} />
-      {me && !canApply && (
+      {/* Search and filters in one bar, first thing on the page */}
+      <div className="flex items-center gap-1 mb-7 p-1.5 rounded-pill bg-surface ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] focus-within:ring-accent/40 transition-shadow">
+        <label className="relative flex-1 min-w-0 flex items-center">
+          <span className="absolute left-3.5 text-faint pointer-events-none"><I.Search size={16} /></span>
+          <input id="q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search projects, topics or keywords" aria-label="Search projects"
+            className="w-full h-10 pl-10 pr-3 rounded-pill bg-transparent text-[14px] outline-none placeholder:text-faint" />
+        </label>
+        <span aria-hidden className="w-px h-6 bg-border mx-1" />
+        <FilterSelect bare label="School" value={school} options={SCHOOLS} onChange={setSchool} />
+        <FilterSelect bare label="Topic" value={tag} options={topics} onChange={setTag} />
+        <FilterSelect bare label="Supervisor" value={supervisor} options={supervisors} onChange={setSupervisor} />
+        {scores.size > 0 && <FilterSelect bare label="Sort" value={sort} options={["Best match"]} onChange={setSort} anyLabel="Default" />}
+        {filtered && <Button variant="text" className="px-3" onClick={() => { setQ(""); setSchool(undefined); setTag(undefined); setSupervisor(undefined); }}>Clear</Button>}
+      </div>
+
+      {standing.viewOnly && !standing.placedIn && (
+        <div className="mb-5">
+          <Banner tone={standing.placedIn ? "good" : "warn"} title={standing.placedIn ? "You have a project." : "You cannot apply this cycle."}>{standing.reason}</Banner>
+        </div>
+      )}
+      {me && !windowOpen && !standing.viewOnly && (
         <div className="mb-5">
           {early
             ? <Banner tone="accent" title="You're early.">{me.phase.window === "pre_application" ? `${me.phase.label}.` : "No application cycle is open yet."} Browse and shortlist projects now, then come back to apply.</Banner>
@@ -42,31 +77,29 @@ export default function Browse() {
         </div>
       )}
 
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="relative flex-1">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none"><I.Search size={16} /></span>
-          <Input id="q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search projects, topics or keywords" className="w-full pl-10 rounded-pill border-border-strong" />
-        </div>
-        <FilterSelect label="School" value={school} options={SCHOOLS} onChange={setSchool} />
-        <FilterSelect label="Topic" value={tag} options={topics} onChange={setTag} />
-        <FilterSelect label="Supervisor" value={supervisor} options={supervisors} onChange={setSupervisor} />
-        {filtered && <Button variant="text" onClick={() => { setQ(""); setSchool(undefined); setTag(undefined); setSupervisor(undefined); }}>Clear</Button>}
+      {/* Uri steps aside while searching or filtering, so results come first */}
+      {isStudent && !standing.loading && !filtered && (standing.placedIn || !standing.viewOnly) && (
+        <UriPicks name={me?.user.name ?? ""} interests={interests} placedIn={standing.placedIn}
+          picks={!interests.length || standing.placedIn ? [] : recs.loading && !recs.data ? null : recs.data ?? []}
+          onShowAll={() => { setSort("Best match"); grid.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+      )}
+      {/* All projects */}
+      <div ref={grid} className="flex items-end justify-between gap-4 mb-4 px-1 scroll-mt-6">
+        <h2 className="text-[20px] font-semibold tracking-[-0.015em]">
+          All projects <span className="ml-1 text-[15px] font-normal text-muted tabular">{data ? data.length : ""}</span>
+        </h2>
+        {applied > 0 && <Link href="/my-applications" className="inline-flex items-center gap-1 text-[13px] font-medium !text-text hover:opacity-70">{applied} applied this round <span className="-rotate-90"><I.ChevronDown size={14} /></span></Link>}
       </div>
-      <div className="flex items-center justify-between text-[13px] text-muted mb-5 px-1">
-        <span>{data ? `${data.length} ${data.length === 1 ? "project" : "projects"}` : " "}</span>
-        {applied > 0 && <Link href="/my-applications" className="inline-flex items-center gap-1 font-medium text-text hover:opacity-70">{applied} applied this round <span className="-rotate-90"><I.ChevronDown size={14} /></span></Link>}
-      </div>
-
       {loading && !data ? <Loading /> : !data?.length ? <Empty title="No projects match" note="Try a different keyword or clear a filter." /> : (
         <div className="grid grid-cols-3 gap-5">
-          {data.map((l) => <ProjectCard key={l.id} l={l} canApply={canApply} />)}
+          {(shown ?? []).map((l) => <ProjectCard key={l.id} l={l} canApply={canApply} match={scores.get(l.id)} />)}
         </div>
       )}
     </>
   );
 }
 
-function ProjectCard({ l, canApply }: { l: Listing; canApply: boolean }) {
+function ProjectCard({ l, canApply, match }: { l: Listing; canApply: boolean; match?: number }) {
   const open = Math.max(l.available_slots - l.filled_slots, 0);
   const full = open === 0;
   const hot = isHighDemand(l.applicant_count ?? 0, open);
@@ -74,6 +107,12 @@ function ProjectCard({ l, canApply }: { l: Listing; canApply: boolean }) {
     <div className="group relative bg-surface rounded-card overflow-hidden flex flex-col shadow-[var(--shadow-card)] ring-1 ring-black/[0.04] transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]">
       <div className="relative h-[150px] bg-sunken overflow-hidden">
         {l.cover_url && <img src={l.cover_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />}
+        {match !== undefined && (
+          <span title="How well this project fits your interests, courses and chances" className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-pill bg-white/90 backdrop-blur px-2.5 py-1 text-[12px] font-semibold text-[#1c2566] shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="#7c5cff" aria-hidden><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z" /></svg>
+            {match}% match
+          </span>
+        )}
       </div>
       <div className="p-5 flex flex-col flex-1">
         <div className="text-[12.5px] text-faint truncate">

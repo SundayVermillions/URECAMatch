@@ -11,23 +11,33 @@ export interface ApiClient {
   me(): Promise<M.Me>;
   getProfile(): Promise<M.StudentProfile>;
   updateProfile(body: M.ProfileUpdate): Promise<M.StudentProfile>;
-  uploadDocument(file: File): Promise<M.Document>;
+  uploadDocument(file: File, kind?: M.Document["kind"]): Promise<M.Document>;
+  deleteDocument(id: string): Promise<void>;
+  parseTranscript(file: File): Promise<M.TranscriptParse>;
   listUsers(f?: M.UserFilters): Promise<M.UserListItem[]>;
   createUser(body: M.UserCreate): Promise<M.User>;
-  updateUser(id: string, body: M.UserUpdate): Promise<M.User>;
-  deactivateUser(id: string): Promise<void>;
+  /** A user with open items gets a 409 `has_active_items` (ApiError.items) until `confirmCleanup` is true. The last active admin is always refused. */
+  updateUser(id: string, body: M.UserUpdate, confirmCleanup?: boolean): Promise<M.User>;
+  deactivateUser(id: string, confirmCleanup?: boolean): Promise<void>;
   // slice B
   browse(f?: M.ListingFilters): Promise<M.Listing[]>;
   listing(id: string): Promise<M.Listing>;
   supervisors(): Promise<M.SupervisorSummary[]>;
+  topics(): Promise<M.TopicGroup[]>;
+  courses(q: string, limit?: number): Promise<M.Course[]>;
+  coursesByCode(codes: string[]): Promise<M.Course[]>;
+  recommendations(limit?: number): Promise<M.Recommendation[]>;
   myListings(): Promise<M.Listing[]>;
   createListing(body: M.ListingCreate): Promise<M.Listing>;
   updateListing(id: string, body: M.ListingUpdate): Promise<M.Listing>;
   closeListing(id: string): Promise<M.Listing>;
   uploadCover(id: string, file: File): Promise<M.Listing>;
+  addGalleryPhoto(id: string, file: File): Promise<M.Listing>;
+  removeGalleryPhoto(id: string, index: number): Promise<M.Listing>;
   propose(body: M.ProposalCreate): Promise<M.Proposal>;
   myProposals(): Promise<M.Proposal[]>;
   incomingProposals(): Promise<M.Proposal[]>;
+  withdrawProposal(id: string): Promise<M.Proposal>;
   decideProposal(id: string, accept: boolean, note?: string): Promise<M.Proposal>;
   // slice C
   myApplications(): Promise<M.Application[]>;
@@ -38,6 +48,7 @@ export interface ApiClient {
   applicant(applicationId: string): Promise<M.Applicant>;
   getRanking(listingId: string): Promise<M.ApplicantRanking>;
   putRanking(listingId: string, applicationIds: string[]): Promise<M.ApplicantRanking>;
+  aiMatch(listingId: string): Promise<M.ApplicantScore[]>;
   documentUrl(documentId: string): Promise<M.Document>;
   // slice D
   cycle(): Promise<M.Cycle | null>;

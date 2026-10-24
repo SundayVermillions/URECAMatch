@@ -50,6 +50,8 @@ api/app/db/seed_data.py single source of demo data
 supabase/schema.sql     tables, enums, audit_log append-only trigger
 supabase/policies.sql   RLS and storage policies: no direct client access, API only
 supabase/seed.sql       GENERATED demo rows
+supabase/catalog.sql    GENERATED reference lists: standard topics and NTU courses (safe to re-run)
+supabase/migrations/    one-off changes for a database created from an older schema.sql
 shared/openapi.json     GENERATED contract
 ```
 
@@ -64,11 +66,38 @@ shared/openapi.json     GENERATED contract
 
 Set `NEXT_PUBLIC_API_MODE=live` in `web/.env.local` and run the API. Mock mode sends `X-Demo-User`; live mode sends the Supabase JWT. Both are read by `api/app/deps.py`.
 
+The demo account buttons on the sign-in page are hidden in live mode. To keep them while the API runs with `API_MODE=mock` (for example to try AI match with a real `GEMINI_API_KEY`), also add `NEXT_PUBLIC_DEMO_ACCOUNTS=true` to `web/.env.local` and restart `npm run dev`. Never set it in production.
+
 ### Fake clock (testing a cycle without waiting)
 
 Add `NEXT_PUBLIC_DEBUG_CLOCK=true` to `web/.env.local` and restart `npm run dev`. A clock chip appears top right. Open it to set any date and time, jump +1 hour, day or week, skip past the current window, or go back to the real clock. Every screen reloads for the new time.
 
 In live mode the API must also allow it: put `DEBUG_CLOCK=true` in `api/.env` and restart the API. The clock moves for every user on that API, is held in memory only, and a restart resets it. Leave both flags off in production.
+
+### Testing e-mails locally
+
+See every e-mail the app sends without a Resend key. [Mailpit](https://mailpit.axllent.org) is a mailbox that runs on your computer and catches all mail. Any address works, nothing leaves your computer.
+
+1. Start Mailpit. Pick one:
+   - Docker: `docker run -d -p 8025:8025 -p 1025:1025 axllent/mailpit`
+   - No Docker: download the Windows `.exe` from the [Mailpit releases page](https://github.com/axllent/mailpit/releases) and run it.
+2. In `api/.env` set `EMAIL_MODE=smtp`. Leave `RESEND_API_KEY` empty. `SMTP_HOST` and `SMTP_PORT` default to `localhost` and `1025`, so Mailpit needs no other setting.
+3. Start the API, then open <http://localhost:8025>. Every e-mail shows up there as soon as the app sends it.
+
+What sends an e-mail:
+- Sign up, or press Resend code on the verify page: the 6-digit code.
+- Anything that creates a notification: offers, results, rejected matches, proposals, cycle changes, account changes.
+
+To check all the e-mail designs at once, send one of each to any address:
+
+```bash
+cd api
+uv run python -m app.dev.send_samples anyone@example.com
+```
+
+The script only runs when `EMAIL_MODE` is `smtp` or `log`.
+
+`EMAIL_MODE=smtp` is for your own computer only. The API will not start with it when `APP_ENV` or `VERCEL_ENV` is `production`. `EMAIL_MODE=send` (Resend) and `EMAIL_MODE=log` work as before.
 
 ## Work split
 
@@ -78,4 +107,4 @@ Owners: Edwin (A), Robin (B), Ian (C), Nicholas (D), Benjamin (E). The full guid
 
 - Web: import the repo into Vercel with root `ureca-match-app/web`. Env: `NEXT_PUBLIC_API_MODE=live`, `NEXT_PUBLIC_API_URL=<api url>`.
 - API: second Vercel project with root `ureca-match-app/api` (Python runtime, entry `api/index.py`), or Render. Env from `api/.env.example` with `API_MODE=supabase`.
-- Database: in the Supabase SQL editor, run `supabase/schema.sql`, then `supabase/policies.sql`, then `supabase/seed.sql`. `policies.sql` is safe to run again after any schema change.
+- Database: in the Supabase SQL editor, run `supabase/schema.sql`, then `supabase/policies.sql`, then `supabase/seed.sql`, then `supabase/catalog.sql`. `policies.sql` and `catalog.sql` are safe to run again. A database made before a change in `supabase/migrations/` needs those files run once, oldest first.

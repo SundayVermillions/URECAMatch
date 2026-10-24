@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -63,6 +64,12 @@ class ListingStatus(str, Enum):
     closed = "closed"
 
 
+class ListingMode(str, Enum):
+    on_site = "on_site"
+    hybrid = "hybrid"
+    remote = "remote"
+
+
 class ApplicationStatus(str, Enum):
     submitted = "submitted"
     withdrawn = "withdrawn"
@@ -74,6 +81,7 @@ class ProposalStatus(str, Enum):
     submitted = "submitted"
     accepted = "accepted"
     declined = "declined"
+    withdrawn = "withdrawn"  # by the student, or because they were placed or are no longer eligible
 
 
 class MatchStatus(str, Enum):
@@ -124,6 +132,7 @@ class Document(BaseModel):
     owner_id: str
     file_name: str
     file_format: str = "pdf"
+    kind: Literal["transcript", "supporting"] = "supporting"  # which profile slot owns the file (REQ-PROF-3)
     file_size: int
     uploaded_at: datetime
     url: str | None = None  # signed URL for in-app viewing (REQ-VRANK-3)
@@ -146,6 +155,8 @@ class User(BaseModel):
 class StudentProfile(BaseModel):
     user_id: str
     school: str
+    degree: str | None = None
+    degree: str | None = None
     cgpa: float | None = Field(default=None, ge=0, le=5)
     year_of_study: int | None = Field(default=None, ge=1, le=5)
     completed_modules: list[str] = []
@@ -158,6 +169,7 @@ class StudentProfile(BaseModel):
 class SupervisorProfile(BaseModel):
     user_id: str
     faculty: str
+    title: str = ""  # "Prof.", "Assoc. Prof.", "Asst. Prof." or "Dr."; shown in front of the name, see services/titles.py
     organisation: str = "NTU"
 
 
@@ -184,6 +196,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     role: Role
+    title: str = ""  # supervisors only; ignored for students
 
 
 class VerifyRequest(BaseModel):
@@ -204,27 +217,64 @@ class Session(BaseModel):
 
 class ProfileUpdate(BaseModel):
     school: str
+    degree: str | None = None
+    degree: str | None = None
     cgpa: float = Field(ge=0, le=5)
     year_of_study: int = Field(ge=1, le=5)
     completed_modules: list[str]
     research_interests: list[str]
 
 
+class TranscriptParse(BaseModel):
+    """What was read from an uploaded transcript. Empty values mean not found; nothing is saved (REQ-PROF-1)."""
+
+    cgpa: float | None = None
+    school: str = ""
+    degree: str = ""
+    year_of_study: int | None = None
+    completed_modules: list[str] = []
+
+
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
     role: Role
+    title: str = ""  # supervisors only; ignored for other roles
 
 
 class UserUpdate(BaseModel):
     name: str | None = None
     role: Role | None = None
     status: AccountStatus | None = None
+    title: str | None = None  # supervisors only: "" clears it. Leaving it out keeps the title as it is.
+
+
+class ActiveItemKind(str, Enum):
+    listing = "listing"
+    proposal = "proposal"
+    application = "application"
+    match = "match"
+
+
+class ActiveItem(BaseModel):
+    """Something that is still open for a user, shown before an admin deactivates them or changes their role."""
+
+    kind: ActiveItemKind
+    id: str
+    title: str
+    detail: str = ""  # who else is involved, e.g. "Student: Aisha Rahman"
+
+
+class CleanupWarning(ErrorBody):
+    """The 409 `has_active_items` body: nothing was changed. Resend with confirm_cleanup=true to close these first."""
+
+    items: list[ActiveItem]
 
 
 class UserListItem(BaseModel):
     user: User
     school: str | None = None
+    title: str | None = None  # a supervisor's title; the name in `user` already includes it
 
 
 # ---------------------------------------------------------------- cycle and rounds
@@ -298,6 +348,7 @@ class ScheduleUpdate(BaseModel):
 
 
 class Listing(BaseModel):
+    supervisor_email: str = ""
     id: str
     supervisor_id: str
     supervisor_name: str
@@ -310,32 +361,79 @@ class Listing(BaseModel):
     offering_faculty: str
     research_location: str
     cover_url: str | None = None
+    # Project details (all optional): what the student does and gains, time needed, where, photos, one video.
+    outcomes: str = ""
+    skills: str = ""
+    hours_per_week: int | None = None
+    mode: ListingMode | None = None
+    gallery_urls: list[str] = []
+    video_url: str | None = None  # YouTube or Vimeo, stored in canonical form
     status: ListingStatus
     created_at: datetime
     applicant_count: int = 0
+    held_slots: int = 0  # slots held by matches or offers the student has not answered yet (REQ-PROJ-3)
     applied: bool = False  # for the current student, if any
     applied_rank: int | None = None
 
 
+class FitParts(BaseModel):
+    """How a recommendation's score is made up (REQ-BROWSE-4). Maximums: 50, 30, 20."""
+
+    interests: int
+    readiness: int
+    chance: int
+
+
+class Recommendation(BaseModel):
+    listing: Listing
+    score: int  # 0-100, the sum of parts
+    parts: FitParts
+    reasons: list[str] = []  # why it fits, e.g. "Matches your interest in Machine Learning"
+    gaps: list[str] = []  # what to know, e.g. "Missing SC3020"
+
+
+class TopicGroup(BaseModel):
+    name: str
+    topics: list[str]
+
+
+class Course(BaseModel):
+    code: str
+    title: str
+    au: float | None = None
+    dept: str = ""
+    last_offered: str = ""
+
+
 class ListingCreate(BaseModel):
-    title: str = Field(min_length=5)
-    description: str = Field(min_length=20)
+    title: str = Field(min_length=5, max_length=150)
+    description: str = Field(min_length=20, max_length=5000)
     prerequisites: list[str] = []
     topic_tags: list[str] = []
     available_slots: int = Field(ge=1, le=20)
-    offering_faculty: str
-    research_location: str
+    offering_faculty: str = Field(min_length=1, max_length=40)
+    research_location: str = Field(max_length=100)
+    outcomes: str = Field(default="", max_length=2000)
+    skills: str = Field(default="", max_length=1000)
+    hours_per_week: int | None = Field(default=None, ge=1, le=40)
+    mode: ListingMode | None = None
+    video_url: str | None = None
     publish: bool = True
 
 
 class ListingUpdate(BaseModel):
-    title: str | None = None
-    description: str | None = None
+    title: str | None = Field(default=None, max_length=150)
+    description: str | None = Field(default=None, max_length=5000)
     prerequisites: list[str] | None = None
     topic_tags: list[str] | None = None
     available_slots: int | None = Field(default=None, ge=1, le=20)
-    offering_faculty: str | None = None
-    research_location: str | None = None
+    offering_faculty: str | None = Field(default=None, min_length=1, max_length=40)
+    research_location: str | None = Field(default=None, max_length=100)
+    outcomes: str | None = Field(default=None, max_length=2000)
+    skills: str | None = Field(default=None, max_length=1000)
+    hours_per_week: int | None = Field(default=None, ge=1, le=40)  # sending null clears it
+    mode: ListingMode | None = None  # sending null clears it
+    video_url: str | None = None  # sending null or "" clears it
     publish: bool | None = None  # True publishes a draft (REQ-PROJ-1). Closing has its own endpoint.
 
 
@@ -382,9 +480,11 @@ class PreferenceRankingUpdate(BaseModel):
 
 
 class ApplicantStudent(BaseModel):
+    email: str = ""
     id: str
     name: str
     school: str
+    degree: str | None = None
     year_of_study: int | None
     cgpa: float | None
     completed_modules: list[str]
@@ -413,6 +513,16 @@ class ApplicantRankingUpdate(BaseModel):
     application_ids: list[str]
 
 
+class ApplicantScore(BaseModel):
+    """AI match fit score for one applicant (REQ-VRANK-1). source says whether Gemini or the local formula scored it."""
+
+    application_id: str
+    student_id: str
+    score: int = Field(ge=0, le=100)
+    reason: str
+    source: Literal["ai", "local"]
+
+
 # ---------------------------------------------------------------- proposals
 
 
@@ -437,10 +547,10 @@ class Proposal(BaseModel):
 
 class ProposalCreate(BaseModel):
     supervisor_id: str
-    title: str = Field(min_length=5)
-    description: str = Field(min_length=50)
+    title: str = Field(min_length=5, max_length=150)
+    description: str = Field(min_length=50, max_length=6000)  # 500 words
     research_interests: list[str] = []
-    statement: str = Field(min_length=50)
+    statement: str = Field(min_length=50, max_length=3000)  # 300 words
     document_ids: list[str] = []
 
 
