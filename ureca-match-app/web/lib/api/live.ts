@@ -80,18 +80,16 @@ export class LiveClient implements ApiClient {
   reopenCycle = (id: string) => this.req<M.Cycle>("POST", `/admin/cycles/${id}/reopen`);
   updateCycle = (id: string, b: M.CycleUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}`, b);
   setRounds = (id: string, b: M.RoundsUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}/rounds`, b);
-  execute = (id: string) => this.req<M.RoundSummary>("POST", `/admin/rounds/${id}/execute`);
+  saveSchedule = (id: string, b: M.ScheduleUpdate) => this.req<M.Cycle>("PUT", `/admin/cycles/${id}/schedule`, b);
   summary = (id: string) => this.req<M.RoundSummary>("GET", `/admin/rounds/${id}/summary`);
   matches = (id: string, status?: M.MatchStatus) => this.req<M.Match[]>("GET", `/admin/rounds/${id}/matches` + this.q({ status }));
   reassign = (id: string, b: M.ReassignRequest) => this.req<M.Match>("POST", `/admin/matches/${id}/reassign`, b);
   manualAssign = (id: string, b: M.ManualAssignRequest) => this.req<M.Match>("POST", `/admin/rounds/${id}/assign`, b);
   unassign = (id: string, note: string) => this.req<void>("POST", `/admin/matches/${id}/unassign`, { note });
   unmatched = (id: string) => this.req<M.UserListItem[]>("GET", `/admin/rounds/${id}/unmatched`);
-  publish = (id: string) => this.req<M.RoundSummary>("POST", `/admin/rounds/${id}/publish`);
   auditLog = () => this.req<M.AuditEntry[]>("GET", "/admin/audit");
   supervisorMatches = () => this.req<M.Match[]>("GET", "/supervisor/matches");
-  decideMatch = (id: string, approve: boolean, note?: string) =>
-    this.req<M.Match>("POST", `/supervisor/matches/${id}/${approve ? "approve" : "reject"}`, { note });
+  declineMatch = (id: string, note?: string) => this.req<M.Match>("POST", `/supervisor/matches/${id}/decline`, { note });
   matchStudent = (id: string) => this.req<M.Applicant>("GET", `/supervisor/matches/${id}/student`);
   myMatch = () => this.req<M.Match | null>("GET", "/me/match");
   respondToOffer = (accept: boolean) => this.req<M.Match>("POST", `/me/match/${accept ? "accept" : "decline"}`);

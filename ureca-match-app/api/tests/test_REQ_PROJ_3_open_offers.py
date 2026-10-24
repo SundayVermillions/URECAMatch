@@ -1,7 +1,8 @@
 """Slice B. A supervisor cannot take slots away from accepted students or from offers still open.  REQ-PROJ-3.
 
-Flow: Round 2 is executed, approved and published, so students hold offers. Some accept; some have not answered.
-Slots may never drop below accepted students plus open offers, otherwise a late acceptance overfills the project.
+Flow: Round 2's matching and publishing run by themselves (slice D), so students hold offers. Some accept; some have
+not answered. Slots may never drop below accepted students plus open offers, otherwise a late acceptance overfills
+the project.
 """
 
 from datetime import UTC, datetime
@@ -9,6 +10,7 @@ from datetime import UTC, datetime
 import pytest
 
 from app.settings import get_settings
+from tests.conftest import APPROVAL_CLOSED, REVIEW_CLOSED
 
 ROUND_3_REVIEW = datetime(2026, 9, 21, 9, tzinfo=UTC)
 
@@ -18,7 +20,7 @@ def _set_now(monkeypatch, when):
 
 
 @pytest.fixture
-def published_round_2(as_admin, client_for, monkeypatch, fresh_store):
+def published_round_2(fresh_store, at):
     """Round 2 published. lst-1 (3 slots, 1 filled from Round 1) ends with 2 students holding open offers."""
     for lid in ("lst-1", "lst-2", "lst-3"):
         ids = [
@@ -27,11 +29,8 @@ def published_round_2(as_admin, client_for, monkeypatch, fresh_store):
             if a.listing_id == lid and a.round_id == "rnd-2" and a.status.value == "submitted"
         ]
         fresh_store.applicant_rankings[f"{lid}:rnd-2"] = ids
-    _set_now(monkeypatch, datetime(2026, 9, 12, 9, tzinfo=UTC))
-    assert as_admin.post("/admin/rounds/rnd-2/execute").status_code == 200
-    for m in as_admin.get("/admin/rounds/rnd-2/matches").json():
-        client_for(m["supervisor_id"]).post(f"/supervisor/matches/{m['id']}/approve", json={})
-    assert as_admin.post("/admin/rounds/rnd-2/publish").status_code == 200
+    at(REVIEW_CLOSED)  # matching runs when the review window closes (REQ-EXEC-4)
+    at(APPROVAL_CLOSED)  # nobody declines, so every match becomes an offer (REQ-APPRV-4, REQ-PUB-3)
     return fresh_store
 
 

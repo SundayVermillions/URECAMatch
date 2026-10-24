@@ -10,22 +10,19 @@ import os
 import threading
 import uuid
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
 
 from app.db import seed_data
 from app.db.seed_db import seed_database
 from app.db.store import MockStore, SupabaseStore
-from app.errors import ApiError
 from app.models import AuditOperation, MatchStatus
-from app.routers.matching import execute, publish
+from app.routers.matching import _run_matching, advance
 from app.settings import get_settings
+from tests.conftest import APPROVAL_CLOSED, REVIEW_CLOSED
 from tests.fake_supabase import FakeDB
 
-NOW = datetime(2026, 9, 12, 9, tzinfo=UTC)  # Round 2's review window closes
-REVIEW_CLOSED = NOW + timedelta(hours=1)
-PUBLISH_AT = NOW + timedelta(hours=2)
+NOW = datetime(2026, 9, 12, 9, tzinfo=UTC)
 
 
 def make_store(db: FakeDB) -> SupabaseStore:
@@ -50,22 +47,6 @@ def round_row(db: FakeDB, round_id: str = "rnd-2") -> dict:
 
 def matches_of(db: FakeDB, round_id: str) -> list[dict]:
     return [m for m in db.rows("match_results") if m["round_id"] == round_id]
-
-
-def run_matching(store: SupabaseStore, when: datetime) -> None:
-    """What the admin's Run matching button does, on this server, at `when`."""
-    execute("rnd-2", store.user("adm-1"), store, SimpleNamespace(now=lambda: when))
-
-
-def approve_all(store: SupabaseStore) -> None:
-    for m in store.matches:
-        if m.round_id == "rnd-2" and m.status == MatchStatus.proposed:
-            m.status = MatchStatus.approved
-            store.save_match(m)
-
-
-def publish_results(store: SupabaseStore, when: datetime) -> None:
-    publish("rnd-2", store.user("adm-1"), store, SimpleNamespace(now=lambda: when))
 
 
 # ------------------------------------------------------------------ start-up and seeding
@@ -159,11 +140,13 @@ def test_REQ_EXEC_2_only_one_of_many_servers_wins_the_claim(db):
 
 def test_REQ_EXEC_2_two_servers_racing_for_a_round_run_matching_once(db):
     a, b = make_store(db), make_store(db)
-    run_matching(a, REVIEW_CLOSED)
+    ra = next(r for r in a.cycle.rounds if r.number == 2)
+    rb = next(r for r in b.cycle.rounds if r.number == 2)  # read before A ran: B still sees an unmatched round
+    assert rb.executed_at is None
+    out_a, out_b = [], []
+    _run_matching(a, ra, REVIEW_CLOSED, out_a)
     after_a = len(matches_of(db, "rnd-2"))
-    with pytest.raises(ApiError) as err:  # B's admin clicks the button too; the round is already claimed
-        run_matching(b, REVIEW_CLOSED)
-    assert err.value.detail["code"] == "already_executed"
+    _run_matching(b, rb, REVIEW_CLOSED, out_b)  # the unique (round, student) key would also reject a second run
     assert after_a > 0 and len(matches_of(db, "rnd-2")) == after_a
     runs = [
         e
@@ -171,15 +154,17 @@ def test_REQ_EXEC_2_two_servers_racing_for_a_round_run_matching_once(db):
         if e["operation"] == AuditOperation.matching_executed and e["affected_records"] == ["rnd-2"]
     ]
     assert len(runs) == 1
+    assert out_a and out_b == []  # only the winner tells supervisors and admins
 
 
 def test_REQ_EXEC_2_a_failed_matching_run_gives_the_claim_back(db):
     s = make_store(db)
+    r = next(x for x in s.cycle.rounds if x.number == 2)
     db.fail_next("insert", "match_results")
     with pytest.raises(RuntimeError):
-        run_matching(s, REVIEW_CLOSED)
+        _run_matching(s, r, REVIEW_CLOSED, [])
     assert round_row(db)["executed_at"] is None and matches_of(db, "rnd-2") == []
-    run_matching(make_store(db), REVIEW_CLOSED)  # the admin tries again
+    advance(make_store(db), REVIEW_CLOSED)  # the next server tries again
     assert round_row(db)["executed_at"] is not None and matches_of(db, "rnd-2")
 
 
@@ -188,17 +173,14 @@ def test_REQ_EXEC_2_a_failed_matching_run_gives_the_claim_back(db):
 
 def test_REQ_PUB_1_publishing_claims_the_round_and_marks_applications_with_their_offers(db):
     s = make_store(db)
-    run_matching(s, REVIEW_CLOSED)
-    approve_all(s)
-    publish_results(s, PUBLISH_AT)
+    advance(s, REVIEW_CLOSED)
+    advance(s, APPROVAL_CLOSED)
     assert round_row(db)["published_at"] is not None and round_row(db)["status"] == "published"
     offers = {(m["student_id"], m["listing_id"]) for m in matches_of(db, "rnd-2") if m["status"] == MatchStatus.published}
     assert offers
     for a in (a for a in db.rows("listing_applications") if a["round_id"] == "rnd-2"):
         assert (a["status"] == "matched") == ((a["student_id"], a["listing_id"]) in offers)
-    with pytest.raises(ApiError) as err:  # another server later: nothing runs twice
-        publish_results(make_store(db), PUBLISH_AT)
-    assert err.value.detail["code"] == "already_published"
+    advance(make_store(db), APPROVAL_CLOSED)  # another server later: nothing runs twice
     assert (
         len(
             [
@@ -213,16 +195,15 @@ def test_REQ_PUB_1_publishing_claims_the_round_and_marks_applications_with_their
 
 def test_REQ_PUB_1_a_failed_match_save_leaves_applications_as_they_were(db):
     s = make_store(db)
-    run_matching(s, REVIEW_CLOSED)
-    approve_all(s)
+    advance(s, REVIEW_CLOSED)
     before = {a["id"]: a["status"] for a in db.rows("listing_applications")}
     db.fail_next("rpc", "publish_outcomes")
     with pytest.raises(RuntimeError):
-        publish_results(s, PUBLISH_AT)
+        advance(s, APPROVAL_CLOSED)
     assert {a["id"]: a["status"] for a in db.rows("listing_applications") if a["id"] in before} == before
     assert round_row(db)["published_at"] is None  # the claim was given back
     assert not [m for m in matches_of(db, "rnd-2") if m["status"] == MatchStatus.published]
-    publish_results(s, PUBLISH_AT)  # retried cleanly
+    advance(s, APPROVAL_CLOSED)  # retried cleanly
     assert round_row(db)["published_at"] is not None
 
 
@@ -231,7 +212,7 @@ def test_REQ_PUB_1_a_failed_match_save_leaves_applications_as_they_were(db):
 
 def test_REQ_AUDIT_2_the_store_only_inserts_and_reads_the_audit_log(db):
     s = make_store(db)
-    run_matching(s, REVIEW_CLOSED)
+    advance(s, REVIEW_CLOSED)
     assert {n for n in dir(SupabaseStore) if "audit" in n.lower()} == {"audit", "add_audit", "_AUDIT_COLUMNS"}
     ops = {op for op, table in db.log if table == "audit_log"}
     assert "insert" in ops and ops <= {"select", "insert"}
@@ -305,6 +286,7 @@ def test_REQ_EXEC_2_claim_is_atomic_in_a_real_database():
             "application_end": (day + timedelta(days=1)).isoformat(),
             "review_start": (day + timedelta(days=2)).isoformat(),
             "review_end": (day + timedelta(days=3)).isoformat(),
+            "approval_end": (day + timedelta(days=4)).isoformat(),
         }
         clients[0].table("matching_rounds").insert(row).execute()
         stores = []

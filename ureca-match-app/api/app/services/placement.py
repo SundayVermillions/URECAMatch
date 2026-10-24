@@ -11,7 +11,7 @@ from datetime import datetime
 from app.models import Match, MatchStatus, NotificationEvent, ProposalStatus
 from app.services.notify import notify
 
-# Matches that still hold a slot for the student (the same states as matching.HOLDS_SLOT).
+# Matches that still hold a slot until the student accepts (then it is in filled_slots) or the match ends.
 OPEN = (MatchStatus.proposed, MatchStatus.approved, MatchStatus.reassigned, MatchStatus.published)
 
 

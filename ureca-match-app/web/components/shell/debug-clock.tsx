@@ -53,7 +53,7 @@ export function DebugClock({ onChanged }: { onChanged: () => void }) {
 
   return (
     <div ref={box} className="fixed top-3 right-4 z-50 text-[12.5px]">
-      <button onClick={() => setOpen((o) => !o)} className={`h-8 px-3 inline-flex items-center gap-2 rounded-full ring-1 backdrop-blur-xl transition-colors ${state?.overridden ? "bg-amber-100/80 ring-amber-300 text-amber-900" : "bg-white/70 ring-black/[0.08] text-muted hover:text-text"}`}>
+      <button aria-label="Debug clock" onClick={() => setOpen((o) => !o)} className={`h-8 px-3 inline-flex items-center gap-2 rounded-full ring-1 backdrop-blur-xl transition-colors ${state?.overridden ? "bg-amber-100/80 ring-amber-300 text-amber-900" : "bg-white/70 ring-black/[0.08] text-muted hover:text-text"}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${state?.overridden ? "bg-amber-500" : "bg-faint"}`} />
         <span className="tabular font-medium">{state ? fmt(state.now) : "Clock"}</span>
         {state?.overridden && <span className="font-semibold">fake</span>}

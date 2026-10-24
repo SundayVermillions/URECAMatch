@@ -59,17 +59,16 @@ export interface ApiClient {
   reopenCycle(id: string): Promise<M.Cycle>;
   updateCycle(id: string, body: M.CycleUpdate): Promise<M.Cycle>;
   setRounds(cycleId: string, body: M.RoundsUpdate): Promise<M.Cycle>;
-  execute(roundId: string): Promise<M.RoundSummary>;
+  saveSchedule(cycleId: string, body: M.ScheduleUpdate): Promise<M.Cycle>; // Cycle settings: dates and rounds in one save
   summary(roundId: string): Promise<M.RoundSummary>;
   matches(roundId: string, status?: M.MatchStatus): Promise<M.Match[]>;
   reassign(matchId: string, body: M.ReassignRequest): Promise<M.Match>;
   manualAssign(roundId: string, body: M.ManualAssignRequest): Promise<M.Match>;
   unassign(matchId: string, note: string): Promise<void>;
   unmatched(roundId: string): Promise<M.UserListItem[]>;
-  publish(roundId: string): Promise<M.RoundSummary>;
   auditLog(): Promise<M.AuditEntry[]>;
   supervisorMatches(): Promise<M.Match[]>;
-  decideMatch(id: string, approve: boolean, note?: string): Promise<M.Match>;
+  declineMatch(id: string, note?: string): Promise<M.Match>; // REQ-APPRV-4: during the approval window only
   matchStudent(matchId: string): Promise<M.Applicant>;
   myMatch(): Promise<M.Match | null>;
   respondToOffer(accept: boolean): Promise<M.Match>;

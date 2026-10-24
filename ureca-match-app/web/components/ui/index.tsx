@@ -41,7 +41,7 @@ export function Pill({ tone = "neutral", children, className = "" }: { tone?: To
   return <span className={`inline-flex items-center gap-1 whitespace-nowrap text-[12px] font-medium rounded-pill px-2.5 py-0.5 ${tones[tone]} ${className}`}>{children}</span>;
 }
 
-/** One vocabulary for every entity status (SRS 3.1.3). */
+/** One fixed label and colour per stored status on every screen (SRS 3.1.6, Figure 3.8). */
 const STATUS: Record<string, { label: string; tone: Tone }> = {
   submitted: { label: "Submitted", tone: "accent" }, withdrawn: { label: "Withdrawn", tone: "neutral" }, matched: { label: "Matched", tone: "good" }, unmatched: { label: "Unmatched", tone: "neutral" },
   accepted: { label: "Accepted", tone: "good" }, declined: { label: "Declined", tone: "bad" },
@@ -49,13 +49,17 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   reassigned: { label: "Reassigned", tone: "warn" }, published: { label: "Offer sent", tone: "accent" }, timed_out: { label: "Timed out", tone: "bad" },
   active: { label: "Active", tone: "good" }, inactive: { label: "Inactive", tone: "neutral" }, pending_verification: { label: "Unverified", tone: "warn" },
   scheduled: { label: "Scheduled", tone: "neutral" }, application_window: { label: "Applications open", tone: "accent" }, review_window: { label: "Review window", tone: "accent" },
-  awaiting_publication: { label: "Awaiting publication", tone: "warn" }, ready_for_matching: { label: "Ready for matching", tone: "warn" }, completed: { label: "Completed", tone: "good" },
+  approval_window: { label: "Approval window", tone: "accent" }, awaiting_publication: { label: "Awaiting publication", tone: "warn" }, completed: { label: "Completed", tone: "good" },
   draft: { label: "Draft", tone: "neutral" }, closed: { label: "Closed", tone: "neutral" },
 };
 /** `kind` disambiguates words shared by several entities: "published" is "Offer sent" for a match but "Published" for a round or listing. */
 export function Status({ value, kind }: { value: MatchStatus | ProposalStatus | ApplicationStatus | AccountStatus | RoundStatus | string; kind?: "round" | "listing" }) {
   const s = (kind === "round" || kind === "listing") && value === "published" ? { label: "Published", tone: "good" as Tone } : STATUS[value] ?? { label: value, tone: "neutral" as Tone };
   return <Pill tone={s.tone}>{s.label}</Pill>;
+}
+/** The label a status pill shows, for filters and other places that name a status (SRS 3.1.6). */
+export function statusLabel(value: MatchStatus | ProposalStatus | ApplicationStatus | AccountStatus | RoundStatus | string) {
+  return STATUS[value]?.label ?? value;
 }
 
 /** Soft tints for tone="auto". Red and amber are left out: they mean "error" and "warning" elsewhere. */
@@ -382,8 +386,9 @@ export function Field({ label, error, hint, children }: { label: string; error?:
   );
 }
 
+/** A disabled field is greyed out. */
 export const inputCls = (invalid?: boolean) =>
-  `h-10 px-3.5 rounded-button border bg-surface text-[14px] outline-none transition-shadow focus:border-accent focus:ring-4 focus:ring-accent/15 ${invalid ? "border-bad ring-4 ring-bad/10" : "border-border-strong"}`;
+  `h-10 px-3.5 rounded-button border bg-surface text-[14px] outline-none transition-shadow focus:border-accent focus:ring-4 focus:ring-accent/15 disabled:bg-neutral-soft disabled:text-faint ${invalid ? "border-bad ring-4 ring-bad/10" : "border-border-strong disabled:border-border"}`;
 export function Input({ invalid, className = "", ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
   return <input {...rest} className={`${inputCls(invalid)} ${className}`} />;
 }
@@ -418,7 +423,8 @@ export function Drawer({ open, onClose, title, children, footer }: { open: boole
   );
 }
 
-/** Modal: 520 px, centred, for confirmations before irreversible actions. */
+/** Modal: 520 px, centred, for confirmations before irreversible actions. Content taller than the window scrolls
+ *  between the title and the buttons; its 4 px inset keeps focus rings from being clipped. */
 export function Modal({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode }) {
   useEffect(() => {
     if (!open) return;
@@ -430,9 +436,9 @@ export function Modal({ open, onClose, title, children, footer }: { open: boolea
   return (
     <>
       <div className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="fixed z-40 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[calc(100vw-32px)] bg-surface rounded-modal shadow-[var(--shadow-float)] ring-1 ring-black/[0.06] p-7 flex flex-col gap-2.5">
+      <div className="fixed z-40 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] bg-surface rounded-modal shadow-[var(--shadow-float)] ring-1 ring-black/[0.06] p-7 flex flex-col gap-2.5">
         <h2 className="text-[19px]">{title}</h2>
-        <div className="text-[14px] text-muted leading-[1.55]">{children}</div>
+        <div className="min-h-0 overflow-y-auto -m-1 p-1 text-[14px] text-muted leading-[1.55]">{children}</div>
         {footer && <div className="flex justify-end gap-2.5 mt-4">{footer}</div>}
       </div>
     </>
@@ -441,7 +447,8 @@ export function Modal({ open, onClose, title, children, footer }: { open: boolea
 
 /** Chips chosen from a list only: typing filters a dropdown, nothing free-typed is added.
  *  `search` returns the options for the typed text (sync or async); chosen values are hidden from the list.
- *  Keyboard: ↑/↓ move, Enter picks, Esc closes, Backspace on an empty field removes the last chip. */
+ *  Keyboard: ↑/↓ move, Enter picks, Esc closes, Backspace on an empty field removes the last chip.
+ *  Inside a disabled fieldset it is greyed out like a disabled field, with no remove buttons or text box. */
 export type PickOption = { value: string; note?: string; group?: string };
 export function TagPicker({ value, onChange, search, invalid, placeholder, idle = "Type to search", none = "No matches" }: {
   value: string[]; onChange: (v: string[]) => void; search: (q: string) => PickOption[] | Promise<PickOption[]>;
@@ -479,16 +486,16 @@ export function TagPicker({ value, onChange, search, invalid, placeholder, idle 
   return (
     <div ref={root} className="relative">
       <div
-        className={`min-h-10 flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-button border bg-surface transition-shadow focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15 ${invalid ? "border-bad" : "border-border-strong"}`}>
+        className={`group min-h-10 flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-button border bg-surface transition-shadow focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15 has-[:disabled]:bg-neutral-soft ${invalid ? "border-bad" : "border-border-strong has-[:disabled]:border-border"}`}>
         {/* The input comes first in the DOM so a wrapping <label> (Field) points at it, not at a chip's remove button. */}
         <input ref={input} value={draft} role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list"
           onChange={(e) => { setDraft(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={onKey}
           onBlur={() => { setOpen(false); setDraft(""); }} // unmatched text is never kept, so it cannot look added
-          placeholder={value.length ? "Add another" : placeholder} className="order-last flex-1 min-w-[140px] h-7 px-1.5 outline-none bg-transparent text-[14px]" />
+          placeholder={value.length ? "Add another" : placeholder} className="order-last flex-1 min-w-[140px] h-7 px-1.5 outline-none bg-transparent text-[14px] disabled:hidden" />
         {value.map((t) => (
-          <span key={t} className="inline-flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-pill bg-neutral-soft text-[13px] text-text">
+          <span key={t} className="inline-flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-pill bg-neutral-soft text-[13px] text-text group-has-[:disabled]:bg-surface group-has-[:disabled]:text-faint group-has-[:disabled]:pr-2.5">
             {t}
-            <button type="button" aria-label={`Remove ${t}`} onClick={() => onChange(value.filter((x) => x !== t))} className="w-5 h-5 rounded-full inline-flex items-center justify-center text-faint hover:text-text hover:bg-black/[0.06]"><I.X size={12} /></button>
+            <button type="button" aria-label={`Remove ${t}`} onClick={() => onChange(value.filter((x) => x !== t))} className="w-5 h-5 rounded-full inline-flex items-center justify-center text-faint hover:text-text hover:bg-black/[0.06] disabled:hidden"><I.X size={12} /></button>
           </span>
         ))}
       </div>
@@ -565,13 +572,14 @@ export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boo
   );
 }
 
-export function Stepper({ value, onChange, min, max, format }: { value: number; onChange: (v: number) => void; min: number; max: number; format?: (v: number) => string }) {
+/** `disabled` greys the whole stepper out, like a disabled field. */
+export function Stepper({ value, onChange, min, max, format, disabled }: { value: number; onChange: (v: number) => void; min: number; max: number; format?: (v: number) => string; disabled?: boolean }) {
   const btn = "w-8 h-8 rounded-full bg-neutral-soft text-[16px] font-medium text-text hover:bg-[#e8e8ed] disabled:text-border-strong";
   return (
     <div className="inline-flex items-center gap-2">
-      <button type="button" className={btn} disabled={value <= min} onClick={() => onChange(value - 1)}>−</button>
-      <span className="text-[13.5px] font-bold min-w-[60px] text-center tabular">{format ? format(value) : value}</span>
-      <button type="button" className={btn} disabled={value >= max} onClick={() => onChange(value + 1)}>+</button>
+      <button type="button" className={btn} disabled={disabled || value <= min} onClick={() => onChange(value - 1)}>−</button>
+      <span className={`text-[13.5px] font-bold min-w-[60px] text-center tabular ${disabled ? "text-faint" : ""}`}>{format ? format(value) : value}</span>
+      <button type="button" className={btn} disabled={disabled || value >= max} onClick={() => onChange(value + 1)}>+</button>
     </div>
   );
 }
@@ -579,6 +587,13 @@ export function Stepper({ value, onChange, min, max, format }: { value: number; 
 export const fmtDate = (iso?: string | null, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }) =>
   iso ? new Date(iso).toLocaleDateString("en-SG", opts) : "";
 export const fmtDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("en-SG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
+/** A window's closing moment as the API words it (windows.when): "14 Sep, 5:00 pm SGT". Windows end at :59 seconds,
+ *  so that second is shown as the hour the window closes at. */
+export const fmtDeadline = (iso?: string | null) => {
+  if (!iso) return "";
+  let ms = Date.parse(iso); if (new Date(ms).getUTCSeconds() === 59) ms += 1000;
+  return `${new Date(ms).toLocaleString("en-SG", { timeZone: "Asia/Singapore", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} SGT`;
+};
 
 // ------------------------------------------------------------------ documents
 
