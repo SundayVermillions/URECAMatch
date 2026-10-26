@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from email.message import EmailMessage
 
 from app.db.store import Store
-from app.models import Notification, NotificationEvent, User
+from app.models import AccountStatus, Notification, NotificationEvent, User
 from app.settings import get_settings
 
 log = logging.getLogger(__name__)
@@ -35,10 +35,11 @@ FOOTER = (
 
 @dataclass(frozen=True)
 class Copy:
-    """Fixed wording around the notification's own message. `link` is used when the notification has none."""
+    """Fixed wording around the notification's own message. `link` is used when the notification has none.
+    No `button` means the e-mail has no link, for a reader who cannot sign in."""
 
     next_step: str
-    button: str
+    button: str | None
     link: str = "/"
     lead: str | None = None
     extra: str | None = None
@@ -55,14 +56,10 @@ def _cycle_changed(n: Notification) -> Copy:
 
 
 def _matches_proposed(n: Notification) -> Copy:
-    return Copy(
-        next_step=(
-            "Please review the students proposed for your listings and approve or reject each match. "
-            "Students only hear their result once matches are published, so a quick decision keeps the round on schedule."
-        ),
-        button="Review matches",
-        link="/approvals",
-    )
+    if n.link and n.link.startswith("/rounds/"):  # the admins' notice links to the round's matches
+        return Copy(next_step="Sign in to see the round's matches.", button="View matches", link="/rounds")
+    # REQ-APPRV-4: a match stands unless the supervisor declines it. The message already gives the deadline.
+    return Copy(next_step="Sign in to review them and decline any who are not a fit.", button="Review matches", link="/approvals")
 
 
 def _offer_received(n: Notification) -> Copy:
@@ -78,13 +75,15 @@ def _offer_received(n: Notification) -> Copy:
 
 
 def _proposal_decided(n: Notification) -> Copy:
-    if n.link == "/proposals":  # the same event tells a supervisor about a new submission
-        return Copy(
-            lead="A student has sent you a research proposal:",
-            next_step="Sign in to read it and accept or decline.",
-            button="Review proposal",
-            link="/proposals",
-        )
+    if n.link == "/proposals":  # the same event tells a supervisor about a new submission or a withdrawn one
+        if n.title.startswith("New proposal"):  # proposals.propose
+            return Copy(
+                lead="A student has sent you a research proposal:",
+                next_step="Sign in to read it and accept or decline.",
+                button="Review proposal",
+                link="/proposals",
+            )
+        return Copy(next_step="There is nothing for you to do.", button="View proposals", link="/proposals")
     return Copy(
         next_step="Sign in to see the details and your next steps.", button="View my applications", link="/my-applications"
     )
@@ -125,15 +124,18 @@ FOOTER_STYLE = "color:#6b7280;font-size:12px"
 def render(n: Notification, user: User | None = None) -> tuple[str, str, str]:
     """Subject, HTML body and plain-text body for one notification."""
     copy = TEMPLATES[n.event](n)
+    if user is not None and user.status == AccountStatus.inactive:  # deactivated: they cannot sign in, so do not ask
+        copy = Copy(next_step="If you think this is a mistake, contact your URECA administrator.", button=None)
     url = get_settings().app_url.rstrip("/") + (n.link or copy.link)
     name = user.name.strip() if user else ""
     lines = [f"Hi {name}," if name else "Hi,", copy.lead, n.message, copy.next_step, copy.extra]
     lines = [line for line in lines if line]
 
     paragraphs = [f"<p>{html.escape(line)}</p>" for line in lines]
-    paragraphs.append(f'<p><a href="{html.escape(url)}" style="{BUTTON_STYLE}">{html.escape(copy.button)}</a></p>')
+    if copy.button:
+        paragraphs.append(f'<p><a href="{html.escape(url)}" style="{BUTTON_STYLE}">{html.escape(copy.button)}</a></p>')
     paragraphs.append(f'<p style="{FOOTER_STYLE}">{html.escape(FOOTER)}</p>')
-    text = "\n\n".join([*lines, f"{copy.button}: {url}", "--", FOOTER])
+    text = "\n\n".join([*lines, *([f"{copy.button}: {url}"] if copy.button else []), "--", FOOTER])
     return n.title, "\n".join(paragraphs), text
 
 
@@ -147,6 +149,8 @@ def send_for(store: Store, notifications: list[Notification]) -> int:
         user = store.user(n.user_id)
         if user is None:
             continue
+        if user.status == AccountStatus.inactive and n.event != NotificationEvent.account_changed:
+            continue  # a deactivated account is only told about its own account; the in-app copy is still stored
         subject, body, text = render(n, user)
         messages.append({"from": settings.email_from, "to": [user.email], "subject": subject, "html": body, "text": text})
     return deliver(messages)
