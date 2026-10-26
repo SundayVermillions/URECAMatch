@@ -2,10 +2,15 @@
 /** "Uri's picks": the recommendation panel at the top of Browse. REQ-BROWSE-4.
  *  Shows the best three projects for the student, each with its match score, the reasons behind it and a
  *  breakdown (interests, readiness, chance). The scoring is transparent on purpose: "How it works" explains it,
- *  and supervisors never see these scores. States: loading, no interests yet, nothing fits, placed. */
+ *  and supervisors never see these scores. Picks exist only in an application window. Outside one Uri reports where
+ *  the cycle is instead: early (no cycle yet, or pre-application), round under review, waiting for results, results
+ *  out (an offer to respond to, or not matched), or cycle closed.
+ *  A student who declined or missed an offer gets a sad Uri and a kind explanation instead of a banner.
+ *  States: early, review, waiting, results, closed, loading, no interests yet, nothing fits, placed, out, offer. */
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { I } from "@/components/shell/icons";
+import { fmtDeadline } from "@/components/ui";
 import type { Recommendation } from "@/lib/api/models";
 import { Uri, type UriMood } from "./uri";
 
@@ -27,6 +32,13 @@ type Props = {
   interests: string[];
   picks: Recommendation[] | null; // null while loading
   placedIn: string | null;
+  window?: string; // the cycle's current window (me.phase.window)
+  phaseLabel?: string; // me.phase.label, e.g. "Applications open 25 Aug, 5:00 pm SGT"
+  roundNumber?: number | null;
+  out?: { kind: "declined" | "timed_out" | "other"; title?: string } | null; // no longer eligible this cycle
+  appliedThisRound?: boolean; // whether the student applied in the current round
+  offer?: { title: string; expires: string | null } | null; // an offer the student has not answered yet
+  nextRound?: { number: number; rollover: boolean } | null; // the round after the current one, if any
   onShowAll?: () => void;
 };
 
@@ -53,7 +65,7 @@ function Ambient({ scale = 1, radius = 28 }: { scale?: number; radius?: number }
 /** Fixed sparkle positions around Uri ([left %, top %, size px, delay s]), so server and browser render alike. */
 const STARS = [[3, 14, 3, 0], [15, 6, 2, 1.2], [20, 30, 2.5, 2.1], [2, 52, 2, 0.6], [19, 70, 3, 1.7], [7, 86, 2, 2.6], [23, 88, 2, 0.3], [11, 40, 1.5, 3]] as const;
 
-export function UriPicks({ name, interests, picks, placedIn, onShowAll }: Props) {
+export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow, phaseLabel, roundNumber, appliedThisRound, offer, nextRound, out, onShowAll }: Props) {
   const hidden = useSyncExternalStore(hiddenStore.subscribe, hiddenStore.get, () => false);
   const hide = hiddenStore.set;
   const [explain, setExplain] = useState(false);
@@ -62,15 +74,34 @@ export function UriPicks({ name, interests, picks, placedIn, onShowAll }: Props)
   const parts = name.trim().split(/\s+/);
   const first = (parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0]) || "there";
   const top = (picks ?? []).slice(0, 3);
-  const state: "loading" | "placed" | "setup" | "none" | "picks" =
-    placedIn ? "placed" : !interests.length ? "setup" : picks === null ? "loading" : top.length ? "picks" : "none";
+  const pickable = !cycleWindow || cycleWindow === "application";
+  const outside = { before_cycle: "early", pre_application: "early", review: "review", approval: "waiting", awaiting_results: "waiting", results: "results", closed: "closed" } as const;
+  const state: "loading" | "placed" | "out" | "offer" | "early" | "review" | "waiting" | "results" | "closed" | "setup" | "none" | "picks" =
+    placedIn ? "placed"
+    : out ? "out"
+    : offer ? "offer"
+    : !pickable ? outside[cycleWindow as keyof typeof outside] ?? "early"
+    : !interests.length ? "setup" : picks === null ? "loading" : top.length ? "picks" : "none";
 
-  const mood: UriMood = state === "loading" ? "think" : state === "placed" ? "cheer" : state === "picks" ? "wave" : "idle";
+  // One call to action under Uri's words, when there is somewhere useful to go.
+  const cta = state === "offer" ? { href: "/my-applications", label: "See my offer" }
+    : state === "results" && appliedThisRound ? { href: "/my-applications", label: "See my applications" }
+    : state === "setup" || state === "none" ? { href: "/profile", label: state === "setup" ? "Add my interests" : "Update my interests" } : null;
+
+  const mood: UriMood = state === "out" ? "sad" : state === "loading" ? "think" : (state === "placed" || state === "offer") ? "cheer" : state === "picks" || state === "early" ? "wave" : "idle";
   const topics = interests.slice(0, 2).join(" and ");
   const glowText = (t: string) => <span className="bg-gradient-to-r from-[#0071e3] to-[#7c5cf6] bg-clip-text text-transparent">{t}</span>;
   const headline = {
     loading: <>Finding your {glowText("best matches")}…</>,
     placed: <>You&apos;re in, {glowText(first)}!</>,
+    out: out?.kind === "declined" ? <>Sorry to see you {glowText("go")}, {first}</>
+      : out?.kind === "timed_out" ? <>That offer {glowText("slipped away")}</> : <>You&apos;re {glowText("out")} for this cycle</>,
+    early: <>You&apos;re {glowText("early")}, {first}!</>,
+    review: <>Round {roundNumber} is under {glowText("review")}</>,
+    waiting: <>Waiting for Round {roundNumber} {glowText("results")}</>,
+    offer: <>You have an {glowText("offer")}, {first}!</>,
+    results: <>Round {roundNumber} results are {glowText("out")}</>,
+    closed: <>This cycle has {glowText("closed")}</>,
     setup: <>Let&apos;s find {glowText("your project")}, {first}</>,
     none: <>Nothing fits {glowText("just yet")}</>,
     picks: <>{glowText(`${top.length} ${top.length === 1 ? "project" : "projects"}`)} picked for you</>,
@@ -78,6 +109,21 @@ export function UriPicks({ name, interests, picks, placedIn, onShowAll }: Props)
   const line = {
     loading: `Hi ${first}! I'm reading through every open project for you.`,
     placed: `You're registered to ${placedIn}. Enjoy the research, and see you next cycle.`,
+    out: out?.kind === "declined"
+      ? `You declined ${out.title ?? "your offer"}, so you are out of the remaining rounds this cycle. You can still browse every project, and I'll have picks ready when the next cycle opens.`
+      : out?.kind === "timed_out"
+        ? `The offer for ${out.title ?? "your project"} ran out before you answered, so you are out of the remaining rounds this cycle. You can still browse every project, and I'll have picks ready when the next cycle opens.`
+        : "You can no longer apply or propose this cycle. You can still browse every project, and I'll have picks ready when the next cycle opens.",
+    early: `${cycleWindow === "pre_application" && phaseLabel ? phaseLabel : "No application cycle is open yet"}. Browse and shortlist projects now, and I'll pick the ones that fit you once applications open.`,
+    review: "Applications are closed and supervisors are ranking their applicants. Results come after matching, and I'll tell you here as soon as they are out.",
+    waiting: "The rankings are in and the matches are being finalised. Check back soon, the news will show up here.",
+    offer: `${offer?.title} is waiting for your answer${offer?.expires ? ` until ${fmtDeadline(offer.expires)}` : ""}. Answer it in My applications, as you cannot apply to other projects while it is open.`,
+    results: appliedThisRound
+        ? `You were not matched to a project in Round ${roundNumber}. ${nextRound
+          ? nextRound.rollover ? `Your applications carry over to Round ${nextRound.number}, where you can reorder or withdraw them.` : `You can apply again in Round ${nextRound.number}.`
+          : "There are no more rounds this cycle."}`
+        : `You did not apply in Round ${roundNumber}. ${nextRound ? `Round ${nextRound.number} is next, and I'll pick projects for you when it opens.` : "There are no more rounds this cycle."}`,
+    closed: "Thanks for taking part. Projects stay open for browsing until the next cycle starts.",
     setup: "Tell me which topics you're into and I'll pick the projects that fit you best.",
     none: `No open project is tagged ${topics} right now. Add a few more interests, or explore everything below.`,
     picks: `Hi ${first}! These fit your interest in ${topics} best, scored on topics, courses and competition.`,
@@ -121,6 +167,11 @@ export function UriPicks({ name, interests, picks, placedIn, onShowAll }: Props)
               </div>
               <h2 className="mt-3 text-[32px] leading-[1.12] font-semibold tracking-[-0.025em] text-text">{headline}</h2>
               <TypeLine key={line} text={line} />
+              {cta && (
+                <Link href={cta.href} className="glass-btn mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-pill text-[14px] font-semibold !text-[#1c2566]">
+                  <Spark size={14} /> {cta.label}
+                </Link>
+              )}
             </div>
 
             <div className="shrink-0 self-start flex items-center gap-1.5">
@@ -150,13 +201,6 @@ export function UriPicks({ name, interests, picks, placedIn, onShowAll }: Props)
                   </button>
                 )}
               </>
-            )}
-            {(state === "setup" || state === "none") && (
-              <div className="mt-6">
-                <Link href="/profile" className="inline-flex items-center gap-2 h-11 px-6 rounded-pill bg-[#1c2566] !text-white text-[14.5px] font-semibold shadow-[0_10px_24px_-10px_rgba(28,37,102,0.7)] hover:brightness-110">
-                  <Spark size={14} /> {state === "setup" ? "Add my interests" : "Update my interests"}
-                </Link>
-              </div>
             )}
           </div>
         </div>

@@ -5,8 +5,11 @@ Seed: stu-1 likes Healthcare AI and Marine Biology and has passed SC3020 among o
 (share of prerequisites passed, out of 30) + chance (fewer applicants per open slot, out of 20).
 """
 
+from datetime import timedelta
+
 from app.models import Listing, ListingStatus, StudentProfile
 from app.services.recommend import fit
+from app.settings import get_settings, set_clock_override
 
 
 def _listing(**over) -> Listing:
@@ -92,3 +95,23 @@ def test_REQ_BROWSE_4_nothing_once_placed(client_for):
 
 def test_REQ_BROWSE_4_students_only(as_supervisor):
     assert as_supervisor.get("/me/recommendations").status_code == 403
+
+
+def test_REQ_BROWSE_4_only_in_an_application_window(client_for, fresh_store, monkeypatch):
+    """The seed clock is inside Round 2's application window, where picks show. There are none before the cycle
+    opens, in the pre-application period, in a review window, or after the cycle closes."""
+    cycle = fresh_store.cycle
+    monkeypatch.setattr(get_settings(), "debug_clock", True)
+
+    def picks_at(moment):
+        set_clock_override(moment)
+        try:
+            return client_for("stu-1").get("/me/recommendations").json()
+        finally:
+            set_clock_override(None)
+
+    assert client_for("stu-1").get("/me/recommendations").json() != []  # application window
+    assert picks_at(cycle.rounds[0].application_start - timedelta(hours=1)) == []  # pre-application
+    assert picks_at(cycle.rounds[1].review_start + timedelta(hours=1)) == []  # review window
+    assert picks_at(cycle.closing_date + timedelta(days=1)) == []  # cycle closed
+    assert picks_at(cycle.opening_date - timedelta(days=1)) == []  # no cycle yet

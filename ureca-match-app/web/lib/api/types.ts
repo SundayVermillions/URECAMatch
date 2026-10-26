@@ -244,6 +244,8 @@ export interface paths {
         /**
          * Recommendations
          * @description REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.
+         *     Only during an application window, when a student can act on them: not before the cycle opens, in the
+         *     pre-application period, between rounds or after the cycle.
          *     Empty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).
          *     Projects already applied to or with no open slot are left out.
          */

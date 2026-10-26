@@ -2,6 +2,8 @@
 const base = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 export const I = {
   Folder: (p: { size?: number }) => <svg {...base} width={p.size ?? 18} height={p.size ?? 18}><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-9.5z" /></svg>,
+  Lock: (p: { size?: number }) => <svg {...base} width={p.size ?? 14} height={p.size ?? 14} strokeWidth={2}><rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" /></svg>,
+  Trash: (p: { size?: number }) => <svg {...base} width={p.size ?? 16} height={p.size ?? 16} strokeWidth={1.8}><path d="M4.5 7h15" /><path d="M9.5 7V4.8c0-.4.3-.8.8-.8h3.4c.5 0 .8.4.8.8V7" /><path d="M6.5 7l.8 11.2c.1 1 .8 1.8 1.8 1.8h5.8c1 0 1.7-.8 1.8-1.8L17.5 7" /><path d="M10 11v5.5M14 11v5.5" /></svg>,
   Check: (p: { size?: number }) => <svg {...base} width={p.size ?? 18} height={p.size ?? 18}><rect x="4" y="4.5" width="16" height="15" rx="2" /><path d="M8 12.5l2.3 2.3L16.5 9.5" /></svg>,
   Bell: (p: { size?: number }) => <svg {...base} width={p.size ?? 18} height={p.size ?? 18}><path d="M6 10.5c0-3.3 2.7-6 6-6s6 2.7 6 6v3.2l1.6 2.6H4.4L6 13.7v-3.2z" /><path d="M9.7 18.5a2.4 2.4 0 0 0 4.6 0" /></svg>,
   Bulb: (p: { size?: number }) => <svg {...base} width={p.size ?? 18} height={p.size ?? 18}><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.45 1 1.15 1 1.9v.2h5v-.2c0-.75.4-1.45 1-1.9A6 6 0 0 0 12 3z" /></svg>,

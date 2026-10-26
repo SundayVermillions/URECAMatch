@@ -82,3 +82,21 @@ def test_REQ_BROWSE_2_filters_combine_with_and(as_student):
 
 def test_REQ_BROWSE_2_no_match_returns_empty_list(as_student):
     assert _ids(as_student, q="zzz-no-such-project") == set()
+
+
+# ---------------------------------------------------------------- a new cycle starts clean (REQ-BROWSE-1)
+
+
+def test_REQ_BROWSE_1_applicants_and_applied_count_only_the_current_round(client_for, monkeypatch):
+    """The seed has stu-1's and others' applications in Round 2. They show during Round 2's application window, and
+    not before Round 1 opens, where there is no round yet: no applicants, nobody marked as applied."""
+    mine = client_for("stu-1")
+    assert any(lst["applied"] for lst in _all(mine))
+    assert any(lst["applicant_count"] for lst in _all(mine))
+    for when in (
+        datetime(2026, 8, 10, 10, tzinfo=UTC),
+        datetime(2026, 8, 20, 10, tzinfo=UTC),
+    ):  # before the cycle, pre-application
+        _at(monkeypatch, when)
+        rows = _all(mine)
+        assert rows and not any(lst["applied"] or lst["applicant_count"] for lst in rows), when

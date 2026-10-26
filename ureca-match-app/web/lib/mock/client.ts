@@ -179,7 +179,8 @@ export class MockClient implements ApiClient {
     if (this.phase().window !== "application") throw new M.ApiError(422, "window_closed", "Applications can only be changed during an application window.");
   }
   private decorate(l: M.Listing, u: M.User): M.Listing {
-    const apps = this.db.applications.filter((a) => a.listing_id === l.id && a.status === "submitted");
+    const round = this.phase().round_id; // only this round's applications count; before Round 1 there are none (mirror of _submitted_by_listing)
+    const apps = round ? this.db.applications.filter((a) => a.listing_id === l.id && a.round_id === round && a.status === "submitted") : [];
     const mine = u.role === "student" ? apps.find((a) => a.student_id === u.id) : undefined;
     const supervisor_email = l.supervisor_email || this.db.users.find((x) => x.id === l.supervisor_id)?.email || "";
     return { ...l, supervisor_email, applicant_count: apps.length, held_slots: this.heldSlots(l.id), applied: !!mine, applied_rank: mine?.preference_rank ?? null };
@@ -461,6 +462,7 @@ export class MockClient implements ApiClient {
   async recommendations(limit = 6) {
     const u = this.need("student"); const sp = this.student(u.id); await sleep(250);
     if (!sp || !sp.research_interests.length || !sp.eligible_for_matching || this.isPlaced(u.id)) return [];
+    if (this.phase().window !== "application") return []; // only while a student can act on a pick
     const rows: M.Recommendation[] = [];
     for (const raw of this.db.listings.filter((l) => l.status === "published")) {
       const l = this.decorate(raw, u);

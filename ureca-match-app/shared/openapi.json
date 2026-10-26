@@ -1130,7 +1130,7 @@
           "listings"
         ],
         "summary": "Recommendations",
-        "description": "REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.\nEmpty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).\nProjects already applied to or with no open slot are left out.",
+        "description": "REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.\nOnly during an application window, when a student can act on them: not before the cycle opens, in the\npre-application period, between rounds or after the cycle.\nEmpty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).\nProjects already applied to or with no open slot are left out.",
         "operationId": "recommendations_me_recommendations_get",
         "parameters": [
           {

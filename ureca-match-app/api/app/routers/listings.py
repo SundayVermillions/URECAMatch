@@ -23,6 +23,7 @@ from app.models import (
     Recommendation,
     Role,
     SupervisorSummary,
+    Window,
 )
 from app.services import catalog, placement, recommend, windows
 from app.services.notify import notify
@@ -31,25 +32,39 @@ from app.services.storage import get_storage
 router = APIRouter(tags=["listings"])
 
 
-def _submitted_by_listing(store) -> dict[str, list[Application]]:
-    """Applications under review, grouped by project. Read through applications_for(), which is the database in Supabase
-    mode (store.applications is only the in-memory seed there), and read once so Browse does not query once per card."""
+def _submitted_by_listing(store, settings) -> dict[str, list[Application]]:
+    """Applications under review in the current round, grouped by project. Applications from an earlier round or
+    cycle, and everything before Round 1 opens, do not count: a new cycle starts with no applicants and nobody
+    marked as applied. Read through applications_for(), which is the database in Supabase mode (store.applications
+    is only the in-memory seed there), and read once so Browse does not query once per card."""
+    round_id = windows.phase(store.cycle, settings.now()).round_id
     out: dict[str, list[Application]] = {}
-    for a in store.applications_for():
+    if round_id is None:
+        return out
+    for a in store.applications_for(round_id=round_id):
         if a.status == ApplicationStatus.submitted:
             out.setdefault(a.listing_id, []).append(a)
     return out
 
 
-def _decorate(lst: Listing, store, user, by_listing: dict[str, list[Application]] | None = None) -> Listing:
-    """Attach per-viewer fields (applied, rank, applicant count) without mutating the stored row.
-    Pass `by_listing` when decorating many projects, so the applications are read once."""
-    apps = (by_listing if by_listing is not None else _submitted_by_listing(store)).get(lst.id, [])
+def _held_by_listing(store) -> dict[str, int]:
+    """Open matches and offers per project, counted in one pass (see _held_slots for one project)."""
+    out: dict[str, int] = {}
+    for m in store.matches:
+        if m.status in placement.OPEN:
+            out[m.listing_id] = out.get(m.listing_id, 0) + 1
+    return out
+
+
+def _decorate(lst: Listing, user, submitted: dict[str, list[Application]], held: dict[str, int]) -> Listing:
+    """Attach per-viewer fields (applied, rank, applicant count, held slots) without mutating the stored row.
+    `submitted` and `held` are read once per request, so decorating many projects costs no extra queries."""
+    apps = submitted.get(lst.id, [])
     mine = next((a for a in apps if a.student_id == user.id), None) if user.role == Role.student else None
     return lst.model_copy(
         update={
             "applicant_count": len(apps),
-            "held_slots": _held_slots(lst, store),
+            "held_slots": held.get(lst.id, 0),
             "applied": mine is not None,
             "applied_rank": mine.preference_rank if mine else None,
         }
@@ -66,6 +81,7 @@ def _held_slots(lst: Listing, store) -> int:
 def browse(
     user: CurrentUser,
     store: StoreDep,
+    settings: SettingsDep,
     q: str | None = None,
     school: str | None = None,
     tag: str | None = None,
@@ -74,7 +90,7 @@ def browse(
     """REQ-BROWSE-1: open in every phase, including before the cycle opens.
     REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive."""
     out = []
-    by_listing = _submitted_by_listing(store)
+    submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
     for lst in store.all_listings():
         if lst.status != ListingStatus.published:  # REQ-BROWSE-3
             continue
@@ -87,35 +103,39 @@ def browse(
             continue
         if supervisor and supervisor.lower() not in lst.supervisor_name.lower():
             continue
-        out.append(_decorate(lst, store, user, by_listing))
+        out.append(_decorate(lst, user, submitted, held))
     return out
 
 
 @router.get("/me/recommendations", response_model=list[Recommendation])
-def recommendations(user: StudentUser, store: StoreDep, limit: int = Query(default=6, ge=1, le=50)) -> list[Recommendation]:
+def recommendations(
+    user: StudentUser, store: StoreDep, settings: SettingsDep, limit: int = Query(default=6, ge=1, le=50)
+) -> list[Recommendation]:
     """REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.
+    Only during an application window, when a student can act on them: not before the cycle opens, in the
+    pre-application period, between rounds or after the cycle.
     Empty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).
     Projects already applied to or with no open slot are left out."""
+    if windows.phase(store.cycle, settings.now()).window != Window.application:
+        return []
     sp = store.student(user.id)
     if sp is None or not sp.research_interests or not sp.eligible_for_matching or placement.is_placed(store, user.id):
         return []
-    by_listing = _submitted_by_listing(store)
+    submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
     open_listings = [
         d
-        for d in (
-            _decorate(lst, store, user, by_listing) for lst in store.all_listings() if lst.status == ListingStatus.published
-        )
+        for d in (_decorate(lst, user, submitted, held) for lst in store.all_listings() if lst.status == ListingStatus.published)
         if not d.applied and d.filled_slots < d.available_slots
     ]
     return recommend.recommend(open_listings, sp, limit)
 
 
 @router.get("/listings/{listing_id}", response_model=Listing)
-def detail(listing_id: str, user: CurrentUser, store: StoreDep) -> Listing:
+def detail(listing_id: str, user: CurrentUser, store: StoreDep, settings: SettingsDep) -> Listing:
     lst = store.listing(listing_id)
     if lst is None or (lst.status != ListingStatus.published and user.id != lst.supervisor_id and user.role != Role.admin):
         raise not_found("Project")
-    return _decorate(lst, store, user)
+    return _decorate(lst, user, _submitted_by_listing(store, settings), _held_by_listing(store))
 
 
 @router.get("/supervisors", response_model=list[SupervisorSummary])
@@ -130,9 +150,9 @@ def supervisors(user: CurrentUser, store: StoreDep) -> list[SupervisorSummary]:
 
 
 @router.get("/supervisor/listings", response_model=list[Listing])
-def my_listings(user: SupervisorUser, store: StoreDep) -> list[Listing]:
-    by_listing = _submitted_by_listing(store)
-    return [_decorate(lst, store, user, by_listing) for lst in store.all_listings() if lst.supervisor_id == user.id]
+def my_listings(user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> list[Listing]:
+    submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
+    return [_decorate(lst, user, submitted, held) for lst in store.all_listings() if lst.supervisor_id == user.id]
 
 
 @router.post("/supervisor/listings", response_model=Listing, status_code=201)
