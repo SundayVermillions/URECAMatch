@@ -8,6 +8,7 @@ EMAIL_MODE decides what happens:
         as Mailpit. The app refuses to start with this in production.
   send  deliver through Resend (production only)
 A failed send is logged and never fails the request: the in-app notification is already stored.
+EMAIL_ALLOWLIST, when set, limits every e-mail (sign-up codes included) to the listed addresses; the rest are skipped.
 """
 
 from __future__ import annotations
@@ -192,6 +193,9 @@ def deliver(messages: list[dict]) -> int:
     settings = get_settings()
     if settings.email_mode == "off" or not messages:
         return 0
+    messages = _allowed(messages, settings.allowed_recipients)
+    if not messages:
+        return 0
     if settings.email_mode == "log":
         for m in messages:
             log.info("email (EMAIL_MODE=log) to=%s subject=%s", m["to"][0], m["subject"])
@@ -217,6 +221,21 @@ def deliver(messages: list[dict]) -> int:
         except Exception:  # the in-app notification still stands
             log.exception("Resend batch of %d e-mails failed", len(chunk))
     return sent
+
+
+def _allowed(messages: list[dict], allow: set[str]) -> list[dict]:
+    """Drop recipients not on EMAIL_ALLOWLIST, and any message left with nobody to send to. No list means no filter."""
+    if not allow:
+        return messages
+    kept = []
+    for m in messages:
+        to = [a for a in m["to"] if a.strip().lower() in allow]
+        for a in m["to"]:
+            if a not in to:
+                log.info("E-mail to %s skipped: not on EMAIL_ALLOWLIST", a)
+        if to:
+            kept.append({**m, "to": to})
+    return kept
 
 
 def _send_smtp(messages: list[dict]) -> int:
