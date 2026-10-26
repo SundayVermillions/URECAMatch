@@ -3,6 +3,7 @@
  *  Placed (an accepted match, whether from an offer or an accepted self-proposal) or no longer eligible
  *  (declined or let an offer time out) makes those screens view only (REQ-OUTCOME-1, 2, 4; REQ-REVPROP-2). */
 import { useMe } from "@/components/shell/app-provider";
+import type { Match } from "@/lib/api/models";
 import { useApi } from "./use-api";
 
 export type Standing = {
@@ -10,6 +11,7 @@ export type Standing = {
   placedIn: string | null; // title of the project the student is registered to
   reason: string; // one sentence for banners and disabled actions; "" when not view only
   loading: boolean;
+  match: Match | null; // the student's latest visible match (offer, accepted, declined or timed out)
 };
 
 export function useStanding(): Standing {
@@ -23,5 +25,5 @@ export function useStanding(): Standing {
     : ineligible
       ? "You declined or did not answer an earlier offer, so you cannot apply or propose again this cycle."
       : "";
-  return { viewOnly: !!placedIn || ineligible, placedIn, reason, loading: isStudent && match.loading };
+  return { viewOnly: !!placedIn || ineligible, placedIn, reason, loading: isStudent && match.loading, match: match.data ?? null };
 }

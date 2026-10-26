@@ -2,10 +2,14 @@
 /** "Uri's picks": the recommendation panel at the top of Browse. REQ-BROWSE-4.
  *  Shows the best three projects for the student, each with its match score, the reasons behind it and a
  *  breakdown (interests, readiness, chance). The scoring is transparent on purpose: "How it works" explains it,
- *  and supervisors never see these scores. States: loading, no interests yet, nothing fits, placed. */
+ *  and supervisors never see these scores. Picks exist only in an application window. Outside one Uri reports where
+ *  the cycle is instead: early (no cycle yet, or pre-application), round under review, waiting for results, results
+ *  out (an offer to respond to, or not matched), or cycle closed.
+ *  States: early, review, waiting, results, closed, loading, no interests yet, nothing fits, placed. */
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { I } from "@/components/shell/icons";
+import { fmtDateTime } from "@/components/ui";
 import type { Recommendation } from "@/lib/api/models";
 import { Uri, type UriMood } from "./uri";
 
@@ -27,6 +31,12 @@ type Props = {
   interests: string[];
   picks: Recommendation[] | null; // null while loading
   placedIn: string | null;
+  window?: string; // the cycle's current window (me.phase.window)
+  phaseLabel?: string; // me.phase.label, e.g. "Applications open 25 Aug, 5:00 pm SGT"
+  roundNumber?: number | null;
+  appliedThisRound?: boolean; // whether the student applied in the current round
+  offer?: { title: string; expires: string | null } | null; // an offer the student has not answered yet
+  nextRound?: { number: number; rollover: boolean } | null; // the round after the current one, if any
   onShowAll?: () => void;
 };
 
@@ -53,7 +63,7 @@ function Ambient({ scale = 1, radius = 28 }: { scale?: number; radius?: number }
 /** Fixed sparkle positions around Uri ([left %, top %, size px, delay s]), so server and browser render alike. */
 const STARS = [[3, 14, 3, 0], [15, 6, 2, 1.2], [20, 30, 2.5, 2.1], [2, 52, 2, 0.6], [19, 70, 3, 1.7], [7, 86, 2, 2.6], [23, 88, 2, 0.3], [11, 40, 1.5, 3]] as const;
 
-export function UriPicks({ name, interests, picks, placedIn, onShowAll }: Props) {
+export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow, phaseLabel, roundNumber, appliedThisRound, offer, nextRound, onShowAll }: Props) {
   const hidden = useSyncExternalStore(hiddenStore.subscribe, hiddenStore.get, () => false);
   const hide = hiddenStore.set;
   const [explain, setExplain] = useState(false);
@@ -62,15 +72,24 @@ export function UriPicks({ name, interests, picks, placedIn, onShowAll }: Props)
   const parts = name.trim().split(/\s+/);
   const first = (parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0]) || "there";
   const top = (picks ?? []).slice(0, 3);
-  const state: "loading" | "placed" | "setup" | "none" | "picks" =
-    placedIn ? "placed" : !interests.length ? "setup" : picks === null ? "loading" : top.length ? "picks" : "none";
+  const pickable = !cycleWindow || cycleWindow === "application";
+  const outside = { before_cycle: "early", pre_application: "early", review: "review", awaiting_results: "waiting", results: "results", closed: "closed" } as const;
+  const state: "loading" | "placed" | "early" | "review" | "waiting" | "results" | "closed" | "setup" | "none" | "picks" =
+    placedIn ? "placed"
+    : !pickable ? outside[cycleWindow as keyof typeof outside] ?? "early"
+    : !interests.length ? "setup" : picks === null ? "loading" : top.length ? "picks" : "none";
 
-  const mood: UriMood = state === "loading" ? "think" : state === "placed" ? "cheer" : state === "picks" ? "wave" : "idle";
+  const mood: UriMood = state === "loading" ? "think" : (state === "placed" || (state === "results" && offer)) ? "cheer" : state === "picks" || state === "early" ? "wave" : "idle";
   const topics = interests.slice(0, 2).join(" and ");
   const glowText = (t: string) => <span className="bg-gradient-to-r from-[#0071e3] to-[#7c5cf6] bg-clip-text text-transparent">{t}</span>;
   const headline = {
     loading: <>Finding your {glowText("best matches")}…</>,
     placed: <>You&apos;re in, {glowText(first)}!</>,
+    early: <>You&apos;re {glowText("early")}, {first}!</>,
+    review: <>Round {roundNumber} is under {glowText("review")}</>,
+    waiting: <>Waiting for Round {roundNumber} {glowText("results")}</>,
+    results: offer ? <>Round {roundNumber} results are {glowText("out")}, {first}!</> : <>Round {roundNumber} results are {glowText("out")}</>,
+    closed: <>This cycle has {glowText("closed")}</>,
     setup: <>Let&apos;s find {glowText("your project")}, {first}</>,
     none: <>Nothing fits {glowText("just yet")}</>,
     picks: <>{glowText(`${top.length} ${top.length === 1 ? "project" : "projects"}`)} picked for you</>,
@@ -78,6 +97,17 @@ export function UriPicks({ name, interests, picks, placedIn, onShowAll }: Props)
   const line = {
     loading: `Hi ${first}! I'm reading through every open project for you.`,
     placed: `You're registered to ${placedIn}. Enjoy the research, and see you next cycle.`,
+    early: `${cycleWindow === "pre_application" && phaseLabel ? phaseLabel : "No application cycle is open yet"}. Browse and shortlist projects now, and I'll pick the ones that fit you once applications open.`,
+    review: "Applications are closed and supervisors are ranking their applicants. Results come after matching, and I'll tell you here as soon as they are out.",
+    waiting: "The rankings are in and the URECA office is finalising the matches. Check back soon, the news will show up here.",
+    results: offer
+      ? `You have an offer for ${offer.title}.${offer.expires ? ` Respond by ${fmtDateTime(offer.expires)} in My applications.` : " Respond in My applications."}`
+      : appliedThisRound
+        ? `You were not matched to a project in Round ${roundNumber}. ${nextRound
+          ? nextRound.rollover ? `Your applications carry over to Round ${nextRound.number}, where you can reorder or withdraw them.` : `You can apply again in Round ${nextRound.number}.`
+          : "There are no more rounds this cycle."}`
+        : `You did not apply in Round ${roundNumber}. ${nextRound ? `Round ${nextRound.number} is next, and I'll pick projects for you when it opens.` : "There are no more rounds this cycle."}`,
+    closed: "Thanks for taking part. Projects stay open for browsing until the next cycle starts.",
     setup: "Tell me which topics you're into and I'll pick the projects that fit you best.",
     none: `No open project is tagged ${topics} right now. Add a few more interests, or explore everything below.`,
     picks: `Hi ${first}! These fit your interest in ${topics} best, scored on topics, courses and competition.`,
@@ -150,6 +180,13 @@ export function UriPicks({ name, interests, picks, placedIn, onShowAll }: Props)
                   </button>
                 )}
               </>
+            )}
+            {state === "results" && (offer || appliedThisRound) && (
+              <div className="mt-6">
+                <Link href="/my-applications" className="inline-flex items-center gap-2 h-11 px-6 rounded-pill bg-[#1c2566] !text-white text-[14.5px] font-semibold shadow-[0_10px_24px_-10px_rgba(28,37,102,0.7)] hover:brightness-110">
+                  <Spark size={14} /> {offer ? "See my offer" : "See my applications"}
+                </Link>
+              </div>
             )}
             {(state === "setup" || state === "none") && (
               <div className="mt-6">
