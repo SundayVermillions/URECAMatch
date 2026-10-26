@@ -21,11 +21,11 @@ def when(moment: datetime) -> str:
 
 
 def current_round(cycle: Cycle, now: datetime) -> Round | None:
-    """The round whose application or review window contains `now`. Between rounds, the latest round that has
-    started: its matching, results and offers are what is happening until the next round opens.
+    """The round whose application, review or approval window contains `now`. Between rounds, the latest round that
+    has started: its results and offers are what is happening until the next round opens.
     Before Round 1, the first round."""
     for r in cycle.rounds:
-        if r.application_start <= now <= r.review_end:
+        if r.application_start <= now <= r.approval_end:
             return r
     started = [r for r in cycle.rounds if r.application_start <= now]
     if started:
@@ -43,6 +43,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.before_cycle,
             window_ends_at=None,
             label="No application cycle is open",
+            now=now,
         )
     if now > cycle.closing_date:
         return Phase(
@@ -52,6 +53,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.closed,
             window_ends_at=None,
             label="The application cycle has closed",
+            now=now,
         )
     r = current_round(cycle, now)
     if r is None or now < cycle.rounds[0].application_start:
@@ -64,6 +66,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.pre_application,
             window_ends_at=ends,
             label=f"Applications open {when(ends)}",
+            now=now,
         )
     if r.application_start <= now <= r.application_end:
         return Phase(
@@ -73,6 +76,7 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.application,
             window_ends_at=r.application_end,
             label=f"Round {r.number} closes {when(r.application_end)}",
+            now=now,
         )
     if r.review_start <= now <= r.review_end:
         return Phase(
@@ -82,6 +86,17 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             window=Window.review,
             window_ends_at=r.review_end,
             label=f"Round {r.number} rankings due {when(r.review_end)}",
+            now=now,
+        )
+    if r.review_end < now <= r.approval_end:  # REQ-APPRV-4
+        return Phase(
+            cycle_id=cycle.id,
+            round_id=r.id,
+            round_number=r.number,
+            window=Window.approval,
+            window_ends_at=r.approval_end,
+            label=f"Round {r.number} results out {when(r.approval_end)}",
+            now=now,
         )
     if r.published_at is None:
         return Phase(
@@ -89,11 +104,11 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_id=r.id,
             round_number=r.number,
             window=Window.awaiting_results,
-            window_ends_at=None,  # ends when an admin publishes; no fixed date to count down to
+            window_ends_at=None,  # only until the scheduler publishes, on the next request after approval_end
             label=f"Round {r.number} results pending",
+            now=now,
         )
-    nxt = next((x for x in cycle.rounds if x.number == r.number + 1), None)
-    responds_by = nxt.review_start if nxt else cycle.closing_date  # offer response deadline (same rule as publish())
+    responds_by = offer_deadline(cycle, r, now) or cycle.closing_date
     return Phase(
         cycle_id=cycle.id,
         round_id=r.id,
@@ -101,13 +116,23 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
         window=Window.results,
         window_ends_at=responds_by,
         label=f"Round {r.number} results published",
+        now=now,
     )
+
+
+def offer_deadline(cycle: Cycle, r: Round, now: datetime) -> datetime | None:
+    """REQ-OUTCOME-3: a student answers an offer from round `r` by the end of the next application window that has
+    not closed yet, so a late offer still gets a real window. After the last round, the cycle's closing date.
+    None once the cycle has closed: no offer can be made then."""
+    later = sorted(x.application_end for x in cycle.rounds if x.number > r.number and x.application_end > now)
+    deadline = later[0] if later else cycle.closing_date
+    return deadline if deadline > now else None
 
 
 def cycle_closed(cycle: Cycle | None, now: datetime) -> bool:
     """Whether nothing may be scheduled for this cycle any more: it has no cycle, an admin closed it, or its closing
     date has passed. A cycle can be past its closing date while its status still says in progress (the seeded one
-    is), and the scheduler must not run for it then."""
+    is), and the schedule must not run for it then."""
     return cycle is None or cycle.status == CycleStatus.closed or now > cycle.closing_date
 
 

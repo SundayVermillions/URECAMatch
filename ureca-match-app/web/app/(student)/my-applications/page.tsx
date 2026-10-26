@@ -5,7 +5,7 @@ import { useState } from "react";
 import { PageTitle } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Empty, IconButton, Loading, Modal, Status, fmtDate } from "@/components/ui";
+import { Banner, Button, Empty, IconButton, Loading, Modal, Status, fmtDate, fmtDeadline } from "@/components/ui";
 import { ApiError, type Match } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 import { useStanding } from "@/lib/use-standing";
@@ -49,13 +49,18 @@ export default function MyApplications() {
   const m = offer.data;
   const offerRound = m ? cycle.data?.rounds.find((r) => r.id === m.round_id)?.number : undefined;
   const proposalList = proposals.data ?? [];
+  // REQ-OUTCOME-3: an offer can be answered until its deadline while the cycle is open. The server may not have timed a
+  // lapsed offer out yet, so the card compares the deadline with the server's clock (phase.now), not the browser's.
+  const lapsed = m?.status === "published" && !!me && !!m.offer_expires_at && Date.parse(me.phase.now) > Date.parse(m.offer_expires_at);
+  const cycleOver = me?.phase.window === "closed" || me?.phase.window === "before_cycle";
+  const answerable = m?.status === "published" && !lapsed && !cycleOver;
 
   return (
     <>
       <PageTitle title="My applications" status={me?.phase.label} open={canEdit} />
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
 
-      {m && <OfferCard m={m} round={offerRound} cover={cover(m.listing_id)} onAccept={() => setConfirm("accept")} onDecline={() => setConfirm("decline")} />}
+      {m && <OfferCard m={m} round={offerRound} cover={cover(m.listing_id)} answerable={answerable} lapsed={lapsed} onAccept={() => setConfirm("accept")} onDecline={() => setConfirm("decline")} />}
 
       {/* A student who has a project has nothing left to rank, so the section is left out. */}
       {!standing.placedIn && <>
@@ -163,7 +168,7 @@ function Row({ lead, title, meta, muted, children }: { lead?: React.ReactNode; t
 }
 
 /** The match offer, first thing on the page: pale blue while it waits for an answer, green once accepted. */
-function OfferCard({ m, round, cover, onAccept, onDecline }: { m: Match; round?: number; cover: string | null; onAccept: () => void; onDecline: () => void }) {
+function OfferCard({ m, round, cover, answerable, lapsed, onAccept, onDecline }: { m: Match; round?: number; cover: string | null; answerable: boolean; lapsed: boolean; onAccept: () => void; onDecline: () => void }) {
   const waiting = m.status === "published", accepted = m.status === "accepted";
   const tint = accepted ? "from-[#eaf8ef] via-white to-[#f1fbf5]" : waiting ? "from-[#e8f1ff] via-white to-[#f1ebff]" : "from-[#f3f3f5] via-white to-[#f7f7f9]";
   return (
@@ -182,15 +187,18 @@ function OfferCard({ m, round, cover, onAccept, onDecline }: { m: Match; round?:
         <Status value={m.status} />
       </div>
 
-      {waiting && (
+      {waiting && answerable && (
         <>
-          <div className="mt-5 inline-flex items-center gap-2 text-[14px] font-medium text-text"><I.Calendar size={15} /> Respond by {fmtDate(m.offer_expires_at)}</div>
+          <div className="mt-5 inline-flex items-center gap-2 text-[14px] font-medium text-text"><I.Calendar size={15} /> Respond by {fmtDeadline(m.offer_expires_at)}</div>
           <div className="mt-5 flex items-center gap-3">
             <Button onClick={onAccept} className="rounded-pill px-6 h-11">Accept offer</Button>
             <Button variant="secondary" onClick={onDecline} className="rounded-pill px-6 h-11">Decline</Button>
           </div>
-          <p className="mt-4 text-[12.5px] leading-[1.5] text-faint max-w-[560px]">Declining reopens the slot and ends your applications this cycle. No reply by the deadline counts as a decline.</p>
+          <p className="mt-4 text-[12.5px] leading-[1.5] text-faint max-w-[560px]">You cannot apply to other projects while this offer is open. Declining reopens the slot and ends your applications this cycle. No reply by the deadline counts as a decline.</p>
         </>
+      )}
+      {waiting && !answerable && (
+        <p className="mt-4 text-[14px] text-muted">{lapsed ? <>The deadline to respond passed on <strong>{fmtDeadline(m.offer_expires_at)}</strong>, so this offer can no longer be answered.</> : "The application cycle has closed, so this offer can no longer be answered."}</p>
       )}
       {accepted && <p className="mt-4 text-[14px] text-good-ink">You are registered to this project. Your other applications this cycle are withdrawn.</p>}
       {(m.status === "declined" || m.status === "timed_out") && (

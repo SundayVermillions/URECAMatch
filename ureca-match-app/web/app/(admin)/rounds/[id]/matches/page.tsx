@@ -1,16 +1,17 @@
 "use client";
 /** ReviewMatchingResults (4.4), PublishResults (4.5), ManualAssignStudent (4.6). Screen: MatchingAwaitPublishPage.
  *  Status chips filter the matches (REQ-REV-1); "Unmatched" lists the round's applicants without a match, each with
- *  Manual assign (REQ-ASSIGN-1). Unassign takes a student off a project so they can be placed again (REQ-ASSIGN-3). */
+ *  Manual assign (REQ-ASSIGN-1). Unassign takes a student off a project so they can be placed again (REQ-ASSIGN-3).
+ *  Results publish by themselves when the approval window closes (REQ-PUB-3), so there is no Publish button. */
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
-import { Avatar, Banner, Button, Chip, Empty, Field, Loading, Modal, Progress, Select, Status, Textarea } from "@/components/ui";
+import { Avatar, Banner, Button, Chip, Empty, Field, Loading, Modal, Select, Status, Textarea, fmtDeadline, statusLabel } from "@/components/ui";
 import { ApiError, type Match, type MatchStatus, type UserListItem } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
-const STATUSES: MatchStatus[] = ["proposed", "approved", "rejected", "reassigned", "published", "accepted", "declined", "timed_out"];
-const label = (v: string) => (v[0].toUpperCase() + v.slice(1)).replace("_", " ");
+// The chips name each status exactly as its pill does (SRS 3.1.6): "Rejected" is the supervisor's, "Declined" the student's.
+const STATUSES: MatchStatus[] = ["proposed", "rejected", "reassigned", "published", "accepted", "declined", "timed_out"];
 const PLACES: MatchStatus[] = ["proposed", "approved", "reassigned", "published", "accepted"]; // a match that holds the student
 
 export default function ReviewMatches() {
@@ -27,10 +28,8 @@ export default function ReviewMatches() {
   const [target, setTarget] = useState("");
   const [why, setWhy] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
-  const [confirmPublish, setConfirmPublish] = useState(false);
   const s = summary.data;
   const published = !!s?.round.published_at;
-  const executed = !!s?.round.executed_at; // REQ-PUB-1: nothing to publish before matching runs
 
   const reloadAll = () => { matches.reload(); summary.reload(); unmatched.reload(); listings.reload(); };
   const closeModals = () => { setReassign(null); setAssign(null); setUnassign(null); setWhy(""); setTarget(""); setError(null); };
@@ -41,10 +40,6 @@ export default function ReviewMatches() {
   const doReassign = () => reassign && run(() => call((api) => api.reassign(reassign.id, { listing_id: target, justification: why })));
   const doAssign = () => assign && run(() => call((api) => api.manualAssign(id, { student_id: assign.user.id, listing_id: target, justification: why })));
   const doUnassign = () => unassign && run(() => call((api) => api.unassign(unassign.id, why)));
-  async function publish() {
-    setError(null);
-    try { summary.setData(await call((api) => api.publish(id))); matches.reload(); unmatched.reload(); } catch (e) { setError(e as ApiError); } finally { setConfirmPublish(false); }
-  }
   // The API also counts slots held by pending matches and open offers; this list is a first filter.
   const projectOptions = (exclude?: string) => (listings.data ?? []).filter((l) => l.id !== exclude && l.filled_slots < l.available_slots)
     .map((l) => <option key={l.id} value={l.id}>{l.title} · {l.available_slots - l.filled_slots} open</option>);
@@ -57,18 +52,18 @@ export default function ReviewMatches() {
 
   return (
     <>
-      <PageHeader title={`Round ${s?.round.number ?? ""} matches`} back={{ href: "/rounds", label: "Back to matching rounds" }} description={s ? (published ? `${s.matched} matches · results published; unassign or assign students here if needed` : `${s.matched} proposed · reassign any match before publishing`) : ""}
+      <PageHeader title={`Round ${s?.round.number ?? ""} matches`} back={{ href: "/rounds", label: "Back to matching rounds" }} description={s ? (published ? `${s.matched} matches · results published; unassign or assign students here if needed` : `${s.matched} matched · supervisors can decline until ${fmtDeadline(s.round.approval_end)}`) : ""}
         right={s && (
           <div className="flex items-center gap-3.5">
-            <div className="w-56"><div className="flex justify-between text-[12px] mb-1"><span className="text-muted font-semibold">Supervisor decisions</span><span className="font-bold tabular">{s.approvals_done} / {s.approvals_total}</span></div><Progress value={s.approvals_done} max={s.approvals_total} /></div>
-            {published ? <Status value="published" kind="round" /> : <Button disabled={!executed} title={executed ? undefined : "Run matching for this round first"} onClick={() => setConfirmPublish(true)}>Publish results</Button>}
+            {!published && <div className="text-right"><div className="text-[12px] text-muted font-semibold">Rejected by supervisors</div><div className="font-bold tabular">{s.declined}</div></div>}
+            {published ? <Status value="published" kind="round" /> : <span className="text-[12.5px] text-muted max-w-[200px]">Publishes automatically at {fmtDeadline(s.round.approval_end)}</span>}
           </div>
         )} />
       {error && !reassign && !assign && !unassign && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
       <div className="flex items-center gap-1.5 mb-4 flex-wrap">
         <span className="eyebrow">Status</span>
         <Chip active={status === undefined} onClick={() => setStatus(undefined)}>All</Chip>
-        {STATUSES.map((v) => <Chip key={v} active={status === v} onClick={() => setStatus(v)}>{label(v)}</Chip>)}
+        {STATUSES.map((v) => <Chip key={v} active={status === v} onClick={() => setStatus(v)}>{statusLabel(v)}</Chip>)}
         <Chip active={status === "unmatched"} onClick={() => setStatus("unmatched")}>Unmatched{unmatched.data ? ` (${unmatched.data.length})` : ""}</Chip>
       </div>
 
@@ -85,7 +80,7 @@ export default function ReviewMatches() {
             ))}
           </div>
         )
-      ) : matches.loading && !matches.data ? <Loading /> : !matches.data?.length ? <Empty title="No matches" note={status ? "Nothing with this status." : "Run matching first."} /> : (
+      ) : matches.loading && !matches.data ? <Loading /> : !matches.data?.length ? <Empty title="No matches" note={status ? "Nothing with this status." : "Matching runs automatically when the round's review window closes."} /> : (
         <div className="bg-surface border border-border rounded-card overflow-hidden">
           <div className="flex items-center gap-3.5 px-4 py-2.5 border-b border-border eyebrow"><span className="flex-1">Student → project</span><span className="w-32">Status</span><span className="w-44" /></div>
           {matches.data.map((m) => (
@@ -121,7 +116,7 @@ export default function ReviewMatches() {
       <Modal open={!!assign} onClose={closeModals} title={`Manually assign ${assign?.user.name}`} footer={<><Button variant="secondary" onClick={closeModals}>Cancel</Button><Button disabled={!target || why.trim().length < 10} onClick={doAssign}>Assign</Button></>}>
         <div className="flex flex-col gap-3 text-text">
           {modalError}
-          <div className="text-[13px] text-muted">{published ? "Results are already published, so the student gets the offer straight away." : "The match is published with the rest of the round."} No supervisor approval is needed.</div>
+          <div className="text-[13px] text-muted">{published ? "Results are already published, so the student gets the offer straight away." : "The student is offered this project with the rest of the round when the approval window closes."} The supervisor cannot decline a manual assignment.</div>
           <Field label="Project" error={error?.field === "listing_id" ? error.message : null}>
             <Select id="assign-target" value={target} onChange={(e) => setTarget(e.target.value)}><option value="">Choose a project with an open slot</option>{projectOptions()}</Select>
           </Field>
@@ -134,9 +129,6 @@ export default function ReviewMatches() {
           <div className="text-[13px] text-muted">{unassign?.student_name} is taken off {unassign?.listing_title} and the slot opens again. {unassign?.status === "accepted" ? "They had accepted, so they return to the pool and can be assigned elsewhere. " : ""}The student and supervisor are told.</div>
           {whyField("Required, at least 10 characters. Recorded in the audit log.")}
         </div>
-      </Modal>
-      <Modal open={confirmPublish} onClose={() => setConfirmPublish(false)} title="Publish results?" footer={<><Button variant="secondary" onClick={() => setConfirmPublish(false)}>Not yet</Button><Button onClick={publish}>Publish</Button></>}>
-        Every matched student receives their offer and the round is locked. Matches still awaiting a supervisor decision block publishing.
       </Modal>
     </>
   );

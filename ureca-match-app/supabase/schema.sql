@@ -8,7 +8,7 @@ create extension if not exists "pgcrypto";
 create type role as enum ('student', 'supervisor', 'admin');
 create type account_status as enum ('pending_verification', 'active', 'inactive');
 create type cycle_status as enum ('draft', 'pre_application', 'in_progress', 'closed');
-create type round_status as enum ('scheduled', 'application_window', 'review_window', 'awaiting_publication', 'published', 'completed');
+create type round_status as enum ('scheduled', 'application_window', 'review_window', 'approval_window', 'awaiting_publication', 'published', 'completed');
 create type listing_status as enum ('draft', 'published', 'closed');
 create type application_status as enum ('submitted', 'withdrawn', 'matched', 'unmatched');
 create type proposal_status as enum ('submitted', 'accepted', 'declined', 'withdrawn');
@@ -86,11 +86,13 @@ create table matching_rounds (
   application_end   timestamptz not null,
   review_start      timestamptz not null,
   review_end        timestamptz not null,
+  approval_end      timestamptz not null,                           -- REQ-APPRV-4, 5: supervisors may decline until here
   status            round_status not null default 'scheduled',
   executed_at       timestamptz,                                    -- REQ-EXEC-2: set once
   published_at      timestamptz,
   unique (cycle_id, number),
-  check (application_start < application_end and application_end < review_start and review_start < review_end)
+  check (application_start < application_end and application_end < review_start and review_start < review_end
+         and review_end < approval_end)
 );
 
 -- ------------------------------------------------------------------ reference lists (slice B)
@@ -233,6 +235,11 @@ create table notifications (
 create index on notifications (user_id, created_at desc);          -- REQ-NOTIF-1
 
 -- ------------------------------------------------------------------ audit (append only)
+-- REQ-AUDIT-3: the actor for actions the system takes on its own (matching, publishing). Inactive, with no
+-- password and no Supabase Auth account, so nobody can sign in as it.
+insert into users (id, email, name, role, status) values ('system', 'system@urecamatch.app', 'System', 'admin', 'inactive')
+  on conflict (id) do nothing;
+
 create table audit_log (
   id               text primary key,
   operation        audit_operation not null,

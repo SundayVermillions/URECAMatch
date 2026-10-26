@@ -1130,7 +1130,7 @@
           "listings"
         ],
         "summary": "Recommendations",
-        "description": "REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.\nEmpty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).\nProjects already applied to or with no open slot are left out.",
+        "description": "REQ-BROWSE-4: published projects that fit the student, best first, each with a score and its reasons.\nOnly during an application window, when a student can act on them: not before the cycle opens, in the\npre-application period, between rounds or after the cycle.\nEmpty when the student has no research interests yet, or cannot apply this cycle (placed or ineligible).\nProjects already applied to or with no open slot are left out.",
         "operationId": "recommendations_me_recommendations_get",
         "parameters": [
           {
@@ -3455,6 +3455,7 @@
           "admin: cycle"
         ],
         "summary": "Update Cycle",
+        "description": "REQ-CYCLE-2, 3: change the cycle's dates. Rounds that have not started move with the opening date and the\npre-application window, keeping their spacing (NFR 5.4.3).",
         "operationId": "update_cycle_admin_cycles__cycle_id__put",
         "parameters": [
           {
@@ -3689,7 +3690,7 @@
           "admin: cycle"
         ],
         "summary": "Set Rounds",
-        "description": "Build the rounds from their window lengths and optional start dates (REQ-ROUND-1, use case 1-2), and reject\nrounds that overlap or fall outside the cycle (REQ-ROUND-3). A round without a start date opens 4 days after\nthe previous one ends; Round 1 opens when the pre-application window ends.",
+        "description": "REQ-ROUND-1..3, use case 1-2: replace the rounds and keep the cycle's dates.",
         "operationId": "set_rounds_admin_cycles__cycle_id__rounds_put",
         "parameters": [
           {
@@ -3768,21 +3769,22 @@
         }
       }
     },
-    "/admin/rounds/{round_id}/execute": {
-      "post": {
+    "/admin/cycles/{cycle_id}/schedule": {
+      "put": {
         "tags": [
-          "matching"
+          "admin: cycle"
         ],
-        "summary": "Execute",
-        "operationId": "execute_admin_rounds__round_id__execute_post",
+        "summary": "Save Schedule",
+        "description": "Use case 1-1 step 5, 1-2: Cycle settings sends the cycle's dates and its rounds in one request, so they are\nchecked as one schedule and either all of it is saved or, if a check fails, none of it.",
+        "operationId": "save_schedule_admin_cycles__cycle_id__schedule_put",
         "parameters": [
           {
-            "name": "round_id",
+            "name": "cycle_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Round Id"
+              "title": "Cycle Id"
             }
           },
           {
@@ -3818,13 +3820,23 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoundSummary"
+                  "$ref": "#/components/schemas/Cycle"
                 }
               }
             }
@@ -4342,80 +4354,6 @@
         }
       }
     },
-    "/admin/rounds/{round_id}/publish": {
-      "post": {
-        "tags": [
-          "matching"
-        ],
-        "summary": "Publish",
-        "operationId": "publish_admin_rounds__round_id__publish_post",
-        "parameters": [
-          {
-            "name": "round_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Round Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "x-demo-user",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RoundSummary"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/admin/audit": {
       "get": {
         "tags": [
@@ -4646,97 +4584,14 @@
         }
       }
     },
-    "/supervisor/matches/{match_id}/approve": {
+    "/supervisor/matches/{match_id}/decline": {
       "post": {
         "tags": [
           "matching"
         ],
-        "summary": "Approve",
-        "operationId": "approve_supervisor_matches__match_id__approve_post",
-        "parameters": [
-          {
-            "name": "match_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Match Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "x-demo-user",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MatchDecision"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Match"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/supervisor/matches/{match_id}/reject": {
-      "post": {
-        "tags": [
-          "matching"
-        ],
-        "summary": "Reject",
-        "operationId": "reject_supervisor_matches__match_id__reject_post",
+        "summary": "Decline Match",
+        "description": "REQ-APPRV-2, 4: during the approval window a supervisor may decline a student matched to their project.\nMatches they leave alone are offered when the window closes; there is nothing to approve.",
+        "operationId": "decline_match_supervisor_matches__match_id__decline_post",
         "parameters": [
           {
             "name": "match_id",
@@ -4820,6 +4675,7 @@
           "matching"
         ],
         "summary": "My Match",
+        "description": "The student's latest match result: in the active cycle, or in the latest cycle once every cycle is closed.",
         "operationId": "my_match_me_match_get",
         "parameters": [
           {
@@ -5023,7 +4879,7 @@
           "matching"
         ],
         "summary": "Tick",
-        "description": "Called daily by Vercel Cron and whenever an admin opens Matching Rounds.\nAdvances round statuses and times out unanswered offers (REQ-OUTCOME-3, 4).",
+        "description": "Called by Vercel Cron daily at 5:05 pm SGT, just after windows open and close, and whenever an admin opens\nMatching Rounds. In Supabase mode this is what moves the schedule. Unlike keep_schedule, a failing step fails this\ncall, so the cron log shows it.",
         "operationId": "tick_internal_tick_post",
         "parameters": [
           {
@@ -7470,6 +7326,11 @@
           "label": {
             "type": "string",
             "title": "Label"
+          },
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
           }
         },
         "type": "object",
@@ -7479,7 +7340,8 @@
           "round_number",
           "window",
           "window_ends_at",
-          "label"
+          "label",
+          "now"
         ],
         "title": "Phase"
       },
@@ -7866,6 +7728,11 @@
             "format": "date-time",
             "title": "Review End"
           },
+          "approval_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Approval End"
+          },
           "status": {
             "$ref": "#/components/schemas/RoundStatus"
           },
@@ -7892,21 +7759,6 @@
               }
             ],
             "title": "Published At"
-          },
-          "eligible_students": {
-            "type": "integer",
-            "title": "Eligible Students",
-            "default": 0
-          },
-          "open_slots": {
-            "type": "integer",
-            "title": "Open Slots",
-            "default": 0
-          },
-          "reopened_slots": {
-            "type": "integer",
-            "title": "Reopened Slots",
-            "default": 0
           }
         },
         "type": "object",
@@ -7918,6 +7770,7 @@
           "application_end",
           "review_start",
           "review_end",
+          "approval_end",
           "status"
         ],
         "title": "Round"
@@ -7941,6 +7794,13 @@
             "maximum": 7.0,
             "minimum": 1.0,
             "title": "Review Days"
+          },
+          "approval_days": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Approval Days",
+            "default": 2
           },
           "start_date": {
             "anyOf": [
@@ -7969,6 +7829,7 @@
           "scheduled",
           "application_window",
           "review_window",
+          "approval_window",
           "awaiting_publication",
           "published",
           "completed"
@@ -7979,6 +7840,14 @@
         "properties": {
           "round": {
             "$ref": "#/components/schemas/Round"
+          },
+          "eligible": {
+            "type": "integer",
+            "title": "Eligible"
+          },
+          "open_slots": {
+            "type": "integer",
+            "title": "Open Slots"
           },
           "matched": {
             "type": "integer",
@@ -8003,24 +7872,21 @@
             ],
             "title": "Avg Preference"
           },
-          "approvals_done": {
+          "declined": {
             "type": "integer",
-            "title": "Approvals Done"
-          },
-          "approvals_total": {
-            "type": "integer",
-            "title": "Approvals Total"
+            "title": "Declined"
           }
         },
         "type": "object",
         "required": [
           "round",
+          "eligible",
+          "open_slots",
           "matched",
           "unmatched",
           "excluded",
           "avg_preference",
-          "approvals_done",
-          "approvals_total"
+          "declined"
         ],
         "title": "RoundSummary"
       },
@@ -8046,6 +7912,64 @@
         ],
         "title": "RoundsUpdate",
         "description": "Admin defines up to three sequential rounds (REQ-ROUND-1)."
+      },
+      "ScheduleUpdate": {
+        "properties": {
+          "opening_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Date"
+          },
+          "closing_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closing Date"
+          },
+          "pre_application_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pre Application Days"
+          },
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/RoundSpec"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Rounds"
+          },
+          "rollover_unmatched": {
+            "type": "boolean",
+            "title": "Rollover Unmatched",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "rounds"
+        ],
+        "title": "ScheduleUpdate",
+        "description": "Use case 1-1, 1-2: the cycle's dates and its rounds, checked as one schedule and saved together or not at all.\nA date left empty keeps its current value."
       },
       "Session": {
         "properties": {
@@ -8555,6 +8479,7 @@
           "pre_application",
           "application",
           "review",
+          "approval",
           "awaiting_results",
           "results",
           "closed"

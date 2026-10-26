@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
-import { Banner, Button, Card, DeadlineChip, Loading, Stat, Status, fmtDate } from "@/components/ui";
+import { Banner, Button, Card, DeadlineChip, Loading, Stat, Status, fmtDate, fmtDeadline } from "@/components/ui";
 import type { Cycle, Phase } from "@/lib/api/models";
 import { useApi } from "@/lib/use-api";
 
@@ -21,11 +21,11 @@ function RoundBanner({ phase, cycle }: { phase: Phase; cycle: Cycle | null }) {
     case "application":
       return <Banner tone="accent" title={`Round ${n} is open for applications.`} action={link("/rounds", "View rounds")}>Applications close {by}. Supervisors rank applicants after that.</Banner>;
     case "review":
-      return <Banner tone="warn" title={`Round ${n} review window.`} action={link("/rounds", "View rounds")}>Supervisors submit rankings until {by}. Run matching once the window ends.</Banner>;
+      return <Banner tone="accent" title={`Round ${n} review window.`} action={link("/rounds", "View rounds")}>Supervisors submit rankings until {by}. Matching runs automatically when the window ends.</Banner>;
+    case "approval": // REQ-APPRV-4
+      return <Banner tone="warn" title={`Round ${n} approval window.`} action={round && link(`/rounds/${round.id}/matches`, "Review matches")}>Matching has run. Supervisors can decline matched students until {fmtDeadline(phase.window_ends_at)}. Results publish automatically.</Banner>;
     case "awaiting_results":
-      return round?.executed_at
-        ? <Banner tone="warn" title={`Round ${n} matching has run.`} action={link(`/rounds/${round.id}/matches`, "Review matches")}>Check supervisor approvals, then publish the results.</Banner>
-        : <Banner tone="warn" title={`Round ${n} is ready for matching.`} action={link("/rounds", "Run matching")}>The review window has ended. Execute matching to propose matches.</Banner>;
+      return <Banner tone="accent" title={`Round ${n} results are being published.`}>This happens automatically when the approval window closes.</Banner>;
     case "results":
       return <Banner tone="good" title={`Round ${n} results published.`} action={round && link(`/rounds/${round.id}/matches`, "View matches")}>Students can accept or decline their offers.</Banner>;
     case "closed":
@@ -48,7 +48,7 @@ export default function AdminDashboardPage() {
         <Stat label="Supervisors" value={data.supervisors} />
         <Stat label="Published listings" value={data.listings_published} />
         <Stat label="Applications this round" value={data.applications_this_round} />
-        <Stat label="Pending approvals" value={data.pending_approvals} tone={data.pending_approvals ? "bad" : undefined} />
+        <Stat label="In approval window" value={data.pending_approvals} />
       </div>
       <Card>
         <div className="flex items-center justify-between mb-3"><h2>Rounds</h2><Link href="/rounds"><Button size="sm" variant="soft">Manage rounds</Button></Link></div>
@@ -56,7 +56,7 @@ export default function AdminDashboardPage() {
           {(data.cycle?.rounds ?? []).map((r) => (
             <div key={r.id} className="border border-border rounded-row p-3.5">
               <div className="flex items-center gap-2"><span className="font-display font-bold">Round {r.number}</span><span className="ml-auto"><Status value={r.status} kind="round" /></span></div>
-              <div className="text-[12px] text-muted mt-2">Apply {fmtDate(r.application_start)} to {fmtDate(r.application_end)} · review to {fmtDate(r.review_end)}</div>
+              <div className="text-[12px] text-muted mt-2">Apply {fmtDate(r.application_start)} to {fmtDate(r.application_end)} · review to {fmtDate(r.review_end)} · approvals to {fmtDate(r.approval_end)}</div>
             </div>
           ))}
         </div>

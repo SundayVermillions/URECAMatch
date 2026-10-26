@@ -6,11 +6,11 @@
  *  the cycle is instead: early (no cycle yet, or pre-application), round under review, waiting for results, results
  *  out (an offer to respond to, or not matched), or cycle closed.
  *  A student who declined or missed an offer gets a sad Uri and a kind explanation instead of a banner.
- *  States: early, review, waiting, results, closed, loading, no interests yet, nothing fits, placed, out. */
+ *  States: early, review, waiting, results, closed, loading, no interests yet, nothing fits, placed, out, offer. */
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { I } from "@/components/shell/icons";
-import { fmtDateTime } from "@/components/ui";
+import { fmtDeadline } from "@/components/ui";
 import type { Recommendation } from "@/lib/api/models";
 import { Uri, type UriMood } from "./uri";
 
@@ -75,18 +75,20 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
   const first = (parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0]) || "there";
   const top = (picks ?? []).slice(0, 3);
   const pickable = !cycleWindow || cycleWindow === "application";
-  const outside = { before_cycle: "early", pre_application: "early", review: "review", awaiting_results: "waiting", results: "results", closed: "closed" } as const;
-  const state: "loading" | "placed" | "out" | "early" | "review" | "waiting" | "results" | "closed" | "setup" | "none" | "picks" =
+  const outside = { before_cycle: "early", pre_application: "early", review: "review", approval: "waiting", awaiting_results: "waiting", results: "results", closed: "closed" } as const;
+  const state: "loading" | "placed" | "out" | "offer" | "early" | "review" | "waiting" | "results" | "closed" | "setup" | "none" | "picks" =
     placedIn ? "placed"
     : out ? "out"
+    : offer ? "offer"
     : !pickable ? outside[cycleWindow as keyof typeof outside] ?? "early"
     : !interests.length ? "setup" : picks === null ? "loading" : top.length ? "picks" : "none";
 
   // One call to action under Uri's words, when there is somewhere useful to go.
-  const cta = state === "results" && (offer || appliedThisRound) ? { href: "/my-applications", label: offer ? "See my offer" : "See my applications" }
+  const cta = state === "offer" ? { href: "/my-applications", label: "See my offer" }
+    : state === "results" && appliedThisRound ? { href: "/my-applications", label: "See my applications" }
     : state === "setup" || state === "none" ? { href: "/profile", label: state === "setup" ? "Add my interests" : "Update my interests" } : null;
 
-  const mood: UriMood = state === "out" ? "sad" : state === "loading" ? "think" : (state === "placed" || (state === "results" && offer)) ? "cheer" : state === "picks" || state === "early" ? "wave" : "idle";
+  const mood: UriMood = state === "out" ? "sad" : state === "loading" ? "think" : (state === "placed" || state === "offer") ? "cheer" : state === "picks" || state === "early" ? "wave" : "idle";
   const topics = interests.slice(0, 2).join(" and ");
   const glowText = (t: string) => <span className="bg-gradient-to-r from-[#0071e3] to-[#7c5cf6] bg-clip-text text-transparent">{t}</span>;
   const headline = {
@@ -97,7 +99,8 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
     early: <>You&apos;re {glowText("early")}, {first}!</>,
     review: <>Round {roundNumber} is under {glowText("review")}</>,
     waiting: <>Waiting for Round {roundNumber} {glowText("results")}</>,
-    results: offer ? <>Round {roundNumber} results are {glowText("out")}, {first}!</> : <>Round {roundNumber} results are {glowText("out")}</>,
+    offer: <>You have an {glowText("offer")}, {first}!</>,
+    results: <>Round {roundNumber} results are {glowText("out")}</>,
     closed: <>This cycle has {glowText("closed")}</>,
     setup: <>Let&apos;s find {glowText("your project")}, {first}</>,
     none: <>Nothing fits {glowText("just yet")}</>,
@@ -113,10 +116,9 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
         : "You can no longer apply or propose this cycle. You can still browse every project, and I'll have picks ready when the next cycle opens.",
     early: `${cycleWindow === "pre_application" && phaseLabel ? phaseLabel : "No application cycle is open yet"}. Browse and shortlist projects now, and I'll pick the ones that fit you once applications open.`,
     review: "Applications are closed and supervisors are ranking their applicants. Results come after matching, and I'll tell you here as soon as they are out.",
-    waiting: "The rankings are in and the URECA office is finalising the matches. Check back soon, the news will show up here.",
-    results: offer
-      ? `You have an offer for ${offer.title}.${offer.expires ? ` Respond by ${fmtDateTime(offer.expires)} in My applications.` : " Respond in My applications."}`
-      : appliedThisRound
+    waiting: "The rankings are in and the matches are being finalised. Check back soon, the news will show up here.",
+    offer: `${offer?.title} is waiting for your answer${offer?.expires ? ` until ${fmtDeadline(offer.expires)}` : ""}. Answer it in My applications, as you cannot apply to other projects while it is open.`,
+    results: appliedThisRound
         ? `You were not matched to a project in Round ${roundNumber}. ${nextRound
           ? nextRound.rollover ? `Your applications carry over to Round ${nextRound.number}, where you can reorder or withdraw them.` : `You can apply again in Round ${nextRound.number}.`
           : "There are no more rounds this cycle."}`

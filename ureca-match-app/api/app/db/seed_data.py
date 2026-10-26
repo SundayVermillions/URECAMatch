@@ -38,6 +38,7 @@ from app.models import (
     SupervisorProfile,
     User,
 )
+from app.services.audit import SYSTEM
 from app.services.titles import split_title
 
 rng = random.Random(2006)
@@ -245,20 +246,19 @@ def make_cycle() -> Cycle:
                 application_end=app_end,
                 review_start=rev_start,
                 review_end=rev_end,
+                approval_end=rev_end + timedelta(days=2),  # REQ-APPRV-4: two days for supervisors to decline
                 status=status,
-                executed_at=rev_end + timedelta(hours=2) if n == 1 else None,
-                published_at=rev_end + timedelta(hours=8) if n == 1 else None,
-                eligible_students=32 if n == 2 else 0,
-                open_slots=14 if n == 2 else 0,
-                reopened_slots=2 if n == 2 else 0,
+                # REQ-EXEC-4, REQ-PUB-3: the system runs matching when review closes and publishes when approval closes
+                executed_at=rev_end + timedelta(seconds=1) if n == 1 else None,
+                published_at=rev_end + timedelta(days=2, seconds=1) if n == 1 else None,
             )
         )
-        cursor = rev_start + timedelta(days=2) + timedelta(days=4)  # 4-day gap between rounds
+        cursor = rev_start + timedelta(days=2) + timedelta(days=4)  # 2-day approval window, then a 2-day gap
     return Cycle(
         id=CYCLE_ID,
         academic_year="AY26/27 Semester 1",
         opening_date=dt(18),
-        closing_date=dt(30, 9),
+        closing_date=dt(2, 10),  # REQ-OUTCOME-3: 7 days after Round 3's approval window, for students to answer offers
         pre_application_days=7,
         status=CycleStatus.in_progress,
         rounds=rounds,
@@ -284,12 +284,10 @@ def make_past_cycle() -> Cycle:
                 application_end=app_end,
                 review_start=rev_start,
                 review_end=rev_end,
+                approval_end=rev_end + timedelta(days=2),
                 status=RoundStatus.completed,
-                executed_at=rev_end + timedelta(hours=2),
-                published_at=rev_end + timedelta(hours=8),
-                eligible_students=0,
-                open_slots=0,
-                reopened_slots=0,
+                executed_at=rev_end + timedelta(seconds=1),
+                published_at=rev_end + timedelta(days=2, seconds=1),
             )
         )
         cursor = rev_start + timedelta(days=2) + timedelta(days=4)
@@ -735,10 +733,9 @@ def make_matches(users: list[User], listings: list[Listing]) -> list[Match]:
                 supervisor_name=lst[lid].supervisor_name,
                 status=status,
                 preference_rank=1,
-                supervisor_decided_at=dt(31, 8, 14),
-                published_at=dt(31, 8, 17),
-                offer_expires_at=dt(10, 9),
-                student_responded_at=dt(1, 9, 10),
+                published_at=dt(3, 9),  # Round 1's approval window closed; nobody declined these (REQ-APPRV-4)
+                offer_expires_at=dt(10, 9) - timedelta(seconds=1),  # end of Round 2's application window (REQ-OUTCOME-3)
+                student_responded_at=dt(4, 9, 10),
             )
         )
     return out
@@ -804,7 +801,7 @@ def make_notifications() -> list[Notification]:
             event=NotificationEvent.offer_received,
             title="You have a match offer",
             message="Deep Learning for Early Detection of Diabetic Retinopathy. Respond by 10 Sep, 5:00 pm SGT.",
-            created_at=dt(31, 8, 17),
+            created_at=dt(3, 9),
             link="/my-applications",
         ),
         Notification(
@@ -831,7 +828,7 @@ def make_notifications() -> list[Notification]:
             event=NotificationEvent.results_published,
             title="Round 1 results published",
             message="3,912 students notified. 372 declined so far.",
-            created_at=dt(31, 8, 17),
+            created_at=dt(3, 9),
             read=True,
             link="/rounds",
         ),
@@ -843,9 +840,9 @@ def make_audit() -> list[AuditEntry]:
         AuditEntry(
             id="aud-1",
             operation=AuditOperation.matching_executed,
-            actor_id="adm-1",
-            actor_name="Jonathan Teo",
-            timestamp=dt(31, 8, 11),
+            actor_id=SYSTEM.id,  # REQ-AUDIT-3
+            actor_name=SYSTEM.name,
+            timestamp=dt(1, 9),
             affected_records=["rnd-1"],
             note="Round 1 matching, 3.1 s",
         ),
@@ -854,16 +851,16 @@ def make_audit() -> list[AuditEntry]:
             operation=AuditOperation.manual_reassignment,
             actor_id="adm-1",
             actor_name="Jonathan Teo",
-            timestamp=dt(31, 8, 15),
+            timestamp=dt(2, 9, 7),
             affected_records=["mt-4"],
-            note="Supervisor rejected; reassigned to second preference",
+            note="Supervisor declined; reassigned to second preference",
         ),
         AuditEntry(
             id="aud-3",
             operation=AuditOperation.results_published,
-            actor_id="adm-1",
-            actor_name="Jonathan Teo",
-            timestamp=dt(31, 8, 17),
+            actor_id=SYSTEM.id,
+            actor_name=SYSTEM.name,
+            timestamp=dt(3, 9),
             affected_records=["rnd-1"],
         ),
         AuditEntry(

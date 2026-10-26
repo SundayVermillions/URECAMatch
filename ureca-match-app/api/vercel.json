@@ -2,5 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["sin1"],
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
-  "crons": [{ "path": "/internal/tick", "schedule": "0 16 * * *" }]
+  "crons": [{ "path": "/internal/tick", "schedule": "5 9 * * *" }]
 }

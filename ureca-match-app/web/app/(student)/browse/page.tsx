@@ -43,13 +43,15 @@ export default function Browse() {
   const shown = useMemo(() => sort === "Best match" && data
     ? [...data].sort((a, b) => (scores.get(b.id) ?? -1) - (scores.get(a.id) ?? -1)) : data, [sort, data, scores]);
   const windowOpen = me?.phase.window === "application";
-  const canApply = windowOpen && !standing.viewOnly && !standing.loading; // placed or ineligible students browse view only
+  // An open offer is answered before anything else (REQ-APPLY-3): until then the student cannot apply to projects.
+  const offerLive = standing.match?.status === "published" && !!me && !(standing.match.offer_expires_at && Date.parse(me.phase.now) > Date.parse(standing.match.offer_expires_at)) && phaseWindow !== "closed" && phaseWindow !== "before_cycle";
+  const canApply = windowOpen && !standing.viewOnly && !standing.loading && !offerLive; // placed or ineligible students browse view only
   const filtered = !!(q || school || tag || supervisor);
   const early = me?.phase.window === "before_cycle" || me?.phase.window === "pre_application"; // REQ-BROWSE-1
   // Applications are not open (before Round 1, between rounds, after the cycle): cards stay browsable but faded and locked.
   // A student who already has a project (or can no longer apply) sees every project closed too.
-  const locked = !!me && !standing.loading && (!windowOpen || standing.viewOnly);
-  const lockLabel = standing.viewOnly ? "Not eligible"
+  const locked = !!me && !standing.loading && (!windowOpen || standing.viewOnly || offerLive);
+  const lockLabel = standing.viewOnly ? "Not eligible" : offerLive ? "Answer your offer first"
     : phaseWindow === "before_cycle" ? "Not open yet"
     : phaseWindow === "pre_application" ? `Opens ${fmtDate(me?.phase.window_ends_at)}` : "Applications closed";
   const cycle = useApi((api) => api.cycle(), []);
@@ -58,7 +60,7 @@ export default function Browse() {
     ? { number: roundNumber + 1, rollover: !!cycle.data.rollover_unmatched } : null;
   const mine = useApi((api) => (isStudent ? api.myApplications() : Promise.resolve([])), [isStudent]);
   const appliedThisRound = (mine.data ?? []).some((a) => a.round_id === me?.phase.round_id);
-  const offer = standing.match?.status === "published" ? { title: standing.match.listing_title, expires: standing.match.offer_expires_at ?? null } : null;
+  const offer = offerLive && standing.match ? { title: standing.match.listing_title, expires: standing.match.offer_expires_at ?? null } : null;
   const m = standing.match;
   const out = standing.viewOnly && !standing.placedIn
     ? { kind: m?.status === "declined" ? "declined" as const : m?.status === "timed_out" ? "timed_out" as const : "other" as const, title: m?.listing_title }

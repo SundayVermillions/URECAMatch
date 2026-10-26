@@ -1,5 +1,5 @@
 "use client";
-/** MaintainAuditLog (4.7). REQ-AUDIT-1..2. Screen: AuditOverridesPage. */
+/** MaintainAuditLog (4.7). REQ-AUDIT-1..3. Screen: AuditOverridesPage. */
 import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { Chip, Empty, Loading, Pill, fmtDateTime } from "@/components/ui";
@@ -14,7 +14,7 @@ export default function Audit() {
   const rows = (data ?? []).filter((e) => !op || e.operation === op);
   return (
     <>
-      <PageHeader title="Audit and overrides" description="Append-only. Every matching run and manual reassignment is recorded with who did it and when." />
+      <PageHeader title="Audit and overrides" description="Append-only. Every matching run and manual reassignment is recorded with who did it and when. System marks what ran on its own when a window closed." />
       <div className="flex items-center gap-1.5 flex-wrap mb-4">
         <Chip active={!op} onClick={() => setOp(undefined)}>All</Chip>
         {(Object.keys(LABEL) as AuditOperation[]).map((k) => <Chip key={k} active={op === k} onClick={() => setOp(k)}>{LABEL[k]}</Chip>)}
@@ -31,7 +31,8 @@ export default function Audit() {
                 <span className="font-medium mr-2" title={e.affected_records.join(", ")}>{(e.affected_labels?.length ? e.affected_labels : e.affected_records).join(", ")}</span>
                 {e.note && <span className="text-muted">{e.note}</span>}
               </span>
-              <span className="font-semibold">{e.actor_name}</span>
+              {/* REQ-AUDIT-3: the scheduler's own actions are shown apart from people's */}
+              {e.actor_id === "system" ? <span><Pill>System</Pill></span> : <span className="font-semibold">{e.actor_name}</span>}
             </div>
           ))}
         </div>

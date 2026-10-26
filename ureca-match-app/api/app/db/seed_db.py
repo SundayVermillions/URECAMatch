@@ -9,11 +9,13 @@ never overwrites live data. Supabase Auth accounts are a separate step: `uv run 
 from __future__ import annotations
 
 import sys
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
 from app.db import seed_data
 from app.db.store import SupabaseStore
+from app.models import AccountStatus, Role, User
 
 CHUNK = 200  # rows per request
 
@@ -28,13 +30,21 @@ def _dump(items, include: set[str] | None = None, exclude: set[str] | None = Non
 
 def tables(data: dict) -> list[tuple[str, list[dict]]]:
     """Every table with its rows, parents before the tables that point at them."""
+    system = User(
+        id="system",
+        email="system@urecamatch.app",
+        name="System",
+        role=Role.admin,
+        status=AccountStatus.inactive,
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
     cycles = data["cycles"]
     rankings = [
         {"listing_id": key.split(":")[0], "round_id": key.split(":")[1], "application_ids": ids, "submitted_at": None}
         for key, ids in data.get("applicant_rankings", {}).items()
     ]
     return [
-        ("users", _dump(data["users"], include=USER_COLUMNS)),
+        ("users", _dump([system, *data["users"]], include=USER_COLUMNS)),
         ("student_profiles", _dump(data["students"], exclude={"documents"})),
         ("supervisor_profiles", _dump(data["supervisors"])),
         ("supporting_documents", _dump([d for s in data["students"] for d in s.documents], include=DOCUMENT_COLUMNS)),

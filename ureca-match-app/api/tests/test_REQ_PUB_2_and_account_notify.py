@@ -1,24 +1,20 @@
 """Slice E. Notifications the SRS asks for beyond offers: REQ-PUB-2 tells "all affected users" when
 results are published (students and supervisors), and 4.21 covers account status changes."""
 
-from datetime import UTC, datetime
-
 from app.models import ApplicationStatus, NotificationEvent
-from app.settings import get_settings
+from tests.conftest import APPROVAL_CLOSED, REVIEW_CLOSED
 
 
-def publish_round_2(fresh_store, as_admin, client_for, monkeypatch) -> list:
-    monkeypatch.setattr(get_settings(), "demo_now", datetime(2026, 9, 12, 9, tzinfo=UTC))  # after review window
-    assert as_admin.post("/admin/rounds/rnd-2/execute").status_code == 200
-    for m in as_admin.get("/admin/rounds/rnd-2/matches").json():
-        client_for(m["supervisor_id"]).post(f"/supervisor/matches/{m['id']}/approve", json={})
+def publish_round_2(fresh_store, at) -> list:
+    """Let the clock run Round 2's matching and approval window; return the notifications publishing sent."""
+    at(REVIEW_CLOSED)
     before = len(fresh_store.notifications)
-    assert as_admin.post("/admin/rounds/rnd-2/publish").status_code == 200
+    at(APPROVAL_CLOSED)
     return fresh_store.notifications[before:]
 
 
-def test_REQ_PUB_2_unmatched_applicants_told(fresh_store, as_admin, client_for, monkeypatch):
-    new = publish_round_2(fresh_store, as_admin, client_for, monkeypatch)
+def test_REQ_PUB_2_unmatched_applicants_told(fresh_store, at):
+    new = publish_round_2(fresh_store, at)
     offered = {n.user_id for n in new if n.event == NotificationEvent.offer_received}
     told = {n.user_id for n in new if n.event == NotificationEvent.results_published and n.user_id.startswith("stu")}
     applied = {
@@ -35,8 +31,8 @@ def test_REQ_PUB_2_unmatched_applicants_told(fresh_store, as_admin, client_for, 
     assert n.link == "/my-applications"
 
 
-def test_REQ_PUB_2_supervisors_told_their_offers(fresh_store, as_admin, client_for, monkeypatch):
-    new = publish_round_2(fresh_store, as_admin, client_for, monkeypatch)
+def test_REQ_PUB_2_supervisors_told_their_offers(fresh_store, at):
+    new = publish_round_2(fresh_store, at)
     sups = {m.supervisor_id for m in fresh_store.matches if m.round_id == "rnd-2"}
     told = [n for n in new if n.event == NotificationEvent.results_published and n.user_id in sups]
     assert sorted(n.user_id for n in told) == sorted(sups)  # exactly one each
