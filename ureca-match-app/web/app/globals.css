@@ -172,6 +172,7 @@ div:has(> .ap-theme) { max-width: 1600px; }
 @keyframes uri-shadow { 0%, 100% { transform: scaleX(1); opacity: .22; } 50% { transform: scaleX(.82); opacity: .14; } }
 @keyframes uri-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.08); } }
 @keyframes uri-wave { 0%, 55%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(-26deg); } 20%, 40% { transform: rotate(6deg); } }
+@keyframes uri-tear { 0%, 10% { transform: translateY(0); opacity: 0; } 25% { opacity: .95; } 85% { opacity: .9; } 100% { transform: translateY(15px); opacity: 0; } }
 @keyframes uri-glow { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.18); } }
 @keyframes uri-aurora { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(36px, -22px) scale(1.18); } }
 @keyframes uri-rise { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
@@ -243,6 +244,35 @@ div:has(> .ap-theme) { max-width: 1600px; }
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
+  }
+  /* A small glass button for use on a glass panel. White on white reads as paper, so the body is tinted a cool blue
+     and mostly see-through; the glass look comes from the blur, the bright rim and the highlight along the top. */
+  .glass-btn {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(180deg, rgba(110, 130, 255, 0.26) 0%, rgba(110, 130, 255, 0.1) 100%);
+    -webkit-backdrop-filter: blur(14px) saturate(190%);
+    backdrop-filter: blur(14px) saturate(190%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),            /* specular highlight on the top rim */
+      inset 0 -1px 0 rgba(90, 110, 230, 0.3),             /* cool edge at the base */
+      inset 1.5px 1.5px 2px -1.5px rgba(255, 210, 230, 0.9),
+      inset -1.5px -1.5px 2px -1.5px rgba(150, 190, 255, 0.9),
+      0 0 0 1px rgba(255, 255, 255, 0.7),                 /* bright outer rim */
+      0 12px 24px -12px rgba(50, 70, 200, 0.55);          /* float shadow */
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .glass-btn::before {
+    content: "";
+    position: absolute;
+    inset: 1px 1px 50% 1px;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.05));
+    pointer-events: none;
+    z-index: -1;
+  }
+  .glass-btn:hover {
+    background: linear-gradient(180deg, rgba(110, 130, 255, 0.36) 0%, rgba(110, 130, 255, 0.16) 100%);
   }
   /* Thin gradient rim (Uri's best-fit card): the colours of the light behind the glass panel. */
   .grad-rim {

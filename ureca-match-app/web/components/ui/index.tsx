@@ -146,7 +146,7 @@ export function FilterSelect({ label, value, options, onChange, anyLabel = "Any"
       </button>
       {open && (
         <ul id={listId} role="listbox" aria-label={label}
-          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-20 mt-2 min-w-[220px] max-w-[320px] max-h-[320px] overflow-y-auto p-1.5 rounded-[14px] bg-surface/95 backdrop-blur-xl shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]`}>
+          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-20 mt-2 min-w-[220px] max-w-[320px] max-h-[320px] overflow-y-auto p-1.5 rounded-[14px] bg-surface shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]`}>
           {items.map((o, i) => {
             const selected = o === value;
             return (
@@ -213,7 +213,7 @@ export function FilterMultiSelect({ label, value, options, onChange, anyLabel = 
       </button>
       {open && (
         <ul id={listId} role="listbox" aria-label={label} aria-multiselectable
-          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-20 mt-2 min-w-[220px] max-w-[320px] max-h-[320px] overflow-y-auto p-1.5 rounded-[14px] bg-surface/95 backdrop-blur-xl shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]`}>
+          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-20 mt-2 min-w-[220px] max-w-[320px] max-h-[320px] overflow-y-auto p-1.5 rounded-[14px] bg-surface shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]`}>
           {items.map((o, i) => {
             const checked = o === undefined ? !on : value.includes(o);
             return (
@@ -266,7 +266,7 @@ export function FilterRange({ label, value, onChange, min, max, step, format = (
       </button>
       {open && (
         <div id={panelId} role="dialog" aria-label={title ?? label}
-          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-20 mt-2 w-[280px] p-4 rounded-[14px] bg-surface/95 backdrop-blur-xl shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]`}>
+          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-20 mt-2 w-[280px] p-4 rounded-[14px] bg-surface shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]`}>
           <div className="flex items-baseline justify-between">
             <span className="text-[13px] font-semibold">{title ?? label}</span>
             <span className="text-[15px] font-bold tabular text-accent-ink">{on ? value.toFixed(2) : anyLabel}</span>
@@ -494,7 +494,7 @@ export function TagPicker({ value, onChange, search, invalid, placeholder, idle 
       </div>
       {open && (
         <ul id={listId} role="listbox" onMouseDown={(e) => e.preventDefault()} // keep focus in the input while scrolling or picking
-          className="absolute left-0 right-0 z-20 mt-1.5 max-h-[280px] overflow-y-auto p-1.5 rounded-[14px] bg-surface/95 backdrop-blur-xl shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]">
+          className="absolute left-0 right-0 z-20 mt-1.5 max-h-[280px] overflow-y-auto p-1.5 rounded-[14px] bg-surface shadow-[var(--shadow-float)] ring-1 ring-black/[0.06]">
           {options.map((o, i) => (
             <li key={o.value} className="list-none">
               {o.group && o.group !== options[i - 1]?.group && <div className="px-3 pt-2 pb-1 text-[11.5px] font-semibold text-faint uppercase tracking-[0.04em]">{o.group}</div>}
