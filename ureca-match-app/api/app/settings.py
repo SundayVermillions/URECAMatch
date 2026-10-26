@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     vercel_env: str = ""
     resend_api_key: str = ""
     email_from: str = "URECAMatch <onboarding@resend.dev>"
+    # Comma-separated addresses that may receive e-mail. Empty means no filter. For demos on live data, where seeded
+    # addresses look real but belong to nobody on the team.
+    email_allowlist: str = ""
     app_url: str = "http://localhost:3000"  # base for links in e-mails
     gemini_api_key: str = ""  # AI match (REQ-VRANK-1). Empty means local scoring only
     gemini_model: str = "gemini-3.5-flash-lite"
@@ -53,6 +56,11 @@ class Settings(BaseSettings):
     @property
     def domains(self) -> list[str]:
         return [d.strip().lower() for d in self.approved_email_domains.split(",") if d.strip()]
+
+    @property
+    def allowed_recipients(self) -> set[str]:
+        """EMAIL_ALLOWLIST as lower-case addresses. An empty set means every address may receive e-mail."""
+        return {a.strip().lower() for a in self.email_allowlist.split(",") if a.strip()}
 
     def now(self) -> datetime:
         """The single clock for the whole API. Every window, deadline and timeout reads this."""
