@@ -2,6 +2,7 @@
 /** ManageSelf-ProposedProjects (4.18). REQ-REVPROP-1..3. Screen: StudentProposalPage. */
 import { useState } from "react";
 import { PageTitle } from "@/components/shell/app-shell";
+import { refreshBadges } from "@/components/shell/badges";
 import { I } from "@/components/shell/icons";
 import { DocumentViewer } from "@/components/supervisor/document-viewer";
 import { StudentSummary } from "@/components/supervisor/student-summary";
@@ -26,7 +27,7 @@ export default function Proposals() {
   async function decide() {
     if (!confirm || (!confirm.accept && !reasonOk)) return;
     setReasonError(null);
-    try { await call((api) => api.decideProposal(confirm.p.id, confirm.accept, confirm.accept ? undefined : reason.trim())); reload(); closeConfirm(); }
+    try { await call((api) => api.decideProposal(confirm.p.id, confirm.accept, confirm.accept ? undefined : reason.trim())); reload(); refreshBadges(); closeConfirm(); }
     catch (e) {
       const err = e as ApiError;
       if (err.field === "note") { setReasonError(err.message); return; } // stay in the dialog, beside the box

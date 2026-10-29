@@ -1,6 +1,6 @@
 "use client";
 /** Holds the signed-in user (GET /me) for the whole app. `useMe()` anywhere below. */
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getClient } from "@/lib/api/client";
 import type { Me } from "@/lib/api/models";
@@ -43,6 +43,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       alive = false;
     };
   }, [load]);
+
+  // The unread count beside Notifications is read again on every page change, so a message that arrived is counted.
+  const firstPath = useRef(true);
+  useEffect(() => {
+    if (firstPath.current) { firstPath.current = false; return; } // the first load is the effect above
+    void refresh();
+  }, [pathname, refresh]);
 
 // REQ-AUTH-3: Session expiration guard & REQ-PROF-1: Profile gate redirect
   useEffect(() => {

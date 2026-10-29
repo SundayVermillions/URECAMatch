@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { PageTitle } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
+import { refreshBadges } from "@/components/shell/badges";
 import { I } from "@/components/shell/icons";
 import { CycleTimeline } from "@/components/student/cycle-timeline";
 import { StudentSummary } from "@/components/supervisor/student-summary";
@@ -28,7 +29,7 @@ export default function Approvals() {
   const canDecline = (m: Match) => open && phase?.round_id === m.round_id && m.status === "proposed";
   async function confirmDecline(m: Match) {
     setError(null);
-    try { await call((api) => api.declineMatch(m.id, reason)); reload(); refresh(); }
+    try { await call((api) => api.declineMatch(m.id, reason)); reload(); refresh(); refreshBadges(); }
     catch (e) {
       setError(e as ApiError);
       if ((e as ApiError).code === "approval_closed") { reload(); refresh(); } // the window closed while the page was open
