@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PageTitle } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
+import { timeLeft } from "@/components/shell/time-left";
 import { CycleTrack } from "@/components/admin/cycle-track";
 import { DemandBars, KpiTile, Rings, SegmentBar, type DemandRow } from "@/components/admin/charts";
 import { Button, Card, Skeleton, fmtDateTime, fmtDeadline } from "@/components/ui";
@@ -38,18 +39,6 @@ function heroFor(phase: Phase, round: Round | undefined): Hero {
   }
 }
 
-/** "3" + "days left", "5" + "hours left", "20" + "min left". Uses the app's clock, not the machine's. */
-function countdown(endsAt: string | null | undefined, now: string | undefined): { n: number; unit: string } | null {
-  if (!endsAt || !now) return null;
-  const ms = Date.parse(endsAt) - Date.parse(now);
-  if (ms <= 0) return null;
-  const min = Math.round(ms / 60000);
-  if (min < 60) return { n: min, unit: "min left" };
-  const h = Math.round(min / 60);
-  if (h < 48) return { n: h, unit: h === 1 ? "hour left" : "hours left" };
-  return { n: Math.round(h / 24), unit: "days left" };
-}
-
 /** The API's wording for a count of one reads "1 students have". Fixed here so it reads right. */
 const plain = (s: string) => s.replace(/\b1 students have\b/, "1 student has");
 
@@ -70,7 +59,7 @@ function SectionHead({ title, link }: { title: string; link?: { href: string; la
 function Hero({ phase, cycle, alerts }: { phase: Phase; cycle: Cycle | null; alerts: string[] }) {
   const round = cycle?.rounds.find((r) => r.id === phase.round_id);
   const h = heroFor(phase, round);
-  const left = countdown(phase.window_ends_at, phase.now);
+  const left = timeLeft(phase.window_ends_at, phase.now);
   const attention = alerts.map(plain);
   return (
     <Card padded={false} className="mb-4 overflow-hidden">
@@ -118,7 +107,7 @@ function ThisRound({ summary, loading, phase, round }: { summary: RoundSummary |
       </>
     );
   }
-  const until = countdown(round.review_end, phase.now);
+  const until = timeLeft(round.review_end, phase.now);
   return (
     <>
       <div className="text-[12.5px] font-medium text-muted">Matching runs by itself</div>

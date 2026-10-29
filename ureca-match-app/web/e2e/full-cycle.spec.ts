@@ -93,7 +93,10 @@ test("one URECA cycle end to end", async ({ page }) => {
     await page.goto("/projects/new");
     await page.getByLabel("Title").fill(listingTitle);
     await page.getByLabel("Description").fill("End-to-end test listing for the full-cycle journey.");
+    await page.getByRole("button", { name: "Continue" }).click(); // the new-project form is a guided flow of four steps
     await pick(page, "Topic tags", "Machine Learning");
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: /publish/i }).click();
     await expect(page.getByText(listingTitle)).toBeVisible();
 
