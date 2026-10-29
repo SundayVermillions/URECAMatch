@@ -1,15 +1,19 @@
 "use client";
-/** SubmitUrecaApplication (SRS 4.10). REQ-APPLY-1..2. Screen: ApplyProjectPage. */
+/** SubmitUrecaApplication (SRS 4.10). REQ-APPLY-1..2. Screen: ApplyProjectPage.
+ *  The right-hand card is a live "Ready to submit?" checklist (the same pattern as Propose a project). It only mirrors the rules
+ *  the form already enforces; it adds none. */
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Card, DeadlineChip, Field, Loading, Textarea } from "@/components/ui";
+import { Banner, Button, Card, Field, Loading, Textarea } from "@/components/ui";
 import { ApiError } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 import { useStanding } from "@/lib/use-standing";
+
+const MIN_STATEMENT = 50;
 
 export default function Apply() {
   const { id } = useParams<{ id: string }>();
@@ -38,48 +42,102 @@ export default function Apply() {
     catch (err) { setError(err as ApiError); } finally { setBusy(false); }
   }
   const dup = error?.code === "already_applied";
+  const documents = me?.student?.documents ?? [];
+  const long = statement.length >= MIN_STATEMENT;
+  const windowOpen = me?.phase.window === "application";
+  const canSubmit = !busy && long;
 
   return (
     <form onSubmit={submit}>
-      <PageHeader title={`Apply: ${l.title}`} back={{ href: `/projects/${id}`, label: "Back to project" }} description={`${l.supervisor_name} · ${l.offering_faculty}`}
-        right={me && <DeadlineChip>{me.phase.label}</DeadlineChip>} />
-      <div className="grid grid-cols-[1fr_300px] gap-5">
-        <div className="flex flex-col gap-4">
+      <Link href={`/projects/${id}`} className="inline-flex items-center gap-1 text-[13.5px] font-medium text-accent mb-5 hover:text-accent-ink">
+        <I.ChevronLeft /> Back to project
+      </Link>
+      <header className="flex items-center gap-5 mb-7">
+        <div className="relative w-[72px] h-[72px] shrink-0 rounded-[16px] overflow-hidden bg-gradient-to-br from-[#e8f1fd] to-[#dfeafa]">
+          {l.cover_url && <img src={l.cover_url} alt="" className="w-full h-full object-cover" />}
+          <div aria-hidden className="absolute inset-0 rounded-[inherit] bg-gradient-to-t from-[#0b1f3a]/20 to-transparent shadow-[inset_0_0_0_1px_rgba(15,40,90,0.14)]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="eyebrow">Applying to</div>
+          <h1 className="!text-[26px] !leading-[1.18] mt-0.5 line-clamp-2">{l.title}</h1>
+          <div className="text-[14px] text-muted mt-1 truncate">{l.supervisor_name} · {l.offering_faculty}</div>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+        <div className="flex flex-col gap-5 min-w-0">
           {error && !error.field && (
             <Banner tone={dup ? "warn" : "bad"} action={dup ? <Link href="/my-applications" className="text-[12.5px] font-semibold underline">My applications</Link> : undefined}>{error.message}</Banner>
           )}
           <Card>
-            <Field label="Statement of interest" error={error?.field === "statement" ? error.message : null} hint={`${statement.length} characters · minimum 50. Explain why this project and what you bring to it.`}>
-              <Textarea id="statement" rows={9} value={statement} onChange={(e) => setStatement(e.target.value)} invalid={error?.field === "statement"} className="w-full" />
+            <h2 className="text-[16px]">Why this project?</h2>
+            <div className="text-[13.5px] text-muted mt-1 mb-4">Explain why this project and what you bring to it.</div>
+            <Field label="Statement of interest" error={error?.field === "statement" ? error.message : null}>
+              <Textarea id="statement" rows={10} value={statement} onChange={(e) => setStatement(e.target.value)} invalid={error?.field === "statement"} className="w-full" />
             </Field>
-          </Card>
-          <Card>
-            <div className="eyebrow mb-2">Supporting documents</div>
-            <div className="text-[12.5px] text-muted mb-3">From your profile. Untick any you do not want to attach.</div>
-            <div className="flex flex-col gap-2">
-              {(me?.student?.documents ?? []).map((d) => (
-                <label key={d.id} className="flex items-center gap-3 px-3 py-2.5 border border-border rounded-button text-[12.5px]">
-                  <input type="checkbox" checked={docs.includes(d.id)} onChange={(e) => setDocs(e.target.checked ? [...docs, d.id] : docs.filter((x) => x !== d.id))} />
-                  <I.File size={14} /> {d.file_name} <span className="ml-auto text-faint">{Math.round(d.file_size / 1024)} KB</span>
-                </label>
-              ))}
-              {!me?.student?.documents?.length && <div className="text-[12.5px] text-faint">No documents yet. <Link href="/profile">Upload a transcript</Link> (PDF, up to 5 MB).</div>}
+            <div className="mt-2.5 flex items-center gap-3">
+              <span className="h-1 flex-1 rounded-full bg-[#dfe8f5] overflow-hidden" aria-hidden>
+                <span className={`block h-full rounded-full transition-[width,background-color] duration-300 ${long ? "bg-good" : "bg-gradient-to-r from-[#6fa8ee] to-[#2f64b4]"}`} style={{ width: `${Math.min(100, (statement.length / MIN_STATEMENT) * 100)}%` }} />
+              </span>
+              <span className={`text-[12.5px] tabular whitespace-nowrap ${long ? "text-good-ink font-medium" : "text-muted"}`}>{statement.length} characters · minimum {MIN_STATEMENT}</span>
             </div>
           </Card>
-          <div className="flex items-center gap-3">
-            <Button type="submit" size="lg" disabled={busy || statement.length < 50}>{busy ? "Submitting…" : "Submit application"}</Button>
-            <span className="text-[12.5px] text-muted">It will be added as your next preference. Reorder in My applications.</span>
-          </div>
+
+          <Card>
+            <h2 className="text-[16px]">Supporting documents</h2>
+            <div className="text-[13.5px] text-muted mt-1 mb-4">From your profile. Untick any you do not want to attach.</div>
+            <div className="flex flex-col gap-2">
+              {documents.map((d) => {
+                const on = docs.includes(d.id);
+                return (
+                  <label key={d.id} className={`flex items-center gap-3 px-3.5 py-3 rounded-[14px] cursor-pointer transition-colors ${on ? "bg-accent-soft/70 shadow-[inset_0_0_0_1px_var(--accent-border)]" : "bg-white/60 shadow-[inset_0_0_0_1px_var(--border)] hover:bg-white"}`}>
+                    <input type="checkbox" className="w-4 h-4 accent-[#0071e3]" checked={on} onChange={(e) => setDocs(e.target.checked ? [...docs, d.id] : docs.filter((x) => x !== d.id))} />
+                    <span className="w-8 h-8 rounded-[10px] grid place-items-center bg-white text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)] shrink-0"><I.File size={15} /></span>
+                    <span className="text-[13.5px] font-medium text-text truncate">{d.file_name}</span>
+                    <span className="ml-auto text-[12.5px] text-faint tabular whitespace-nowrap">{Math.round(d.file_size / 1024)} KB</span>
+                  </label>
+                );
+              })}
+              {!documents.length && <div className="text-[13.5px] text-faint">No documents yet. <Link href="/profile">Upload a transcript</Link> (PDF, up to 5 MB).</div>}
+            </div>
+          </Card>
         </div>
-        <Card>
-          <div className="eyebrow mb-2">Before you submit</div>
-          <ul className="text-[12.5px] text-muted flex flex-col gap-2 list-disc pl-4">
-            <li>Applications can be edited or withdrawn until the window closes.</li>
-            <li>Rank all your applications; the matching uses that order.</li>
-            <li>If you receive and decline an offer, you cannot join later rounds this cycle.</li>
-          </ul>
-        </Card>
+
+        <aside className="sticky top-6 flex flex-col gap-4">
+          <Card>
+            <h2 className="text-[16px]">Ready to submit?</h2>
+            <ul className="mt-3.5 flex flex-col gap-3 text-[13.5px]">
+              <Check ok={windowOpen}>{windowOpen ? "Applications are open" : "Applications are closed"}</Check>
+              <Check ok={long}>Statement, at least {MIN_STATEMENT} characters</Check>
+              <Check ok={docs.length > 0} optional>{docs.length > 0 ? `${docs.length} ${docs.length === 1 ? "document" : "documents"} attached` : "No documents attached (optional)"}</Check>
+            </ul>
+            <Button type="submit" size="lg" className="w-full mt-5" disabled={!canSubmit}>{busy ? "Submitting…" : "Submit application"}</Button>
+            <div className="text-[12.5px] text-muted mt-3 leading-[1.5]">
+              {long ? "It will be added as your next preference. Reorder in My applications." : `Add ${MIN_STATEMENT - statement.length} more ${MIN_STATEMENT - statement.length === 1 ? "character" : "characters"} to submit.`}
+            </div>
+          </Card>
+          <div className="px-2">
+            <div className="eyebrow mb-2">Before you submit</div>
+            <ul className="text-[12.5px] text-muted flex flex-col gap-2 leading-[1.5]">
+              <li>You can edit or withdraw until the window closes.</li>
+              <li>Rank all your applications; the matching uses that order.</li>
+              <li>If you receive and decline an offer, you cannot join later rounds this cycle.</li>
+            </ul>
+          </div>
+        </aside>
       </div>
     </form>
+  );
+}
+
+/** One line of the checklist: a filled tick when met, a hollow circle when not. `optional` ones are never blocking. */
+function Check({ ok, optional, children }: { ok: boolean; optional?: boolean; children: React.ReactNode }) {
+  return (
+    <li className="flex items-center gap-2.5">
+      <span aria-hidden className={`w-[18px] h-[18px] shrink-0 rounded-full grid place-items-center transition-colors ${ok ? "bg-good text-white" : optional ? "shadow-[inset_0_0_0_1.5px_#d6dde9]" : "shadow-[inset_0_0_0_1.5px_var(--border-strong)]"}`}>
+        {ok && <I.Tick size={11} />}
+      </span>
+      <span className={ok ? "text-text" : "text-muted"}>{children}</span>
+    </li>
   );
 }

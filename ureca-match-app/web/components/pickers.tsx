@@ -17,12 +17,17 @@ export const titleCase = (t: string) => t.toLowerCase()
   .replace(/(^|[\s(/-])([a-z])/g, (_, p: string, c: string) => p + c.toUpperCase())
   .replace(/\b(Ii{0,2}|Iv|Vi{0,3}|Ix|Xi{0,3})\b/g, (r) => r.toUpperCase());
 
+/** Standard topics whose name contains every word typed. With nothing typed: every topic, or with `suggest` only the first
+ *  couple of each group (a short list to start from). */
+export async function searchTopics(q: string, suggest = false): Promise<PickOption[]> {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const groups = await loadTopics();
+  if (!words.length && suggest) return groups.flatMap((g) => g.topics.slice(0, 2).map((t) => ({ value: t, group: g.name })));
+  return groups.flatMap((g) => g.topics.filter((t) => words.every((w) => t.toLowerCase().includes(w))).map((t) => ({ value: t, group: g.name })));
+}
+
 export function TopicPicker({ placeholder = "Search topics, e.g. Machine Learning", ...rest }: Props) {
-  const search = useCallback(async (q: string): Promise<PickOption[]> => {
-    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-    return (await loadTopics()).flatMap((g) =>
-      g.topics.filter((t) => words.every((w) => t.toLowerCase().includes(w))).map((t) => ({ value: t, group: g.name })));
-  }, []);
+  const search = useCallback((q: string): Promise<PickOption[]> => searchTopics(q), []);
   return <TagPicker {...rest} search={search} placeholder={placeholder} none="No standard topic matches" />;
 }
 
