@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { PageTitle } from "@/components/shell/app-shell";
+import { CycleTimeline } from "@/components/student/cycle-timeline";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
 import { Banner, Button, Empty, IconButton, Loading, Modal, Status, fmtDate, fmtDeadline } from "@/components/ui";
@@ -57,7 +58,7 @@ export default function MyApplications() {
 
   return (
     <>
-      <PageTitle title="My applications" status={me?.phase.label} open={canEdit} />
+      <PageTitle title="My applications" status={me?.phase.label} open={canEdit} right={<CycleTimeline />} />
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
 
       {m && <OfferCard m={m} round={offerRound} cover={cover(m.listing_id)} answerable={answerable} lapsed={lapsed} onAccept={() => setConfirm("accept")} onDecline={() => setConfirm("decline")} />}

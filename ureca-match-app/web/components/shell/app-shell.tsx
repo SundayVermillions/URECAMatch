@@ -104,16 +104,16 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
 /** Page title row with optional description, back link and right-hand slot (deadline chip, action). */
 /** A title and nothing else, with the cycle's status as a pill on the right (green dot while applications are open,
  *  amber otherwise). For screens that explain themselves; PageHeader keeps the one-line description for the rest. */
-export function PageTitle({ title, status, open }: { title: string; status?: string; open?: boolean }) {
+export function PageTitle({ title, status, open, right }: { title: string; status?: string; open?: boolean; right?: React.ReactNode }) {
   return (
     <header className="flex items-center justify-between gap-4 mb-6">
       <h1 className="!text-[38px] !leading-[1.08] !tracking-[-0.035em]">{title}</h1>
-      {status && (
+      {right ?? (status && (
         <span className="shrink-0 inline-flex items-center gap-2 h-9 px-4 rounded-pill bg-white/70 backdrop-blur-xl ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-12px_rgba(0,0,0,0.15)] text-[13px] font-medium text-text">
           <span aria-hidden className={`w-1.5 h-1.5 rounded-full ${open ? "bg-good" : "bg-warn"}`} />
           {status}
         </span>
-      )}
+      ))}
     </header>
   );
 }

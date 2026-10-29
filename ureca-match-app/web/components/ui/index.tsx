@@ -11,7 +11,7 @@ type Variant = "primary" | "secondary" | "soft" | "destructive" | "text";
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white shadow-[0_1px_2px_rgba(0,113,227,0.25)] hover:bg-accent-ink active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint disabled:shadow-none",
   secondary: "bg-neutral-soft text-text hover:bg-[#e8e8ed] active:scale-[0.98] disabled:text-faint disabled:hover:bg-neutral-soft",
-  soft: "bg-accent-soft text-accent-ink ring-1 ring-inset ring-accent-border/70 hover:bg-accent hover:text-white hover:ring-accent active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint disabled:ring-0",
+  soft: "bg-accent-soft text-accent-ink ring-1 ring-inset ring-accent-border/70 hover:bg-accent-border/60 hover:ring-accent-border active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint disabled:ring-0",
   destructive: "bg-bad text-white hover:bg-bad-ink active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint",
   text: "text-accent hover:text-accent-ink px-1 disabled:text-faint",
 };
@@ -556,7 +556,7 @@ export const LISTING_MODES: Record<"on_site" | "hybrid" | "remote", string> = { 
 export const isHighDemand = (applicants: number, open: number) => open > 0 && applicants / open > 5;
 
 /** Anonymous "avatar stack" of applicants: coloured circles, never names or initials (SRS 5.3.3). */
-const STACK_COLOURS = ["from-[#c9d4ff] to-[#9fb0f5]", "from-[#ffd6e0] to-[#f5a8bd]", "from-[#c8f0e4] to-[#8fd9c2]"];
+const STACK_COLOURS = ["from-[#cfe1ff] to-[#8fb4f2]", "from-[#bfe6fb] to-[#7cc3ee]", "from-[#d9e2f5] to-[#9fb3d8]"];
 export function ApplicantStack({ count }: { count: number }) {
   if (count === 0) return <span className="text-[13px] text-faint whitespace-nowrap">No applicants yet</span>;
   const dots = Math.min(count, 3);

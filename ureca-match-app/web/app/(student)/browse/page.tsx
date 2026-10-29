@@ -6,8 +6,9 @@ import { useMemo, useRef, useState } from "react";
 import { PageTitle } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
+import { CycleTimeline } from "@/components/student/cycle-timeline";
 import { UriPicks } from "@/components/student/uri-picks";
-import { ApplicantStack, Avatar, Banner, Button, Empty, FilterSelect, Loading, fmtDate, isHighDemand } from "@/components/ui";
+import { ApplicantStack, Avatar, Banner, Button, Card, Empty, FilterSelect, Skeleton, fmtDate, isHighDemand } from "@/components/ui";
 import type { Listing } from "@/lib/api/models";
 import { useApi } from "@/lib/use-api";
 import { useStanding } from "@/lib/use-standing";
@@ -69,7 +70,7 @@ export default function Browse() {
 
   return (
     <>
-      <PageTitle title="Browse projects" status={me?.phase.label} open={windowOpen} />
+      <PageTitle title="Browse projects" status={me?.phase.label} open={windowOpen} right={<CycleTimeline />} />
       {/* Search and filters in one bar, first thing on the page. z-30: the blur makes it its own layer, and its menus must sit above Uri and the cards below. */}
       <div className="relative z-30 flex items-center gap-1 mb-8 p-2 rounded-pill bg-surface/90 backdrop-blur-xl ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.03),0_16px_40px_-20px_rgba(30,40,90,0.28)] focus-within:ring-accent/40 transition-shadow">
         <label className="relative flex-1 min-w-0 flex items-center">
@@ -113,7 +114,7 @@ export default function Browse() {
         </h2>
         {applied > 0 && <Link href="/my-applications" className="inline-flex items-center gap-1 h-8 px-3.5 rounded-pill bg-surface ring-1 ring-black/[0.06] text-[13px] font-medium !text-text hover:ring-black/15 transition-shadow">{applied} applied this round <span className="-rotate-90"><I.ChevronDown size={14} /></span></Link>}
       </div>
-      {loading && !data ? <Loading /> : !data?.length ? <Empty title="No projects match" note="Try a different keyword or clear a filter." /> : (
+      {loading && !data ? <CardSkeletons /> : !data?.length ? <Empty title="No projects match" note="Try a different keyword or clear a filter." /> : (
         <div className="grid grid-cols-3 gap-5">
           {(shown ?? []).map((l) => <ProjectCard key={l.id} l={l} canApply={canApply} match={scores.get(l.id)} lock={locked ? lockLabel : undefined} />)}
         </div>
@@ -122,29 +123,50 @@ export default function Browse() {
   );
 }
 
+/** Placeholder cards, the same shape as ProjectCard, while the list loads. */
+function CardSkeletons() {
+  return (
+    <div className="grid grid-cols-3 gap-5" aria-busy="true" aria-label="Loading projects">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <Card key={i} padded={false} className="overflow-hidden">
+          <Skeleton className="h-[150px] !rounded-none" />
+          <div className="p-5 flex flex-col gap-3">
+            <Skeleton className="h-3 w-1/4" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-8 w-full mt-3" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 function ProjectCard({ l, canApply, match, lock }: { l: Listing; canApply: boolean; match?: number; lock?: string }) {
   const open = Math.max(l.available_slots - l.filled_slots, 0);
   const full = open === 0;
   const hot = isHighDemand(l.applicant_count ?? 0, open);
   return (
-    <div className="group relative bg-surface rounded-card overflow-hidden flex flex-col shadow-[var(--shadow-card)] ring-1 ring-black/[0.04] transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]">
+    <div className="group card-surface relative overflow-hidden flex flex-col transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(47,100,180,0.16),0_22px_40px_-18px_rgba(47,100,180,0.42)]">
       <div className="relative h-[150px] bg-sunken overflow-hidden">
         {l.cover_url && <img src={l.cover_url} alt="" className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] ${lock ? "opacity-60 saturate-50" : ""}`} />}
+        <div aria-hidden className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#0b1f3a]/30 via-[#0b1f3a]/0 to-[#0b1f3a]/0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]" />
         {lock && (
           <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-pill bg-white/90 backdrop-blur px-2.5 py-1 text-[12px] font-semibold text-muted shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
             <I.Lock size={12} /> {lock}
           </span>
         )}
         {match !== undefined && (
-          <span title="How well this project fits your interests, courses and chances" className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-pill bg-white/90 backdrop-blur px-2.5 py-1 text-[12px] font-semibold text-[#1c2566] shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="#7c5cff" aria-hidden><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z" /></svg>
+          <span title="How well this project fits your interests, courses and chances" className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-pill bg-white/92 backdrop-blur px-3 py-1.5 text-[12.5px] font-semibold text-[#0b1f3a] shadow-[0_2px_10px_rgba(11,31,58,0.18)]">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#3b6fb6" aria-hidden><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z" /></svg>
             {match}% match
           </span>
         )}
       </div>
       <div className={`p-5 flex flex-col flex-1 ${lock ? "opacity-70" : ""}`}>
-        <div className="text-[12.5px] text-faint truncate">
-          {l.offering_faculty}{hot && <> · <span className="text-warn-ink font-medium">High demand</span></>}
+        <div className="flex items-center justify-between gap-2 min-h-[22px]">
+          <span className="text-[12.5px] font-medium text-faint truncate">{l.offering_faculty}</span>
+          {hot && <span title="High demand: more than 5 students for each open slot" className="shrink-0 inline-flex items-center gap-1 rounded-pill bg-gradient-to-b from-[#fff3dd] to-[#ffe7c2] text-[#a14a00] px-2.5 py-0.5 text-[11.5px] font-semibold shadow-[inset_0_0_0_1px_rgba(214,130,20,0.25)]"><I.Flame size={13} /> Popular</span>}
         </div>
         {/* The title link stretches over the whole card (after:inset-0), so the card is clickable without nesting links. */}
         <Link href={`/projects/${l.id}`} className="mt-1 text-[16px] font-semibold leading-[1.35] tracking-[-0.01em] text-text line-clamp-2 after:absolute after:inset-0">
@@ -168,14 +190,15 @@ function ProjectCard({ l, canApply, match, lock }: { l: Listing; canApply: boole
             <span className="text-[13px] font-medium text-text truncate">{l.supervisor_name}</span>
           </div>
           {l.applied ? (
-            <span className="shrink-0 inline-flex items-center gap-1.5 h-7 px-3 rounded-pill bg-good-soft text-good-ink text-[12.5px] font-medium">
-              <I.Tick size={14} /> Applied · #{l.applied_rank}
+            <span title={l.applied_rank != null ? `You applied. This is your preference number ${l.applied_rank}.` : "You applied."} className="shrink-0 inline-flex items-center gap-1.5 h-7 pl-3 pr-1 rounded-pill bg-good-soft text-good-ink text-[12.5px] font-semibold shadow-[inset_0_0_0_1px_rgba(26,116,49,0.15)]">
+              Applied
+              {l.applied_rank != null ? <span className="min-w-5 h-5 px-1 rounded-full bg-good text-white text-[11px] font-semibold tabular grid place-items-center">{l.applied_rank}</span> : <span className="w-5 h-5 rounded-full bg-good text-white grid place-items-center"><I.Tick size={11} /></span>}
             </span>
           ) : full ? (
             <span className="shrink-0 inline-flex items-center h-7 px-3 rounded-pill bg-neutral-soft text-muted text-[12.5px] font-medium">Full</span>
           ) : (
             <Link href={canApply ? `/apply/${l.id}` : `/projects/${l.id}`} className="relative z-10 shrink-0">
-              <Button size="sm" variant={canApply ? "primary" : "secondary"} className="rounded-pill px-4">{canApply ? "Apply" : "View"}</Button>
+              <Button size="sm" variant={canApply ? "soft" : "secondary"} className="rounded-pill px-4">{canApply ? "Apply" : "View"}</Button>
             </Link>
           )}
         </div>

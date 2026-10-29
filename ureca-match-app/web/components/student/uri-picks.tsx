@@ -46,9 +46,9 @@ type Props = {
  *  sheen. Each orb drifts slowly ([left, top, size, colour, seconds]). Motion stops for reduced motion. */
 const AMBIENT = [
   ["-4%", "-30%", 420, "#9ec5ff", 18],
-  ["30%", "-45%", 380, "#cdbdff", 22],
-  ["62%", "35%", 420, "#b5ead7", 26],
-  ["85%", "-25%", 320, "#ffd6b8", 20],
+  ["30%", "-45%", 380, "#bcd2ff", 22],
+  ["62%", "35%", 420, "#a9dcff", 26],
+  ["85%", "-25%", 320, "#d3e2ff", 20],
 ] as const;
 function Ambient({ scale = 1, radius = 28 }: { scale?: number; radius?: number }) {
   // Clipped to the panel's shape, so the light shows only through the glass and never tints the page around it.
@@ -90,7 +90,7 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
 
   const mood: UriMood = state === "out" ? "sad" : state === "loading" ? "think" : (state === "placed" || state === "offer") ? "cheer" : state === "picks" || state === "early" ? "wave" : "idle";
   const topics = interests.slice(0, 2).join(" and ");
-  const glowText = (t: string) => <span className="bg-gradient-to-r from-[#0071e3] to-[#7c5cf6] bg-clip-text text-transparent">{t}</span>;
+  const glowText = (t: string) => <span className="bg-gradient-to-r from-[#2f64b4] to-[#3f9bf0] bg-clip-text text-transparent">{t}</span>;
   const headline = {
     loading: <>Finding your {glowText("best matches")}…</>,
     placed: <>You&apos;re in, {glowText(first)}!</>,
@@ -136,7 +136,7 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
         <div className="glass-panel flex items-center gap-3 rounded-pill pl-1.5 pr-1.5 py-1.5">
           <span className="w-9 h-9 rounded-full bg-white/70 overflow-hidden flex items-end justify-center"><Uri size={34} mood="idle" /></span>
           <span className="text-[13.5px] text-text">{state === "picks" ? <>Uri has <b>{top.length} picks</b> for you</> : "Uri, your project guide"}</span>
-          <button type="button" onClick={() => hide(false)} className="relative z-10 h-8 px-3.5 rounded-pill bg-[#1c2566] text-white text-[12.5px] font-semibold hover:brightness-110">Show</button>
+          <button type="button" onClick={() => hide(false)} className="relative z-10 h-8 px-3.5 rounded-pill bg-[#0b1f3a] text-white text-[12.5px] font-semibold hover:brightness-110">Show</button>
         </div>
       </div>
     );
@@ -152,12 +152,12 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
           ))}
         </div>
 
-        <div className="relative z-[1] p-7 pt-6">
+        <div className="relative z-[1] p-6 pt-5">
           <div className="flex items-center gap-6">
             {/* Uri on a pedestal of light */}
-            <div className="relative shrink-0 w-[150px] flex flex-col items-center">
+            <div className="relative shrink-0 w-[136px] flex flex-col items-center">
               <div aria-hidden className="absolute -top-6 left-1/2 -translate-x-1/2 w-[220px] h-[220px] rounded-full bg-[radial-gradient(closest-side,rgba(255,255,255,0.85),rgba(255,255,255,0))]" />
-              <Uri size={132} mood={mood} className="relative drop-shadow-[0_12px_22px_rgba(60,80,200,0.28)]" />
+              <Uri size={116} mood={mood} className="relative drop-shadow-[0_12px_22px_rgba(60,80,200,0.28)]" />
               <div aria-hidden className="-mt-3 w-[150px] h-[22px] rounded-[50%] bg-[radial-gradient(closest-side,rgba(90,105,220,0.28),rgba(90,105,220,0))]" />
             </div>
 
@@ -165,10 +165,10 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
               <div className="inline-flex items-center gap-1.5 rounded-pill bg-white/70 ring-1 ring-white px-3 py-1 text-[12px] font-semibold text-accent-ink shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                 <Spark size={11} /> Uri · your project guide
               </div>
-              <h2 className="mt-3 text-[32px] leading-[1.12] font-semibold tracking-[-0.025em] text-text">{headline}</h2>
+              <h2 className="mt-2.5 text-[30px] leading-[1.12] font-semibold tracking-[-0.025em] text-text">{headline}</h2>
               <TypeLine key={line} text={line} />
               {cta && (
-                <Link href={cta.href} className="glass-btn mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-pill text-[14px] font-semibold !text-[#1c2566]">
+                <Link href={cta.href} className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-pill text-[14px] font-semibold bg-accent hover:bg-accent-ink !text-white transition-colors">
                   <Spark size={14} /> {cta.label}
                 </Link>
               )}
@@ -177,7 +177,7 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
             <div className="shrink-0 self-start flex items-center gap-1.5">
               {(state === "picks" || state === "none") && (
                 <button type="button" onClick={() => setExplain((v) => !v)} aria-expanded={explain}
-                  className={`h-8 px-3 rounded-pill text-[12.5px] font-medium inline-flex items-center gap-1.5 transition-colors ${explain ? "bg-[#1c2566] text-white" : "bg-white/70 text-text ring-1 ring-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-white"}`}>
+                  className={`h-8 px-3 rounded-pill text-[12.5px] font-medium inline-flex items-center gap-1.5 transition-colors ${explain ? "bg-[#0b1f3a] text-white" : "bg-white/70 text-text ring-1 ring-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-white"}`}>
                   <I.Info size={14} /> How it works
                 </button>
               )}
@@ -192,7 +192,7 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
             {state === "loading" && <div className="grid grid-cols-3 gap-4 mt-6">{[0, 1, 2].map((i) => <Skeleton key={i} />)}</div>}
             {state === "picks" && (
               <>
-                <div className={`grid gap-4 mt-6 ${top.length === 1 ? "grid-cols-[minmax(0,360px)]" : top.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+                <div className={`grid gap-4 mt-5 ${top.length === 1 ? "grid-cols-[minmax(0,360px)]" : top.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
                   {top.map((r, i) => <PickCard key={r.listing.id} r={r} rank={i} />)}
                 </div>
                 {onShowAll && (picks?.length ?? 0) > top.length && (
@@ -240,9 +240,9 @@ function PickCard({ r, rank }: { r: Recommendation; rank: number }) {
       )}
       <div className="relative h-[128px] bg-sunken overflow-hidden">
         {l.cover_url && <img src={l.cover_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.05]" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/0 to-black/0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1f3a]/30 via-[#0b1f3a]/0 to-[#0b1f3a]/0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]" />
         {rank === 0 && (
-          <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-pill bg-white/90 backdrop-blur px-2.5 py-1 text-[11.5px] font-semibold text-[#1c2566]">
+          <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-pill bg-[#0b1f3a]/80 backdrop-blur px-2.5 py-1 text-[11.5px] font-semibold text-white shadow-[0_2px_8px_rgba(11,31,58,0.25)]">
             <Spark size={11} /> Best fit
           </span>
         )}
@@ -256,16 +256,17 @@ function PickCard({ r, rank }: { r: Recommendation; rank: number }) {
           {r.reasons.map((t) => <Reason key={t} text={t} />)}
           {r.gaps.slice(0, 1).map((t) => <Reason key={t} text={t} gap />)}
         </ul>
-        <div className="mt-auto pt-3">
+        <div className="mt-auto pt-3.5">
+          <div aria-hidden className="h-px bg-border mb-3" />
           <button type="button" onClick={() => setWhy((v) => !v)} aria-expanded={why}
             className="relative z-10 inline-flex items-center gap-1 text-[12.5px] font-medium text-muted hover:text-text">
             Why this match <span className={`transition-transform ${why ? "rotate-180" : ""}`}><I.ChevronDown size={12} /></span>
           </button>
           {why && (
             <div className="relative z-10 mt-2 flex flex-col gap-1.5">
-              <Bar label="Interests" value={r.parts.interests} max={MAX.interests} color="#7c5cff" />
+              <Bar label="Interests" value={r.parts.interests} max={MAX.interests} color="#2f64b4" />
               <Bar label="Readiness" value={r.parts.readiness} max={MAX.readiness} color="#22a06b" />
-              <Bar label="Chance" value={r.parts.chance} max={MAX.chance} color="#3d7bff" />
+              <Bar label="Chance" value={r.parts.chance} max={MAX.chance} color="#3f9bf0" />
             </div>
           )}
         </div>
@@ -293,13 +294,12 @@ function MatchRing({ score, delay }: { score: number; delay: number }) {
   return (
     <div className="relative w-[58px] h-[58px] rounded-full bg-white shadow-[0_6px_16px_-6px_rgba(28,37,102,0.45)] ring-1 ring-black/[0.04]" title={`${score}% match`}>
       <svg viewBox="0 0 58 58" className="absolute inset-0 -rotate-90">
-        <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3d7bff" /><stop offset="1" stopColor="#a35cff" /></linearGradient></defs>
+        <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3f9bf0" /><stop offset="1" stopColor="#2f64b4" /></linearGradient></defs>
         <circle cx="29" cy="29" r={r} fill="none" stroke="#eef0f7" strokeWidth="5" />
         <circle cx="29" cy="29" r={r} fill="none" stroke={`url(#${id})`} strokeWidth="5" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - shown / 100)} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className="text-[15px] font-bold tabular text-[#1c2566]">{shown}<span className="text-[10px]">%</span></span>
-        <span className="text-[8.5px] font-semibold uppercase tracking-[0.06em] text-faint mt-0.5">match</span>
+        <span className="text-[17px] font-bold tabular text-[#0b1f3a]">{shown}<span className="text-[10px] ml-px">%</span></span>
       </div>
     </div>
   );
@@ -308,9 +308,9 @@ function MatchRing({ score, delay }: { score: number; delay: number }) {
 function Reason({ text, gap }: { text: string; gap?: boolean }) {
   const kind = gap ? "gap" : text.startsWith("Matches") ? "interest" : text.startsWith("You have") || text.startsWith("No prerequisites") ? "ready" : "chance";
   const style = {
-    interest: { bg: "bg-[#f1ecff]", fg: "text-[#6a46e5]", icon: <Spark size={11} /> },
+    interest: { bg: "bg-[#e6eefb]", fg: "text-[#2f64b4]", icon: <Spark size={11} /> },
     ready: { bg: "bg-good-soft", fg: "text-good-ink", icon: <I.Tick size={11} /> },
-    chance: { bg: "bg-[#e9f1ff]", fg: "text-[#2f65d9]", icon: <I.Users size={11} /> },
+    chance: { bg: "bg-[#e0f3fc]", fg: "text-[#0b78b8]", icon: <I.Users size={11} /> },
     gap: { bg: "bg-warn-soft", fg: "text-warn-ink", icon: <I.Warn size={10} /> },
   }[kind];
   return (
@@ -337,9 +337,9 @@ function Bar({ label, value, max, color }: { label: string; value: number; max: 
 
 function HowItWorks() {
   const rows = [
-    { c: "#7c5cff", t: "Interests, up to 50", d: "Topics you chose in your profile that the project is tagged with." },
+    { c: "#2f64b4", t: "Interests, up to 50", d: "Topics you chose in your profile that the project is tagged with." },
     { c: "#22a06b", t: "Readiness, up to 30", d: "How many of the project's prerequisite courses you have passed." },
-    { c: "#3d7bff", t: "Chance, up to 20", d: "Fewer applicants per open slot scores higher, so students spread out and more of you get a place." },
+    { c: "#3f9bf0", t: "Chance, up to 20", d: "Fewer applicants per open slot scores higher, so students spread out and more of you get a place." },
   ];
   return (
     <div className="mt-5 rounded-[16px] bg-white/80 backdrop-blur ring-1 ring-black/[0.06] p-4 grid grid-cols-3 gap-4" style={{ animation: "uri-rise .35s ease-out both" }}>
