@@ -3,10 +3,10 @@
 import { Suspense, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CoursePicker, TopicPicker } from "@/components/pickers";
-import { PageHeader } from "@/components/shell/app-shell";
+import { PageTitle } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Card, Field, Input, Select, fmtDate } from "@/components/ui";
+import { Avatar, Banner, Button, Card, Field, Input, Pill, Select, fmtDate } from "@/components/ui";
 import { ApiError, type StudentProfile } from "@/lib/api/models";
 import { useCall } from "@/lib/use-api";
 
@@ -57,7 +57,7 @@ const ALL_NTU_DEGREES = Array.from(
 ).sort();
 
 function ProfileForm({ p }: { p: StudentProfile | null }) {
-  const { refresh } = useMe();
+  const { me, refresh } = useMe();
   const call = useCall();
   const mustComplete = useSearchParams().get("complete") === "1";
 
@@ -217,10 +217,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
 
   return (
     <form onSubmit={save}>
-      <PageHeader
-        title={mustComplete ? "Complete your profile" : "My profile"}
-        description="Supervisors see this when they review your applications."
-      />
+      <PageTitle title={mustComplete ? "Complete your profile" : "My profile"} />
 
       {mustComplete && !p?.profile_complete && (
         <div className="mb-4">
@@ -258,9 +255,21 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
         </div>
       )}
 
-      <div className="grid grid-cols-[1fr_360px] gap-5">
-        <Card className="flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+        <Card className="flex flex-col gap-7">
+          <div className="flex items-center gap-4">
+            <Avatar name={me?.user.name ?? ""} size={52} tone="navy" />
+            <div className="min-w-0">
+              <div className="text-[18px] font-semibold tracking-[-0.01em] truncate">{me?.user.name}</div>
+              <div className="text-[13.5px] text-muted truncate">{me?.user.email}</div>
+            </div>
+            <Pill tone={p?.profile_complete ? "good" : "warn"} className="ml-auto shrink-0">{p?.profile_complete ? "Profile complete" : "Incomplete"}</Pill>
+          </div>
+
+          <section>
+            <h2 className="text-[16px]">Academic details</h2>
+            <div className="text-[13.5px] text-muted mt-0.5 mb-4">Supervisors see this when they review your applications.</div>
+          <div className="grid grid-cols-2 gap-4">
             <Field label="School">
               <Select id="school" value={f.school} onChange={(e) => setF({ ...f, school: e.target.value })} required>
                 <option value="">Choose</option>
@@ -295,7 +304,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             </Field>
 
             {f.isDoubleDegree && (
-              <div className="col-span-3 grid grid-cols-2 gap-3 p-3.5 bg-sunken rounded-[10px] border border-border">
+              <div className="col-span-2 grid grid-cols-2 gap-3 p-4 card-flat">
                 <Field label="Primary Degree">
                   <Select
                     value={f.degree1}
@@ -359,6 +368,10 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             </Field>
           </div>
 
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <h2 className="text-[16px]">Modules and interests</h2>
           <Field label="Completed modules" error={err("completed_modules")}>
             <CoursePicker value={f.completed_modules} onChange={(v) => setF({ ...f, completed_modules: v })} />
           </Field>
@@ -367,15 +380,17 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             <TopicPicker value={f.research_interests} onChange={(v) => setF({ ...f, research_interests: v })} />
           </Field>
 
-          <div>
+          </section>
+
+          <div className="flex items-center gap-3 pt-5 border-t border-border">
             <Button type="submit" size="lg" disabled={busy}>
               {busy ? "Saving..." : "Save changes"}
             </Button>
           </div>
         </Card>
 
-        <Card>
-          {/* Dedicated Academic Transcript Slot */}
+        <Card className="flex flex-col gap-7">
+          {/* Dedicated Academic Transcript Slot (the first file input on the page, which the end-to-end test relies on) */}
           <input
             ref={transcriptFile}
             type="file"
@@ -385,64 +400,42 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             onChange={handleTranscriptUpload}
           />
 
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="eyebrow flex items-center gap-1.5">
-                Academic Transcript
-                <span className="text-[10px] uppercase font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded">Required</span>
-              </span>
+          <section>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[16px]">Academic transcript</h2>
+              <Pill tone="accent">Required</Pill>
             </div>
-            <div className="text-[12.5px] text-muted mb-3">
+            <div className="text-[13.5px] text-muted mt-0.5 mb-4">
               Official NTU transcript (PDF, max 5 MB). Used for CGPA and prerequisite eligibility.
             </div>
 
             {transcriptDoc ? (
-              <div className="flex items-center gap-2.5 px-3.5 py-3 border border-border bg-sunken rounded-[9px] text-[12.5px]">
-                <span className="shrink-0 text-accent flex items-center">
-                  <I.File size={16} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-text" title={transcriptDoc.file_name}>
-                    {transcriptDoc.file_name}
-                  </div>
-                  <div className="text-[11px] text-muted">
-                    {(transcriptDoc.file_size / 1024).toFixed(0)} KB · uploaded {fmtDate(transcriptDoc.uploaded_at)}
+              <div className="card-flat p-3.5">
+                <div className="flex items-center gap-3">
+                  <DocTile />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13.5px] font-semibold text-text" title={transcriptDoc.file_name}>{transcriptDoc.file_name}</div>
+                    <div className="text-[12px] text-muted tabular">{(transcriptDoc.file_size / 1024).toFixed(0)} KB · uploaded {fmtDate(transcriptDoc.uploaded_at)}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  <button
-                    type="button"
-                    onClick={() => viewDoc(transcriptDoc.id)}
-                    disabled={activeDocId === transcriptDoc.id}
-                    className="px-2.5 py-1 text-[11.5px] font-semibold text-accent border border-accent/25 rounded hover:bg-accent/5 disabled:opacity-50"
-                  >
-                    View
-                  </button>
-                  <button
-                    type="button"
+                <div className="mt-3 flex items-center gap-2">
+                  <Button type="button" size="sm" variant="soft" onClick={() => viewDoc(transcriptDoc.id)} disabled={activeDocId === transcriptDoc.id}>View</Button>
+                  <Button
+                    type="button" size="sm" variant="secondary" disabled={busy}
                     onClick={() => {
                       if (transcriptFile.current) {
                         transcriptFile.current.value = "";
                         transcriptFile.current.click();
                       }
                     }}
-                    disabled={busy}
-                    className="px-2.5 py-1 text-[11.5px] font-semibold text-accent border border-accent/25 rounded hover:bg-accent/5 disabled:opacity-50"
                   >
                     Re-upload
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeDoc(transcriptDoc.id)}
-                    disabled={activeDocId === transcriptDoc.id}
-                    className="px-2 py-1 text-[11.5px] font-semibold text-bad hover:underline disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
+                  </Button>
+                  <DeleteIcon label="Delete transcript" disabled={activeDocId === transcriptDoc.id} onClick={() => removeDoc(transcriptDoc.id)} />
                 </div>
               </div>
             ) : (
-              <div className="border border-dashed border-border rounded-[9px] p-4 text-center bg-sunken/40">
+              <div className="rounded-[16px] border border-dashed border-[#b9c9e2] bg-accent-soft/40 px-4 py-6 text-center">
                 <Button
                   type="button"
                   variant="secondary"
@@ -457,55 +450,34 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                 >
                   <I.Upload size={14} /> Upload Academic Transcript
                 </Button>
-                <div className="text-[11.5px] text-faint mt-1.5">PDF only, max 5 MB</div>
+                <div className="text-[12.5px] text-faint mt-2">PDF only, max 5 MB</div>
               </div>
             )}
-          </div>
+          </section>
 
           {/* Supporting Documents (Max 5) */}
-          <div className="border-t border-border pt-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="eyebrow">Supporting Documents</span>
-              <span className="text-[12px] text-muted">{supportingCount} / 5</span>
+          <section className="border-t border-border pt-6">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[16px]">Supporting documents</h2>
+              <span className="text-[12.5px] font-medium text-muted tabular">{supportingCount} of 5</span>
             </div>
-            <div className="text-[12.5px] text-muted mb-3">
-              Optional supporting files (Resume / CV, certificates, writing samples). PDF only, up to 5 MB each.
+            <div className="text-[13.5px] text-muted mt-0.5 mb-4">
+              Optional files such as a CV, certificates or writing samples. PDF only, up to 5 MB each.
             </div>
 
-            <div className="flex flex-col gap-2 mb-3">
+            <div className="flex flex-col gap-2 mb-4">
               {supportingDocs.length === 0 ? (
-                <div className="text-[12px] text-faint italic py-1">No additional supporting documents uploaded yet.</div>
+                <div className="rounded-[14px] border border-dashed border-[#c3d0e4] bg-white/40 px-4 py-4 text-[13px] text-faint text-center">No supporting documents yet</div>
               ) : (
                 supportingDocs.map((d) => (
-                  <div
-                    key={d.id}
-                    className="flex items-center gap-2 px-3 py-2 border border-border rounded-button text-[12.5px]"
-                  >
-                    <span className="shrink-0 text-muted flex items-center">
-                      <I.File size={14} />
-                    </span>
-                    <span className="truncate font-medium flex-1 min-w-0" title={d.file_name}>
-                      {d.file_name}
-                    </span>
-                    <span className="text-[11px] text-faint shrink-0 ml-auto">{fmtDate(d.uploaded_at)}</span>
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                      <button
-                        type="button"
-                        onClick={() => viewDoc(d.id)}
-                        disabled={activeDocId === d.id}
-                        className="px-2 py-0.5 text-[11.5px] font-semibold text-accent hover:underline disabled:opacity-50"
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeDoc(d.id)}
-                        disabled={activeDocId === d.id}
-                        className="px-1.5 py-0.5 text-[11.5px] font-semibold text-bad hover:underline disabled:opacity-50"
-                      >
-                        Delete
-                      </button>
+                  <div key={d.id} className="card-flat flex items-center gap-3 px-3 py-2.5">
+                    <DocTile small />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13.5px] font-medium text-text" title={d.file_name}>{d.file_name}</div>
+                      <div className="text-[12px] text-faint tabular">{fmtDate(d.uploaded_at)}</div>
                     </div>
+                    <Button type="button" size="sm" variant="text" onClick={() => viewDoc(d.id)} disabled={activeDocId === d.id}>View</Button>
+                    <DeleteIcon label={`Delete ${d.file_name}`} disabled={activeDocId === d.id} onClick={() => removeDoc(d.id)} />
                   </div>
                 ))
               )}
@@ -528,15 +500,34 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                 <I.Upload size={14} /> Upload supporting document
               </Button>
             ) : (
-              <div className="text-center py-2 px-3 bg-sunken border border-border rounded-[9px] text-[12px] text-muted">
+              <div className="card-flat px-3.5 py-3 text-center text-[12.5px] text-muted">
                 Maximum of 5 documents reached. Delete an existing document to upload another.
               </div>
             )}
-            {err("file") && <div className="text-[12px] text-bad-ink mt-2">{err("file")}</div>}
-          </div>
+            {err("file") && <div className="text-[12.5px] text-bad-ink font-medium mt-2">{err("file")}</div>}
+          </section>
         </Card>
       </div>
     </form>
+  );
+}
+
+/** A file icon on a small white tile with a blue hairline. */
+function DocTile({ small }: { small?: boolean }) {
+  return (
+    <span className={`${small ? "w-8 h-8 rounded-[10px]" : "w-10 h-10 rounded-[12px]"} shrink-0 grid place-items-center bg-white text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)]`}>
+      <I.File size={small ? 15 : 17} />
+    </span>
+  );
+}
+
+/** Delete as a trash can: quiet until hovered, then red (the same control as Withdraw on My applications). */
+function DeleteIcon({ label, disabled, onClick }: { label: string; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick}
+      className="ml-auto w-9 h-9 shrink-0 rounded-full inline-flex items-center justify-center text-muted transition-colors hover:bg-bad-soft hover:text-bad-ink disabled:text-border-strong disabled:hover:bg-transparent">
+      <I.Trash size={16} />
+    </button>
   );
 }
 
