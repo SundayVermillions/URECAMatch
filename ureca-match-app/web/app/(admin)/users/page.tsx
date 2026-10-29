@@ -1,13 +1,15 @@
 "use client";
 /** ManageUserAccounts (4.8). REQ-USER-1..3. Screens: ManageUsersPage, CreateUserForm, EditUserInlineForm. */
 import { useState } from "react";
-import { PageHeader } from "@/components/shell/app-shell";
+import { PageTitle } from "@/components/shell/app-shell";
 import { I } from "@/components/shell/icons";
-import { Avatar, Banner, Button, Chip, Field, Input, Loading, Modal, Select, Status } from "@/components/ui";
+import { Avatar, Banner, Button, Card, Empty, Field, FilterSelect, Input, Modal, Segmented, Select, Skeleton, statusLabel } from "@/components/ui";
 import { ApiError, type AccountStatus, type ActiveItem, type ActiveItemKind, type Role, type UserListItem } from "@/lib/api/models";
 import { TITLES, composeName, splitTitle } from "@/lib/titles";
 import { useApi, useCall } from "@/lib/use-api";
 
+const PAGE = 12; // rows shown before "Show more"
+const STATUS_LABEL: Record<AccountStatus, string> = { active: "Active", inactive: "Inactive", pending_verification: "Unverified" };
 const KIND_LABEL: Record<ActiveItemKind, string> = { listing: "Open project listings", proposal: "Pending proposals", application: "Applications", match: "Matches" };
 
 /** What the API said would be closed, and how to send the same request again once the admin accepts (REQ-USER-3). */
@@ -19,6 +21,11 @@ export default function Users() {
   const [status, setStatus] = useState<AccountStatus | undefined>();
   const [q, setQ] = useState("");
   const { data, loading, reload } = useApi((api) => api.listUsers({ role, status, q }), [role, status, q]);
+  const everyoneCall = useApi((api) => api.listUsers({}), []); // for the counts on the role tabs
+  const everyone = everyoneCall.data ?? [];
+  const countOf = (r: Role) => everyone.filter((u) => u.user.role === r).length;
+  const [limit, setLimit] = useState(PAGE);
+  const refresh = () => { reload(); everyoneCall.reload(); };
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<UserListItem | null>(null);
   const [deactivating, setDeactivating] = useState<UserListItem | null>(null);
@@ -28,12 +35,12 @@ export default function Users() {
 
   async function create(e: React.FormEvent) {
     e.preventDefault(); setError(null);
-    try { await call((api) => api.createUser(form)); setCreating(false); setForm({ name: "", email: "", role: "student", title: "" }); reload(); } catch (err) { setError(err as ApiError); }
+    try { await call((api) => api.createUser(form)); setCreating(false); setForm({ name: "", email: "", role: "student", title: "" }); refresh(); } catch (err) { setError(err as ApiError); }
   }
   /** Try without the flag first. A user with open items comes back as a preview; resend with the flag once the admin accepts. */
   async function submit(who: string, send: (confirm: boolean) => Promise<unknown>, done: () => void, confirm = false) {
     setError(null);
-    try { await send(confirm); setCleanup(null); done(); reload(); }
+    try { await send(confirm); setCleanup(null); done(); refresh(); }
     catch (err) {
       const e = err as ApiError;
       if (e.code === "has_active_items" && e.items?.length && !confirm) setCleanup({ who, items: e.items, send, done });
@@ -56,30 +63,54 @@ export default function Users() {
 
   return (
     <>
-      <PageHeader title="Manage users" description="Create accounts, change roles, deactivate. Deactivating ends the user's sessions immediately." right={<Button onClick={() => setCreating(true)}><I.Plus /> New user</Button>} />
+      <PageTitle title="Manage users" right={<Button onClick={() => setCreating(true)}><I.Plus /> New user</Button>} />
       {error && !error.field && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
-      <div className="flex items-center gap-1.5 flex-wrap mb-4">
-        <div className="relative w-64 mr-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"><I.Search size={16} /></span><Input id="q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name or e-mail" className="w-full pl-9" /></div>
-        <span className="eyebrow">Role</span>
-        {[undefined, "student", "supervisor", "admin"].map((r) => <Chip key={String(r)} active={role === r} onClick={() => setRole(r as Role | undefined)}>{r ?? "Any"}</Chip>)}
-        <span className="eyebrow ml-2">Status</span>
-        {[undefined, "active", "inactive", "pending_verification"].map((s) => <Chip key={String(s)} active={status === s} onClick={() => setStatus(s as AccountStatus | undefined)}>{s === "pending_verification" ? "Unverified" : s ?? "Any"}</Chip>)}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Segmented value={role ?? "all"} onChange={(v) => { setRole(v === "all" ? undefined : v); setLimit(PAGE); }} options={[
+          { value: "all", label: "Everyone", count: everyone.length },
+          { value: "student", label: "Students", count: countOf("student") },
+          { value: "supervisor", label: "Supervisors", count: countOf("supervisor") },
+          { value: "admin", label: "Admins", count: countOf("admin") },
+        ]} />
+        <div className="relative w-60"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"><I.Search size={16} /></span><Input id="q" value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} placeholder="Name or e-mail" className="w-full pl-9" /></div>
+        <FilterSelect label="Status" value={status ? STATUS_LABEL[status] : undefined} options={Object.values(STATUS_LABEL)} align="left"
+          onChange={(v) => { setStatus(v ? (Object.keys(STATUS_LABEL) as AccountStatus[]).find((k) => STATUS_LABEL[k] === v) : undefined); setLimit(PAGE); }} />
+        {data && <span className="ml-auto text-[12.5px] tabular text-faint">{data.length} {data.length === 1 ? "user" : "users"}</span>}
       </div>
-      <div className="bg-surface border border-border rounded-card overflow-hidden">
-        <div className="grid grid-cols-[1fr_140px_120px_120px_170px] gap-3 px-4 py-2.5 border-b border-border eyebrow"><span>User</span><span>Role</span><span>School</span><span>Status</span><span /></div>
-        {loading && !data ? <Loading /> : (data ?? []).map((u) => (
-          <div key={u.user.id} className="grid grid-cols-[1fr_140px_120px_120px_170px] gap-3 items-center px-4 py-2.5 border-b border-border last:border-b-0">
-            <div className="flex items-center gap-2.5 min-w-0"><Avatar name={u.user.name} size={30} tone={u.user.role === "student" ? "neutral" : "navy"} /><div className="min-w-0"><div className="text-[13.5px] font-semibold truncate">{u.user.name}</div><div className="text-[12px] text-muted truncate">{u.user.email}</div></div></div>
-            <span className="text-[12.5px] capitalize">{u.user.role === "supervisor" ? "Project Supervisor" : u.user.role}</span>
-            <span className="text-[12.5px] text-muted">{u.school ?? ""}</span>
-            <Status value={u.user.status} />
-            <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="secondary" onClick={() => setEditing({ ...u, user: { ...u.user, name: u.title ? splitTitle(u.user.name)[1] : u.user.name } })}>Edit</Button>
-              {u.user.status !== "inactive" && <Button size="sm" variant="secondary" onClick={() => setDeactivating(u)}>Deactivate</Button>}
-            </div>
+
+      {loading && !data ? (
+        <Card padded={false} className="overflow-hidden" >
+          <div aria-busy="true" aria-label="Loading users" className="divide-y divide-border">
+            {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="flex items-center gap-3 px-5 py-3.5"><Skeleton className="h-8 w-8 !rounded-full" /><div className="flex flex-1 flex-col gap-2"><Skeleton className="h-3.5 w-40" /><Skeleton className="h-3 w-56" /></div></div>)}
           </div>
-        ))}
-      </div>
+        </Card>
+      ) : (data ?? []).length === 0 ? (
+        <Empty icon={<I.Users size={20} />} title="No users match" note="Try another name, role or status." />
+      ) : (
+        <Card padded={false} className="overflow-hidden">
+          <div className="grid grid-cols-[1fr_150px_90px_110px_150px] gap-3 border-b border-border px-5 py-3 text-[12px] font-medium text-faint"><span>User</span><span>Role</span><span>School</span><span>Status</span><span /></div>
+          <div className="divide-y divide-border">
+            {(data ?? []).slice(0, limit).map((u) => (
+              <div key={u.user.id} className="group grid grid-cols-[1fr_150px_90px_110px_150px] items-center gap-3 px-5 py-3 transition-colors hover:bg-accent-soft/30">
+                <div className="flex min-w-0 items-center gap-3"><Avatar name={u.user.name} size={34} tone={u.user.role === "student" ? "auto" : "navy"} /><div className="min-w-0"><div className="truncate text-[14px] font-semibold">{u.user.name}</div><div className="truncate text-[12.5px] text-muted">{u.user.email}</div></div></div>
+                <span className="text-[13px]">{u.user.role === "supervisor" ? "Project Supervisor" : u.user.role === "admin" ? "Admin" : "Student"}</span>
+                <span className="text-[13px] text-muted">{u.school ?? "–"}</span>
+                <span className="inline-flex items-center gap-1.5 text-[13px] text-muted"><span aria-hidden className={`h-1.5 w-1.5 rounded-full ${u.user.status === "active" ? "bg-good" : u.user.status === "inactive" ? "bg-bad" : "bg-warn"}`} />{statusLabel(u.user.status)}</span>
+                <div className="flex justify-end gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                  <Button size="sm" variant="secondary" onClick={() => setEditing({ ...u, user: { ...u.user, name: u.title ? splitTitle(u.user.name)[1] : u.user.name } })}>Edit</Button>
+                  {u.user.status !== "inactive" && <Button size="sm" variant="secondary" className="hover:!bg-bad-soft hover:!text-bad-ink" onClick={() => setDeactivating(u)}>Deactivate</Button>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {(data ?? []).length > limit && (
+            <div className="flex items-center justify-between border-t border-border bg-white/40 px-5 py-3">
+              <span className="text-[12.5px] tabular text-faint">Showing {limit} of {(data ?? []).length}</span>
+              <Button size="sm" variant="soft" onClick={() => setLimit((n) => n + PAGE)}>Show more</Button>
+            </div>
+          )}
+        </Card>
+      )}
 
       <Modal open={creating} onClose={() => setCreating(false)} title="New user">
         <form onSubmit={create} className="flex flex-col gap-3 text-text">
