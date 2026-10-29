@@ -48,19 +48,20 @@ export default function ProjectDetail() {
 
       {/* Band 1: hero. Image and information share one card and one height. */}
       <Card padded={false} className="overflow-hidden grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div className="min-h-[300px] bg-gradient-to-br from-[#eef2ff] via-[#f5f5f7] to-[#eafaf4]">
+        <div className="relative min-h-[300px] bg-gradient-to-br from-[#e8f1fd] via-[#f1f5fb] to-[#dfeafa]">
           {l.cover_url && <img src={l.cover_url} alt="" className="w-full h-full object-cover" />}
+          <div aria-hidden className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#0b1f3a]/25 via-transparent to-transparent" />
         </div>
         <div className="p-8 flex flex-col min-w-0">
           <div className="text-[13px] text-faint">
             {[l.offering_faculty, l.research_location].filter(Boolean).join(" · ")}
-            {hot && <> · <span className="text-warn-ink font-medium">High demand</span></>}
+            {hot && <span title="High demand: more than 5 students for each open slot" className="ml-2 inline-flex items-center gap-1 align-middle rounded-pill bg-gradient-to-b from-[#fff3dd] to-[#ffe7c2] text-[#a14a00] px-2.5 py-0.5 text-[11.5px] font-semibold shadow-[inset_0_0_0_1px_rgba(214,130,20,0.25)]"><I.Flame size={13} /> Popular</span>}
           </div>
           <h1 className="mt-1.5 text-[28px] leading-[1.18]">{l.title}</h1>
           <div className="flex items-center gap-2.5 mt-4">
             <Avatar name={l.supervisor_name} size={32} />
             <div>
-              <div className="text-[14px] font-medium text-text">{l.supervisor_name}</div>
+              <div className="text-[14px] font-semibold text-text">{l.supervisor_name}</div>
               {l.supervisor_email && (
                 <div className="text-[12.5px] text-accent">
                   <a href={`mailto:${l.supervisor_email}`} className="hover:underline">
@@ -124,12 +125,12 @@ export default function ProjectDetail() {
             <h2 className="text-[16px]">At a glance</h2>
             <dl className="mt-3 flex flex-col gap-2.5 text-[14px]">
               {facts.map(([k, v]) => (
-                <div key={k} className="flex items-baseline gap-3"><dt className="text-muted w-[110px] shrink-0">{k}</dt><dd className="text-text font-medium min-w-0">{v}</dd></div>
+                <div key={k} className="flex items-baseline gap-3"><dt className="text-muted w-[110px] shrink-0">{k}</dt><dd className="text-text font-semibold min-w-0">{v}</dd></div>
               ))}
             </dl>
           </Card>
         <Card>
-          <h2 className="text-[16px]">Prerequisites</h2>
+          <h2 className="text-[16px] flex items-baseline gap-2">Prerequisites{l.prerequisites.length > 0 && <span className="text-[12.5px] font-medium text-muted tabular">{l.prerequisites.length - missing.length} of {l.prerequisites.length} met</span>}</h2>
           {l.prerequisites.length === 0 ? (
             <div className="text-[14px] text-muted mt-3">None. Open to all students.</div>
           ) : (
@@ -146,7 +147,7 @@ export default function ProjectDetail() {
                         <span className="block font-medium text-text leading-[1.35]">{title(p) ?? p}</span>
                         {title(p) && <span className="block text-[12.5px] text-faint tabular">{p}</span>}
                       </span>
-                      <span className={`ml-auto shrink-0 text-[13px] ${has ? "text-muted" : "text-warn-ink"}`}>{has ? "Completed" : "Missing"}</span>
+                      <span className={`ml-auto shrink-0 text-[12.5px] ${has ? "text-muted" : "rounded-pill bg-warn-soft text-warn-ink font-semibold px-2 py-0.5"}`}>{has ? "Completed" : "Missing"}</span>
                     </li>
                   );
                 })}
@@ -219,8 +220,9 @@ function Action({ l, open, me, standing }: { l: Listing; open: number; me: Me | 
   const eligible = !standing.viewOnly;
   if (l.applied) return (
     <Link href="/my-applications" title="Change your ranking in My applications"
-      className="inline-flex items-center gap-1.5 h-10 px-4 rounded-pill bg-good-soft text-good-ink text-[14px] font-medium hover:brightness-95">
-      <I.Tick size={15} /> Applied · preference #{l.applied_rank}
+      className="inline-flex items-center gap-2 h-10 pl-4 pr-1.5 rounded-pill bg-good-soft text-good-ink text-[14px] font-semibold shadow-[inset_0_0_0_1px_rgba(26,116,49,0.15)] hover:brightness-95">
+      Applied
+      {l.applied_rank != null ? <span title={`Your preference number ${l.applied_rank}`} className="min-w-[26px] h-[26px] px-1.5 rounded-full bg-good text-white text-[12px] font-semibold tabular grid place-items-center">{l.applied_rank}</span> : <span className="w-[26px] h-[26px] rounded-full bg-good text-white grid place-items-center"><I.Tick size={13} /></span>}
     </Link>
   );
   if (!windowOpen) return <Muted>{me?.phase.label ?? "Applications closed"}</Muted>;
