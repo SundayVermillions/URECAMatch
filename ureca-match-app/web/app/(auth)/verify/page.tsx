@@ -46,7 +46,7 @@ function VerifyForm() {
   }
 
   return (
-    <form onSubmit={submit} className="bg-surface border border-border rounded-modal p-7 flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-4">
       <div>
         <h1 className="text-[22px]">Check your e-mail</h1>
         <div className="text-[13px] text-muted mt-1">
