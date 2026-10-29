@@ -38,7 +38,7 @@ const tones: Record<Tone, string> = {
   accent: "bg-accent-soft text-accent-ink", neutral: "bg-neutral-soft text-muted",
 };
 export function Pill({ tone = "neutral", children, className = "" }: { tone?: Tone; children: React.ReactNode; className?: string }) {
-  return <span className={`inline-flex items-center gap-1 whitespace-nowrap text-[12px] font-medium rounded-pill px-2.5 py-0.5 ${tones[tone]} ${className}`}>{children}</span>;
+  return <span className={`inline-flex items-center gap-1 whitespace-nowrap text-[12px] font-medium rounded-pill px-2.5 py-0.5 ring-1 ring-inset ring-black/[0.04] ${tones[tone]} ${className}`}>{children}</span>;
 }
 
 /** One fixed label and colour per stored status on every screen (SRS 3.1.6, Figure 3.8). */
@@ -69,7 +69,7 @@ const tintFor = (name: string) => AVATAR_TINTS[[...name].reduce((h, c) => (h * 3
 /** tone="auto" picks a tint from the name, so the same person always gets the same colour. */
 export function Avatar({ name, size = 30, tone = "neutral" }: { name: string; size?: number; tone?: "navy" | "neutral" | "auto" }) {
   const initials = name.replace(/^(Prof\.|Dr\.|Assoc\. Prof\.)\s*/, "").split(" ").filter(Boolean).slice(0, 2).map((s) => s[0]).join("").toUpperCase();
-  const cls = tone === "navy" ? "bg-gradient-to-b from-[#a1a1a6] to-[#6e6e73] text-white" : tone === "auto" ? tintFor(name) : "bg-neutral-soft text-muted";
+  const cls = tone === "navy" ? "bg-gradient-to-b from-[#7fa6dc] to-[#2f5aa0] text-white" : tone === "auto" ? tintFor(name) : "bg-neutral-soft text-muted";
   return (
     <div className={`rounded-full flex items-center justify-center font-display font-semibold shrink-0 ${cls}`}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}>{initials}</div>
@@ -318,12 +318,12 @@ export function ScoreRing({ score, size = 32 }: { score: number; size?: number }
 // ------------------------------------------------------------------ surfaces
 
 export function Card({ children, className = "", padded = true }: { children: React.ReactNode; className?: string; padded?: boolean }) {
-  return <div className={`bg-surface rounded-card shadow-[var(--shadow-card)] ring-1 ring-black/[0.04] ${padded ? "p-6" : ""} ${className}`}>{children}</div>;
+  return <div className={`card-surface ${padded ? "p-6" : ""} ${className}`}>{children}</div>;
 }
 
 export function Stat({ label, value, note, tone }: { label: string; value: string | number; note?: string; tone?: "good" | "bad" }) {
   return (
-    <div className="bg-surface rounded-card shadow-[var(--shadow-card)] ring-1 ring-black/[0.04] px-5 py-4">
+    <div className="card-surface px-5 py-4">
       <div className="text-[13px] text-muted font-medium">{label}</div>
       <div className={`font-display text-[28px] font-semibold tracking-[-0.02em] mt-1 tabular ${tone === "good" ? "text-good-ink" : tone === "bad" ? "text-bad-ink" : ""}`}>{value}</div>
       {note && <div className="text-[11.5px] text-faint mt-0.5">{note}</div>}
@@ -337,7 +337,7 @@ export function Progress({ value, max }: { value: number; max: number }) {
 
 export function Empty({ title, note, children }: { title: string; note?: string; children?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-1.5 text-center bg-surface rounded-card ring-1 ring-black/[0.04] px-6 py-14">
+    <div className="flex flex-col items-center justify-center gap-1.5 text-center card-surface px-6 py-14">
       <div className="font-display text-[15px] font-semibold">{title}</div>
       {note && <div className="text-[13.5px] text-muted max-w-md">{note}</div>}
       {children && <div className="mt-3">{children}</div>}
