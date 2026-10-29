@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 const DEG = Math.PI / 180;
@@ -160,19 +160,35 @@ function spread(candidates: THREE.Vector3[], start: THREE.Vector3[], n: number) 
   return chosen;
 }
 
+/** Some browsers, remote desktops and locked-down machines have no WebGL. The page must still work there. */
+function hasWebGL() {
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The globe: a frosted blue glass ball, dotted continents, glowing city nodes joined by arcs,
  * and pulses travelling along the links. Drawn straight in three.js (no earth photo).
  */
 export default function AuthOrb({ size, dots, links: linkColors, nodes: nodeColors, accent, body, core }: { size: number; dots: string[]; links: string[]; nodes: string[]; accent: string; body: string; core: string }) {
   const mount = useRef<HTMLDivElement>(null);
+  const [supported] = useState(hasWebGL); // this component only renders in the browser (ssr: false), so this is safe
 
   useEffect(() => {
     const el = mount.current;
-    if (!el) return;
+    if (!el || !supported) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    } catch {
+      return; // the context could not be created: leave the lens empty rather than break the page
+    }
     renderer.setPixelRatio(dpr);
     renderer.setSize(size, size);
     renderer.setClearColor(0x000000, 0);
@@ -294,7 +310,15 @@ export default function AuthOrb({ size, dots, links: linkColors, nodes: nodeColo
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [size, dots, linkColors, nodeColors, accent, body, core]);
+  }, [size, supported, dots, linkColors, nodeColors, accent, body, core]);
 
+  if (!supported) {
+    // No WebGL: a plain blue ball in the lens (the globe fills about 79% of the canvas)
+    return (
+      <div style={{ width: size, height: size, position: "relative" }}>
+        <div aria-hidden style={{ position: "absolute", inset: "10.5%", borderRadius: "50%", background: `radial-gradient(circle at 35% 30%, ${core}, ${body})` }} />
+      </div>
+    );
+  }
   return <div ref={mount} style={{ width: size, height: size }} />;
 }
