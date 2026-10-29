@@ -10,19 +10,20 @@ import { Card, Empty, ErrorBanner, Skeleton, fmtDate } from "@/components/ui";
 import { ApiError, type Notification } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
-type Look = { icon: React.ReactNode; tile: string };
-const LOOK: Record<string, Look> = {
-  offer_received: { icon: <I.Bulb size={16} />, tile: "bg-accent-soft text-accent-ink" },
-  results_published: { icon: <I.Check size={16} />, tile: "bg-good-soft text-good-ink" },
-  match_approved: { icon: <I.CheckCircle size={16} />, tile: "bg-good-soft text-good-ink" },
-  match_rejected: { icon: <I.Alert size={16} />, tile: "bg-bad-soft text-bad-ink" },
-  matches_proposed: { icon: <I.Layers size={16} />, tile: "bg-accent-soft text-accent-ink" },
-  proposal_decided: { icon: <I.Bulb size={16} />, tile: "bg-warn-soft text-warn-ink" },
-  account_changed: { icon: <I.User size={16} />, tile: "bg-neutral-soft text-muted" },
-  round_opened: { icon: <I.Calendar size={16} />, tile: "bg-accent-soft text-accent-ink" },
-  cycle_changed: { icon: <I.Calendar size={16} />, tile: "bg-warn-soft text-warn-ink" },
+/** One icon per kind of event, in one colour system: blue while unread, grey once read. Only a rejection is red. */
+const ICON: Record<string, React.ReactNode> = {
+  round_opened: <I.PlayCircle size={18} />,   // a round has started
+  cycle_changed: <I.Clock size={18} />,       // a date or deadline moved, or is close
+  offer_received: <I.Mail size={18} />,       // an offer has arrived
+  results_published: <I.Check size={18} />,   // results are out
+  matches_proposed: <I.Layers size={18} />,
+  match_approved: <I.CheckCircle size={18} />,
+  match_rejected: <I.Alert size={18} />,
+  proposal_decided: <I.Bulb size={18} />,
+  account_changed: <I.User size={18} />,
 };
-const FALLBACK: Look = { icon: <I.Calendar size={16} />, tile: "bg-neutral-soft text-muted" };
+const FALLBACK = <I.Bell size={18} />;
+const tileFor = (event: string, read: boolean) => (read ? "bg-neutral-soft text-faint" : event === "match_rejected" ? "bg-bad-soft text-bad-ink" : "bg-accent-soft text-accent-ink");
 
 const dayKey = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" }); // YYYY-MM-DD in Singapore
 
@@ -76,14 +77,13 @@ export default function Notifications() {
               <h2 className="eyebrow !text-[12.5px] font-semibold mb-2.5 px-1">{g.label}</h2>
               <div className="flex flex-col gap-2.5">
                 {g.items.map((n) => {
-                  const look = LOOK[n.event] ?? FALLBACK;
                   return (
                     <button type="button" key={n.id} onClick={() => open(n)} aria-label={`${n.read ? "" : "Unread. "}${n.title}`}
                       className={`group relative flex items-start gap-4 !rounded-[18px] pl-5 pr-4 py-3.5 cursor-pointer text-left w-full overflow-hidden transition-[box-shadow,background-color] ${n.read
                         ? "card-flat !bg-white/40 hover:!bg-white/70"
                         : "card-surface !bg-[linear-gradient(180deg,#eef5ff,#ffffff)] shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(0,113,227,0.28),0_18px_36px_-22px_rgba(0,113,227,0.5)] hover:shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(0,113,227,0.4),0_20px_40px_-20px_rgba(0,113,227,0.55)]"}`}>
                       {!n.read && <span aria-hidden className="absolute left-0 top-3 bottom-3 w-[3.5px] rounded-r-full bg-accent" />}
-                      <span className={`w-10 h-10 rounded-[12px] grid place-items-center shrink-0 ${n.read ? "bg-neutral-soft text-faint" : look.tile}`}>{look.icon}</span>
+                      <span className={`w-10 h-10 rounded-full grid place-items-center shrink-0 ${tileFor(n.event, n.read)}`}>{ICON[n.event] ?? FALLBACK}</span>
                       <span className="min-w-0 flex-1">
                         <span className={`block text-[14.5px] leading-[1.35] ${n.read ? "font-medium text-muted" : "font-semibold text-text"}`}>{n.title}</span>
                         <span className={`block text-[13.5px] mt-0.5 leading-[1.5] ${n.read ? "text-faint" : "text-muted"}`}>{n.message}</span>

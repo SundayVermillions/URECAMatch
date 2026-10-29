@@ -1,12 +1,12 @@
 "use client";
 /** RankAppliedProjects (4.11) and ManageMatchingOutcome (4.13). REQ-SRANK-1..2, REQ-OUTCOME-1..4. Screen: MyApplicationPage. */
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/shell/app-shell";
 import { CycleTimeline } from "@/components/student/cycle-timeline";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Card, Empty, IconButton, Modal, Skeleton, Status, fmtDate, fmtDeadline } from "@/components/ui";
+import { Banner, Button, Empty, Modal, Skeleton, Status, fmtDate, fmtDeadline } from "@/components/ui";
 import { ApiError, type Match } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 import { useStanding } from "@/lib/use-standing";
@@ -25,6 +25,8 @@ export default function MyApplications() {
   const [target, setTarget] = useState<string | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState(false);
+  useEffect(() => { if (!saved) return; const t = setTimeout(() => setSaved(false), 3000); return () => clearTimeout(t); }, [saved]); // "Order saved" goes away by itself
+  const [history, setHistory] = useState(false); // the earlier results, folded away until asked for
 
   const canEdit = me?.phase.window === "application";
   const active = (apps.data ?? []).filter((a) => a.status === "submitted");
@@ -71,55 +73,63 @@ export default function MyApplications() {
           <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-pill bg-black/[0.05] text-[12.5px] font-medium text-muted"><I.Lock size={12} /> Locked</span>
         )}
       </SectionHead>
-      {active.length > 1 && <p className="-mt-2 mb-4 px-1 text-[13.5px] text-muted">{canEdit ? "Your first choice is at the top. Matching follows this order until applications close." : "Matching follows this order."}</p>}
       {apps.loading && !apps.data ? <RowSkeletons /> : active.length === 0 ? (
         <Empty icon={<I.Layers size={20} />} title="No applications this round" note={canEdit ? "Browse projects and apply. Each application becomes a preference you can reorder here." : me?.phase.label}>
           {canEdit && <Link href="/browse"><Button variant="soft">Browse projects</Button></Link>}
         </Empty>
       ) : (
-        <div className="flex flex-col gap-3">
+        <ListCard>
           {active.map((a, i) => (
-            <Row key={a.id}
-              lead={<Thumb url={cover(a.listing_id)} rank={a.preference_rank ?? i + 1} first={i === 0} />}
+            <ListRow key={a.id} rank={a.preference_rank ?? i + 1} first={i === 0}
+              lead={<Thumb url={cover(a.listing_id)} />}
               title={a.listing_title} meta={`${a.supervisor_name} · applied ${fmtDate(a.submitted_at)}`}>
-              <span className="inline-flex rounded-pill bg-[#dfe8f5]/70 p-0.5">
-                <IconButton disabled={!canEdit || i === 0} onClick={() => move(a.id, -1)} aria-label="Move up"><I.ArrowUp /></IconButton>
-                <IconButton disabled={!canEdit || i === active.length - 1} onClick={() => move(a.id, 1)} aria-label="Move down"><I.ArrowDown /></IconButton>
-              </span>
+              <RoundButton disabled={!canEdit || i === 0} onClick={() => move(a.id, -1)} label="Move up"><I.ArrowUp /></RoundButton>
+              <RoundButton disabled={!canEdit || i === active.length - 1} onClick={() => move(a.id, 1)} label="Move down"><I.ArrowDown /></RoundButton>
               <TrashButton disabled={!canEdit} label="Withdraw application" onClick={() => { setTarget(a.id); setConfirm("withdraw"); }} />
-            </Row>
+            </ListRow>
           ))}
-        </div>
+        </ListCard>
       )}
       </>}
 
       {past.length > 0 && (
-        <>
-          <SectionHead title="Earlier" count={past.length} />
-          <div className="flex flex-col gap-3">
-            {past.map((a) => (
-              <Row key={a.id} muted lead={<Thumb url={cover(a.listing_id)} />} title={a.listing_title} meta={a.supervisor_name}><Status value={a.status} /></Row>
-            ))}
-          </div>
-        </>
+        <div className="mt-8">
+          <button type="button" onClick={() => setHistory((v) => !v)} aria-expanded={history}
+            className="inline-flex items-center gap-2 h-9 pl-3.5 pr-3 rounded-pill bg-white/60 text-[13.5px] font-medium text-muted shadow-[inset_0_0_0_1px_rgba(15,40,90,0.07)] transition-colors hover:bg-white hover:text-text">
+            {history ? "Hide history" : "View history"}
+            <span className="inline-flex items-center h-5 px-2 rounded-pill bg-[#dfe8f5] text-[12px] font-semibold text-muted tabular">{past.length}</span>
+            <span className={`transition-transform duration-200 ${history ? "rotate-180" : ""}`}><I.ChevronDown size={13} /></span>
+          </button>
+          {history && (
+            <div className="step-in mt-4">
+              <ListCard>
+                {past.map((a) => (
+                  <ListRow key={a.id} muted lead={<Thumb url={cover(a.listing_id)} />} title={a.listing_title} meta={a.supervisor_name}><Status value={a.status} /></ListRow>
+                ))}
+              </ListCard>
+            </div>
+          )}
+        </div>
       )}
 
       <SectionHead title="Self-proposed projects" count={proposalList.length}>
-        {canEdit && !standing.viewOnly && <Link href="/propose"><Button size="sm" variant="soft"><I.Plus /> Propose a project</Button></Link>}
+        {proposalList.length > 0 && canEdit && !standing.viewOnly && <Link href="/propose"><Button size="sm" variant="soft"><I.Plus /> Propose a project</Button></Link>}
       </SectionHead>
       {proposalList.length === 0 ? (
-        <div className="rounded-[18px] border border-dashed border-[#c3d0e4] bg-white/40 px-5 py-6 text-[13.5px] text-faint text-center">No proposals yet</div>
+        <Empty icon={<I.Bulb size={20} />} title="No proposals yet" note="Have your own idea? Pitch it straight to a supervisor.">
+          {canEdit && !standing.viewOnly && <Link href="/propose"><Button size="sm" variant="soft"><I.Plus /> Propose a project</Button></Link>}
+        </Empty>
       ) : (
-        <div className="flex flex-col gap-3">
+        <ListCard>
           {proposalList.map((p) => (
-            <Row key={p.id} lead={<Thumb url={null} />} title={p.title} meta={`to ${p.supervisor_name} · sent ${fmtDate(p.submitted_at)}`}>
+            <ListRow key={p.id} lead={<Thumb url={null} />} title={p.title} meta={`to ${p.supervisor_name} · sent ${fmtDate(p.submitted_at)}`}>
               <Status value={p.status} />
               {p.status === "submitted" && ( // only until the supervisor answers
                 <TrashButton label="Withdraw proposal" onClick={() => { setTarget(p.id); setConfirm("withdraw-proposal"); }} />
               )}
-            </Row>
+            </ListRow>
           ))}
-        </div>
+        </ListCard>
       )}
 
       <Modal open={confirm === "accept"} onClose={() => setConfirm(null)} title="Accept this offer?"
@@ -145,8 +155,8 @@ export default function MyApplications() {
 /** A section heading with its count, and room on the right for a note or an action. */
 function SectionHead({ title, count, first, children }: { title: string; count?: number; first?: boolean; children?: React.ReactNode }) {
   return (
-    <div className={`flex items-center justify-between gap-4 mb-4 px-1 ${first ? "mt-2" : "mt-10"}`}>
-      <h2 className="text-[22px] font-semibold tracking-[-0.02em] flex items-center gap-2.5">
+    <div className={`flex items-center justify-between gap-4 mb-3.5 px-1 ${first ? "mt-2" : "mt-9"}`}>
+      <h2 className="text-[19px] font-semibold tracking-[-0.02em] flex items-center gap-2.5">
         {title}
         {!!count && <span className="inline-flex items-center h-6 px-2.5 rounded-pill bg-black/[0.05] text-[12.5px] font-medium text-muted tabular">{count}</span>}
       </h2>
@@ -155,70 +165,92 @@ function SectionHead({ title, count, first, children }: { title: string; count?:
   );
 }
 
-/** One application, proposal or past result: a soft card with a lead, the title and who it is with, and actions. */
-function Row({ lead, title, meta, muted, children }: { lead?: React.ReactNode; title: string; meta: string; muted?: boolean; children?: React.ReactNode }) {
+/** A list of rows in one card, separated by hairlines. */
+function ListCard({ children }: { children: React.ReactNode }) {
+  return <div className="card-surface !rounded-[20px] divide-y divide-border overflow-hidden">{children}</div>;
+}
+
+/** One application, proposal or past result: an optional big rank number, a photo, the title and who it is with, and actions. */
+function ListRow({ rank, first, lead, title, meta, muted, children }: { rank?: number; first?: boolean; lead?: React.ReactNode; title: string; meta: string; muted?: boolean; children?: React.ReactNode }) {
   return (
-    <div className={`card-surface flex items-center gap-4 !rounded-[18px] px-5 py-4 transition-shadow ${muted ? "opacity-75" : "hover:shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(47,100,180,0.14),0_16px_32px_-20px_rgba(47,100,180,0.4)]"}`}>
+    <div className={`flex items-center gap-5 px-6 py-4 transition-colors ${muted ? "opacity-75" : "hover:bg-accent-soft/30"}`}>
+      {rank !== undefined && (
+        <span aria-label={`Choice ${rank}`} className={`w-7 shrink-0 text-center font-display text-[26px] font-semibold leading-none tracking-[-0.03em] tabular ${first ? "text-accent" : "text-[#b4c3da]"}`}>{rank}</span>
+      )}
       {lead}
       <div className="flex-1 min-w-0">
-        <div className="text-[15.5px] font-semibold tracking-[-0.01em] truncate">{title}</div>
-        <div className="text-[13px] text-muted mt-0.5 truncate">{meta}</div>
+        <div className="truncate text-[15.5px] font-semibold tracking-[-0.01em]">{title}</div>
+        <div className="mt-0.5 truncate text-[13px] text-muted">{meta}</div>
+        {first && <span className="mt-1.5 inline-flex h-5 items-center rounded-pill bg-accent-soft px-2 text-[11px] font-semibold text-accent-ink">First choice</span>}
       </div>
-      <div className="flex items-center gap-2 shrink-0">{children}</div>
+      <div className="flex shrink-0 items-center gap-1.5">{children}</div>
     </div>
   );
 }
 
-/** The match offer, first thing on the page: pale blue while it waits for an answer, green once accepted. */
+/** A round icon button for reordering. */
+function RoundButton({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-accent-soft hover:text-accent-ink disabled:text-border-strong disabled:shadow-none disabled:hover:bg-transparent">
+      {children}
+    </button>
+  );
+}
+
+/** The match offer, first thing on the page. The same card as every row below it, with a bar on its edge for where it stands:
+ *  blue while it waits for an answer, green once accepted. */
 function OfferCard({ m, round, cover, answerable, lapsed, onAccept, onDecline }: { m: Match; round?: number; cover: string | null; answerable: boolean; lapsed: boolean; onAccept: () => void; onDecline: () => void }) {
   const waiting = m.status === "published", accepted = m.status === "accepted";
-  const tint = accepted ? "from-[#eaf8ef] via-white to-[#f1fbf5]" : waiting ? "from-[#e3efff] via-white to-[#e6f3fd]" : "from-[#f1f4f9] via-white to-[#f5f7fb]";
+  const bar = accepted ? "bg-good" : waiting ? "bg-accent" : "bg-faint";
   return (
-    <section className={`relative mb-2 rounded-[26px] bg-gradient-to-br ${tint} shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(15,40,90,0.07),0_24px_48px_-28px_rgba(47,100,180,0.4)] p-7`}>
-      <div className="flex items-start gap-6">
-        <div className="hidden sm:block w-[148px] h-[112px] rounded-[18px] overflow-hidden bg-black/[0.05] shrink-0 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.4)]">
-          {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full grid place-items-center text-faint"><I.Bulb size={26} /></div>}
+    <section className="card-surface relative mb-2 !rounded-[22px] p-6 pl-7 overflow-hidden">
+      <span aria-hidden className={`absolute left-0 top-6 bottom-6 w-1 rounded-r-full ${bar}`} />
+      <div className="flex items-center gap-5">
+        <div className="relative hidden sm:block w-[112px] h-[84px] rounded-[16px] overflow-hidden bg-neutral-soft shrink-0">
+          {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full grid place-items-center text-faint"><I.Bulb size={24} /></div>}
+          <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-[#0b1f3a]/25 to-transparent shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]" />
         </div>
         <div className="min-w-0 flex-1">
-          <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-pill bg-white/80 ring-1 ring-black/[0.05] text-[12.5px] font-semibold text-accent-ink">
-            {accepted ? <I.CheckCircle size={13} /> : <I.Bulb size={13} />} {accepted ? "Your project" : "Match offer"}{round ? ` · Round ${round}` : ""}
-          </span>
-          <h2 className="mt-4 text-[26px] leading-[1.2] font-semibold tracking-[-0.025em]">{m.listing_title}</h2>
-          <div className="mt-1.5 text-[14.5px] text-muted">{m.supervisor_name}{m.preference_rank ? ` · your choice number ${m.preference_rank}` : ""}</div>
+          <div className="eyebrow !text-accent-ink font-semibold">{accepted ? "Your project" : "Match offer"}{round ? ` · Round ${round}` : ""}</div>
+          <h2 className="mt-1 text-[22px] leading-[1.25] tracking-[-0.02em]">{m.listing_title}</h2>
+          <div className="mt-1 text-[14px] text-muted">{m.supervisor_name}{m.preference_rank ? ` · your choice number ${m.preference_rank}` : ""}</div>
         </div>
         <Status value={m.status} />
       </div>
 
       {waiting && answerable && (
-        <>
-          <div className="mt-5 inline-flex items-center gap-2 text-[14px] font-medium text-text"><I.Calendar size={15} /> Respond by {fmtDeadline(m.offer_expires_at)}</div>
-          <div className="mt-5 flex items-center gap-3">
+        <div className="mt-5 pt-5 border-t border-border">
+          <div className="inline-flex items-center gap-2 text-[14px] font-medium text-text"><I.Calendar size={15} /> Respond by {fmtDeadline(m.offer_expires_at)}</div>
+          <div className="mt-4 flex items-center gap-3">
             <Button onClick={onAccept} className="rounded-pill px-6 h-11">Accept offer</Button>
             <Button variant="secondary" onClick={onDecline} className="rounded-pill px-6 h-11">Decline</Button>
           </div>
           <p className="mt-4 text-[12.5px] leading-[1.5] text-faint max-w-[560px]">You cannot apply to other projects while this offer is open. Declining reopens the slot and ends your applications this cycle. No reply by the deadline counts as a decline.</p>
-        </>
+        </div>
       )}
       {waiting && !answerable && (
-        <p className="mt-4 text-[14px] text-muted">{lapsed ? <>The deadline to respond passed on <strong>{fmtDeadline(m.offer_expires_at)}</strong>, so this offer can no longer be answered.</> : "The application cycle has closed, so this offer can no longer be answered."}</p>
+        <p className="mt-5 pt-5 border-t border-border text-[14px] text-muted">{lapsed ? <>The deadline to respond passed on <strong>{fmtDeadline(m.offer_expires_at)}</strong>, so this offer can no longer be answered.</> : "The application cycle has closed, so this offer can no longer be answered."}</p>
       )}
-      {accepted && <p className="mt-4 text-[14px] text-good-ink">You are registered to this project. Your other applications this cycle are withdrawn.</p>}
+      {accepted && (
+        <p className="mt-5 pt-5 border-t border-border flex items-center gap-2.5 text-[14px] text-muted">
+          <span className="w-6 h-6 rounded-full bg-good-soft text-good grid place-items-center shrink-0"><I.Tick size={12} /></span>
+          You are registered to this project. Your other applications this cycle are withdrawn.
+        </p>
+      )}
       {(m.status === "declined" || m.status === "timed_out") && (
-        <p className="mt-4 text-[14px] text-bad-ink">{m.status === "declined" ? "You declined this offer." : "This offer timed out."} You are not eligible for further rounds this cycle.</p>
+        <p className="mt-5 pt-5 border-t border-border text-[14px] text-bad-ink">{m.status === "declined" ? "You declined this offer." : "This offer timed out."} You are not eligible for further rounds this cycle.</p>
       )}
     </section>
   );
 }
 
-/** A project's photo, with its preference number on it when it is one of the student's ranked choices. */
-function Thumb({ url, rank, first }: { url: string | null; rank?: number; first?: boolean }) {
+/** A project's photo. */
+function Thumb({ url }: { url: string | null }) {
   return (
-    <span className="relative shrink-0 w-[88px] h-[66px] rounded-[14px] overflow-hidden bg-black/[0.05] block">
-      {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : <span className="h-full w-full grid place-items-center text-faint"><I.Bulb size={20} /></span>}
+    <span className="relative block h-[68px] w-[96px] shrink-0 overflow-hidden rounded-[14px] bg-black/[0.05]">
+      {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center text-faint"><I.Bulb size={20} /></span>}
       <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-[#0b1f3a]/25 to-transparent shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]" />
-      {rank !== undefined && (
-        <span className={`absolute top-1.5 left-1.5 w-6 h-6 rounded-full grid place-items-center text-[12px] font-semibold tabular ring-2 ring-white ${first ? "bg-[#0b1f3a] text-white" : "bg-white text-text"}`}>{rank}</span>
-      )}
     </span>
   );
 }
@@ -233,17 +265,18 @@ function TrashButton({ label, disabled, onClick }: { label: string; disabled?: b
   );
 }
 
-/** Placeholder rows, the same shape as Row, while the applications load. */
+/** Placeholder rows, the same shape as ListRow, while the applications load. */
 function RowSkeletons() {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading applications">
+    <ListCard>
       {[0, 1].map((i) => (
-        <Card key={i} padded={false} className="flex items-center gap-4 !rounded-[18px] px-5 py-4">
-          <Skeleton className="w-[88px] h-[66px] !rounded-[14px]" />
-          <div className="flex-1 flex flex-col gap-2.5"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-3 w-1/3" /></div>
-          <Skeleton className="w-20 h-8 !rounded-full" />
-        </Card>
+        <div key={i} className="flex items-center gap-5 px-6 py-4" aria-busy="true" aria-label="Loading applications">
+          <Skeleton className="h-7 w-7 !rounded-md" />
+          <Skeleton className="h-[68px] w-[96px] !rounded-[14px]" />
+          <div className="flex flex-1 flex-col gap-2.5"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-3 w-1/3" /></div>
+          <Skeleton className="h-9 w-24 !rounded-full" />
+        </div>
       ))}
-    </div>
+    </ListCard>
   );
 }

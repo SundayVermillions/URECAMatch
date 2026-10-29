@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
-import { Banner, Button, Field, Input } from "@/components/ui";
+import { Suspense, useEffect, useState } from "react";
+import { Banner, Button, Field, Input, Reveal } from "@/components/ui";
 import { getClient } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/models";
 
@@ -14,6 +14,7 @@ function VerifyForm() {
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
   const [resentMsg, setResentMsg] = useState<string | null>(null);
+  useEffect(() => { if (!resentMsg) return; const t = setTimeout(() => setResentMsg(null), 6000); return () => clearTimeout(t); }, [resentMsg]); // the "code sent" note goes away by itself
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,7 +55,7 @@ function VerifyForm() {
         </div>
       </div>
       {error && !error.field && <Banner tone="bad">{error.message}</Banner>}
-      {resentMsg && <Banner tone="good">{resentMsg}</Banner>}
+      <Reveal show={!!resentMsg}><Banner tone="good">{resentMsg}</Banner></Reveal>
       <Field label="Verification code" error={error?.field === "code" ? error.message : null} hint="Demo code: 000000">
         <Input
           id="code"

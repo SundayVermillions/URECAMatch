@@ -77,11 +77,12 @@ test("one URECA cycle end to end", async ({ page }) => {
     await page.getByRole("button", { name: "Activate account" }).click();
     await signIn(page, newStudent.email);
     await page.goto("/profile");
+    // The transcript comes first: the rest of the profile unlocks once it is uploaded (the fields wait until they are enabled).
+    await page.locator("input[type=file]").first().setInputFiles("public/sample-transcript.pdf");
     await page.getByLabel("CGPA").fill("4.2");
     await pick(page, "Research interests", "Machine Learning");
     await pick(page, "Completed modules", "SC1015");
     await pick(page, "Completed modules", "SC2001");
-    await page.locator("input[type=file]").first().setInputFiles("public/sample-transcript.pdf");
     await page.getByRole("button", { name: /save/i }).click();
     await expect(page.getByText("Saved.")).toBeVisible();
   });

@@ -50,17 +50,16 @@ export default function Propose() {
   const standing = useStanding(); // placed or ineligible: the form stays readable but cannot be sent
 
   const checks = [
-    { label: "Supervisor chosen", ok: !!supervisor },
+    { label: "Pick a supervisor", ok: !!supervisor },
     { label: "Title", ok: title.trim().length >= 5 },
-    { label: `Description, at least ${MIN_CHARS} characters`, ok: description.trim().length >= MIN_CHARS && words(description) <= DESCRIPTION_MAX_WORDS },
-    { label: "At least one research interest", ok: interests.length > 0 },
-    { label: `Why this supervisor, at least ${MIN_CHARS} characters`, ok: statement.trim().length >= MIN_CHARS && words(statement) <= STATEMENT_MAX_WORDS },
+    { label: `Description, ${MIN_CHARS}+ characters`, ok: description.trim().length >= MIN_CHARS && words(description) <= DESCRIPTION_MAX_WORDS },
+    { label: "A research interest", ok: interests.length > 0 },
+    { label: `Statement, ${MIN_CHARS}+ characters`, ok: statement.trim().length >= MIN_CHARS && words(statement) <= STATEMENT_MAX_WORDS },
   ];
   const ready = checks.every((c) => c.ok) && !closed && !standing.viewOnly && !standing.loading;
   const stepOk = [checks[0].ok, checks[1].ok && checks[2].ok && checks[3].ok, checks[4].ok];
   const firstOpen = stepOk.findIndex((v) => !v); // -1 when the first three are done
   const furthest = firstOpen === -1 ? 3 : firstOpen; // a step can be opened once every step before it is done
-  const missing = (step === 0 ? [checks[0]] : step === 1 ? checks.slice(1, 4) : step === 2 ? [checks[4]] : []).filter((c) => !c.ok);
 
   /** Sending is a commitment, so the form only asks; the dialog sends. */
   function ask(e: React.FormEvent) {
@@ -131,14 +130,19 @@ export default function Propose() {
             <div className="flex flex-col gap-5">
               <Field label="Title" error={err("title")}>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Graph models for protein folding" invalid={!!err("title")} />
+                <Need ok={title.trim().length >= 5}>At least 5 characters</Need>
               </Field>
               <Field label="Description" error={err("description")}>
                 <Textarea rows={8} value={description} onChange={(e) => setDescription(e.target.value)} invalid={!!err("description")}
                   placeholder="What you will build or study, your method, and the deliverable." />
-                <WordCount text={description} max={DESCRIPTION_MAX_WORDS} />
+                <div className="flex items-center justify-between gap-3">
+                  <Need ok={description.trim().length >= MIN_CHARS}>At least {MIN_CHARS} characters</Need>
+                  <WordCount text={description} max={DESCRIPTION_MAX_WORDS} />
+                </div>
               </Field>
-              <Field label="Research interests" error={err("research_interests")} hint="Standard topics. Prefilled from your profile.">
+              <Field label="Research interests" error={err("research_interests")}>
                 <TopicPicker value={interests} onChange={setInterests} invalid={!!err("research_interests")} />
+                <Need ok={interests.length > 0}>Choose at least one topic</Need>
               </Field>
             </div>
           )}
@@ -146,7 +150,10 @@ export default function Propose() {
           {step === 2 && (
             <Field label="Statement" error={err("statement")}>
               <Textarea rows={9} value={statement} onChange={(e) => setStatement(e.target.value)} invalid={!!err("statement")} />
-              <WordCount text={statement} max={STATEMENT_MAX_WORDS} />
+              <div className="flex items-center justify-between gap-3">
+                <Need ok={statement.trim().length >= MIN_CHARS}>At least {MIN_CHARS} characters</Need>
+                <WordCount text={statement} max={STATEMENT_MAX_WORDS} />
+              </div>
             </Field>
           )}
 
@@ -195,10 +202,8 @@ export default function Propose() {
 
           <div className="flex items-center gap-3 pt-5 border-t border-border">
             {step > 0 && <Button type="button" variant="secondary" size="lg" onClick={() => setStep(step - 1)}>Back</Button>}
-            <div className="flex-1 min-w-0 text-[12.5px] text-muted leading-[1.45] text-right">
-              {step === 3
-                ? standing.viewOnly ? (standing.placedIn ? "You already have a project this cycle." : "Not available this cycle.") : closed ? "Opens in the next application window." : ""
-                : step === 0 ? (supervisor ? "" : "Choose a supervisor to continue.") : missing.length > 0 ? <>Still to do: {missing.map((c) => c.label).join(" · ")}</> : ""}
+            <div className="flex-1 min-w-0 text-[12.5px] text-muted text-right">
+              {step === 3 && (standing.viewOnly ? (standing.placedIn ? "You already have a project this cycle." : "Not available this cycle.") : closed ? "Opens in the next application window." : "")}
             </div>
             {step < 3
               ? <Button type="submit" size="lg" disabled={!stepOk[step]}>Continue</Button>
@@ -230,6 +235,16 @@ function ReviewRow({ label, onEdit, children }: { label: string; onEdit: () => v
         <span className="eyebrow">{label}</span>
         <Button type="button" variant="text" size="sm" onClick={onEdit}>Edit</Button>
       </div>
+      {children}
+    </div>
+  );
+}
+
+/** A requirement under the field it belongs to: a hollow circle until it is met, then a green tick. */
+function Need({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  return (
+    <div className={`flex items-center gap-1.5 text-[12.5px] transition-colors ${ok ? "text-good-ink" : "text-muted"}`}>
+      <span aria-hidden className={`w-[14px] h-[14px] shrink-0 rounded-full grid place-items-center transition-colors ${ok ? "bg-good text-white" : "shadow-[inset_0_0_0_1.5px_var(--border-strong)]"}`}>{ok && <I.Tick size={9} />}</span>
       {children}
     </div>
   );

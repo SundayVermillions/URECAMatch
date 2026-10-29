@@ -365,13 +365,92 @@ export function Skeleton({ className = "" }: { className?: string }) {
 
 // ------------------------------------------------------------------ feedback (style sheet 04)
 
+/** A notice: a glass card with a tinted icon tile, the title on its own line and the message under it. It is only as wide as
+ *  its text, and the tone shows in a coloured border (green, amber, red, or blue for information). */
+const BANNER = {
+  good: { tile: "bg-good-soft text-good", border: "rgba(36,138,61,0.7)" },
+  warn: { tile: "bg-warn-soft text-warn-ink", border: "rgba(217,154,0,0.85)" },
+  bad: { tile: "bg-bad-soft text-bad-ink", border: "rgba(227,0,0,0.65)" },
+  accent: { tile: "bg-accent-soft text-accent-ink", border: "rgba(0,113,227,0.55)" },
+} as const;
 export function Banner({ tone, title, children, action }: { tone: "bad" | "warn" | "accent" | "good"; title?: string; children?: React.ReactNode; action?: React.ReactNode }) {
-  const icon = tone === "good" ? <I.CheckCircle /> : tone === "warn" ? <I.Calendar size={16} /> : tone === "accent" ? <I.Info /> : <I.Alert />;
+  const icon = tone === "good" ? <I.CheckCircle size={17} /> : tone === "accent" ? <I.Info size={17} /> : <I.Alert size={17} />; // amber and red both warn; the colour tells them apart
+  const b = BANNER[tone];
   return (
-    <div className={`flex items-start gap-3 rounded-row px-4 py-3 text-[13.5px] leading-[1.5] ${tones[tone]}`}>
-      <span className="shrink-0 mt-px">{icon}</span>
-      <span className="flex-1">{title && <strong>{title} </strong>}{children}</span>
-      {action}
+    <div className="flex w-fit max-w-full items-center gap-3.5 rounded-[16px] bg-white/80 py-3 pl-3.5 pr-5 text-[13.5px] leading-[1.5] backdrop-blur-md"
+      style={{ boxShadow: `inset 0 0 0 1.5px ${b.border}, 0 12px 28px -20px rgba(15,40,90,0.3)` }}>
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-[10px] ${b.tile}`}>{icon}</span>
+      <span className="min-w-0">
+        {title && <span className="block font-semibold text-text">{title}</span>}
+        {children && <span className={`block ${title ? "text-muted" : "text-text"}`}>{children}</span>}
+      </span>
+      {action && <span className="ml-2 shrink-0">{action}</span>}
+    </div>
+  );
+}
+
+/** A short message that floats over the top of the page instead of pushing it down. It eases in, shows a thin bar that runs
+ *  down its time, and eases out by itself (or on the close button). For confirmations and warnings that need no action. */
+const TOAST = {
+  good: { tile: "bg-good-soft text-good", bar: "#248a3d", ring: "rgba(36,138,61,0.28)" },
+  warn: { tile: "bg-warn-soft text-warn-ink", bar: "#d99a00", ring: "rgba(217,154,0,0.4)" },
+  bad: { tile: "bg-bad-soft text-bad-ink", bar: "#e30000", ring: "rgba(227,0,0,0.3)" },
+  accent: { tile: "bg-accent-soft text-accent-ink", bar: "#0071e3", ring: "rgba(0,113,227,0.28)" },
+} as const;
+export function Toast({ show, tone, title, children, action, duration = 4000, onClose }: { show: boolean; tone: "good" | "warn" | "bad" | "accent"; title: string; children?: React.ReactNode; action?: React.ReactNode; duration?: number; onClose: () => void }) {
+  const [mounted, setMounted] = useState(show);
+  const [open, setOpen] = useState(show);
+  const [shown, setShown] = useState({ tone, title, children, action }); // what is on screen; frozen while it leaves
+  if (show && (shown.title !== title || shown.tone !== tone || shown.children !== children)) setShown({ tone, title, children, action });
+  const close = useRef(onClose);
+  useEffect(() => { close.current = onClose; });
+  useEffect(() => {
+    const timers = show
+      ? [setTimeout(() => setMounted(true), 0), setTimeout(() => setOpen(true), 40), setTimeout(() => close.current(), duration)]
+      : [setTimeout(() => setOpen(false), 0), setTimeout(() => setMounted(false), 420)];
+    return () => timers.forEach(clearTimeout);
+  }, [show, title, duration]);
+  if (!mounted) return null;
+  const t = TOAST[shown.tone];
+  const icon = shown.tone === "good" ? <I.CheckCircle size={18} /> : shown.tone === "accent" ? <I.Info size={18} /> : <I.Alert size={18} />;
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-[70] flex justify-center pl-[240px]" role="status" aria-live="polite">
+      <div className="pointer-events-auto relative w-[min(460px,calc(100vw-300px))] overflow-hidden rounded-[18px] bg-white/92 py-3.5 pl-3.5 pr-11 backdrop-blur-xl transition-[opacity,transform] duration-[380ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+        style={{ opacity: open ? 1 : 0, transform: open ? "none" : "translateY(-18px) scale(0.97)", boxShadow: `inset 0 0 0 1px ${t.ring}, 0 24px 48px -20px rgba(15,40,90,0.45)` }}>
+        <div className="flex items-start gap-3">
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${t.tile}`}>{icon}</span>
+          <div className="min-w-0 pt-px">
+            <div className="text-[14px] font-semibold leading-[1.35] text-text">{shown.title}</div>
+            {shown.children && <div className="mt-0.5 text-[13px] leading-[1.5] text-muted">{shown.children}</div>}
+            {shown.action && <div className="mt-2">{shown.action}</div>}
+          </div>
+        </div>
+        <button type="button" aria-label="Dismiss" onClick={onClose} className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full text-faint transition-colors hover:bg-black/[0.05] hover:text-text"><I.X size={13} /></button>
+        <span aria-hidden key={shown.title} className="absolute inset-x-0 bottom-0 h-[2.5px] origin-left" style={{ background: t.bar, opacity: 0.75, animation: show ? `toast-timer ${duration}ms linear forwards` : "none", transform: show ? undefined : "scaleX(0)" }} />
+      </div>
+    </div>
+  );
+}
+
+/** Slides its children in when `show` turns on and out again when it turns off, instead of popping. It keeps the last children
+ *  on screen while it leaves, and takes its space with it (the row height eases to zero). */
+export function Reveal({ show, children }: { show: boolean; children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(show);
+  const [open, setOpen] = useState(show);
+  const [shown, setShown] = useState(children); // what is on screen; frozen while it leaves
+  if (show && shown !== children) setShown(children);
+  useEffect(() => {
+    // Timers, not direct state changes: mount first, open a moment later so the transition has a start to run from.
+    const timers = show
+      ? [setTimeout(() => setMounted(true), 0), setTimeout(() => setOpen(true), 40)]
+      : [setTimeout(() => setOpen(false), 0), setTimeout(() => setMounted(false), 400)];
+    return () => timers.forEach(clearTimeout);
+  }, [show]);
+  if (!mounted) return null;
+  return (
+    <div className="grid transition-[grid-template-rows,opacity,transform] duration-[360ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+      style={{ gridTemplateRows: open ? "1fr" : "0fr", opacity: open ? 1 : 0, transform: open ? "none" : "translateY(-8px)" }}>
+      <div className="min-h-0 overflow-hidden"><div className="pb-4 pt-0.5">{shown}</div></div>
     </div>
   );
 }

@@ -30,5 +30,8 @@ export const I = {
   LogOut: (p: { size?: number }) => <svg {...base} width={p.size ?? 18} height={p.size ?? 18}><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14" /><path d="M10 16.5L5.5 12 10 7.5M5.5 12H15" /></svg>,
   Tick: (p: { size?: number }) => <svg {...base} width={p.size ?? 18} height={p.size ?? 18} strokeWidth={2.4}><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>,
   Flame: (p: { size?: number }) => <svg {...base} width={p.size ?? 14} height={p.size ?? 14} strokeWidth={1.9}><path d="M12 3c.4 3-1.8 4.4-3.2 6.2C7.6 10.8 7 12.2 7 13.6A5 5 0 0 0 17 14c0-2-.9-3.2-1.9-4.3-.3 1.1-1 1.7-1.8 1.8.5-2.9-.3-6.2-1.3-8.5z" /></svg>,
+  Clock: (p: { size?: number }) => <svg {...base} width={p.size ?? 16} height={p.size ?? 16}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>,
+  PlayCircle: (p: { size?: number }) => <svg {...base} width={p.size ?? 16} height={p.size ?? 16}><circle cx="12" cy="12" r="8.5" /><path d="M10.5 8.9l4.6 3.1-4.6 3.1z" /></svg>,
+  Mail: (p: { size?: number }) => <svg {...base} width={p.size ?? 16} height={p.size ?? 16}><rect x="3.5" y="5.5" width="17" height="13" rx="2.5" /><path d="M4.5 7.8l7.5 5.4 7.5-5.4" /></svg>,
   Gear: (p: { size?: number }) => <svg {...base} width={p.size ?? 15} height={p.size ?? 15}><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4L18 18M6 18l1.6-1.6M16.4 7.6L18 6" /></svg>,
 };

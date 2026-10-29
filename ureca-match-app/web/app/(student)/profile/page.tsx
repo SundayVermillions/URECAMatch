@@ -1,13 +1,13 @@
 "use client";
 /** Student profile page. REQ-PROF-1..3. */
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CoursePicker, TopicPicker } from "@/components/pickers";
+import { CoursePicker, searchTopics } from "@/components/pickers";
 import { PageTitle } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Avatar, Banner, Button, Card, Field, Input, Pill, Select, fmtDate } from "@/components/ui";
-import { ApiError, type StudentProfile } from "@/lib/api/models";
+import { Avatar, Banner, Button, Card, Field, Input, Pill, Reveal, Select, Toast, fmtDate, inputCls } from "@/components/ui";
+import { ApiError, type StudentProfile, type TranscriptParse } from "@/lib/api/models";
 import { useCall } from "@/lib/use-api";
 
 const NTU_DEGREES_BY_SCHOOL: Record<string, string[]> = {
@@ -56,12 +56,9 @@ const ALL_NTU_DEGREES = Array.from(
   new Set(Object.values(NTU_DEGREES_BY_SCHOOL).flat())
 ).sort();
 
-function ProfileForm({ p }: { p: StudentProfile | null }) {
-  const { me, refresh } = useMe();
-  const call = useCall();
-  const mustComplete = useSearchParams().get("complete") === "1";
-
-  const [f, setF] = useState(() => ({
+/** The form's starting values, from the saved profile. */
+function fromProfile(p: StudentProfile | null) {
+  return {
     school: p?.school ?? "",
     degree: p?.degree || (p?.school ? (NTU_DEGREES_BY_SCHOOL[p.school]?.[0] ?? "Computer Science") : ""),
     isDoubleDegree: (p?.degree?.includes("(Double Degree)") || p?.degree?.includes(" & ")) ?? false,
@@ -71,13 +68,25 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     year_of_study: p?.year_of_study?.toString() ?? "",
     completed_modules: p?.completed_modules ?? [],
     research_interests: p?.research_interests ?? [],
-  }));
+  };
+}
+
+function ProfileForm({ p }: { p: StudentProfile | null }) {
+  const { me, refresh } = useMe();
+  const call = useCall();
+  const mustComplete = useSearchParams().get("complete") === "1";
+
+  const [f, setF] = useState(() => fromProfile(p));
+  const [editing, setEditing] = useState(false); // a complete profile is read first; Edit profile opens the fields
 
   const [error, setError] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
-  const [prefill, setPrefill] = useState<"filled" | "none" | null>(null);
+  const [prefill, setPrefill] = useState<"filled" | "updated" | "rejected" | null>(null);
+  const [changes, setChanges] = useState(""); // what an automatic update changed, in words
+  const [baseline, setBaseline] = useState(() => JSON.stringify(f)); // the form as last saved, to tell "unsaved changes" from "up to date"
+  const dirty = JSON.stringify(f) !== baseline;
 
   const file = useRef<HTMLInputElement>(null);
   const transcriptFile = useRef<HTMLInputElement>(null);
@@ -90,33 +99,31 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   const supportingCount = supportingDocs.length;
   const atMaxSupporting = supportingCount >= 5;
 
-  /** Fill the form from the transcript. Only fields that were found are changed, and nothing is saved until the student presses Save. */
-  async function prefillFromTranscript(pdf: File) {
-    setSaved(false);
-    try {
-      const t = await call((api) => api.parseTranscript(pdf));
-      const school = t.school in NTU_DEGREES_BY_SCHOOL ? t.school : "";
-      const found = !!(t.cgpa != null || school || t.year_of_study || t.completed_modules.length);
-      setF((cur) => ({
-        ...cur,
-        school: school || cur.school,
-        ...(school && NTU_DEGREES_BY_SCHOOL[school].includes(t.degree)
-          ? { degree: t.degree, isDoubleDegree: false, degree1: "", degree2: "" }
-          : {}),
-        cgpa: t.cgpa != null ? t.cgpa.toFixed(2) : cur.cgpa,
-        year_of_study: t.year_of_study ? String(t.year_of_study) : cur.year_of_study,
-        completed_modules: t.completed_modules.length ? t.completed_modules : cur.completed_modules,
-      }));
-      setPrefill(found ? "filled" : "none");
-    } catch {
-      setPrefill("none"); // the upload itself worked, so a transcript we cannot read is not an error
-    }
+  /** The form with what the transcript says put in. Only fields that were found change; nothing is saved by this. */
+  function mergeParsed(cur: typeof f, t: TranscriptParse): typeof f {
+    const school = t.school in NTU_DEGREES_BY_SCHOOL ? t.school : "";
+    return {
+      ...cur,
+      school: school || cur.school,
+      ...(school && NTU_DEGREES_BY_SCHOOL[school].includes(t.degree) ? { degree: t.degree, isDoubleDegree: false, degree1: "", degree2: "" } : {}),
+      cgpa: t.cgpa != null ? t.cgpa.toFixed(2) : cur.cgpa,
+      year_of_study: t.year_of_study ? String(t.year_of_study) : cur.year_of_study,
+      completed_modules: t.completed_modules.length ? t.completed_modules : cur.completed_modules,
+    };
   }
+  /** A real NTU transcript states a Cumulative GPA and lists the courses passed. A file that does not (slides, a CV, a
+   *  screenshot) is not one, even if it mentions a course code. */
+  const readsAsTranscript = (t: TranscriptParse) => t.cgpa != null && t.completed_modules.length > 0;
+  const saveBody = (x: typeof f) => ({ school: x.school, degree: x.degree || null, cgpa: parseFloat(x.cgpa), year_of_study: parseInt(x.year_of_study, 10), completed_modules: x.completed_modules, research_interests: x.research_interests });
 
+  /** A transcript is read before it is stored. One that does not read as an NTU transcript is not uploaded and nothing changes.
+   *  A real one is stored and, on a finished profile that is not being edited, the profile is updated from it straight away. */
   async function handleTranscriptUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const originalFile = e.target.files?.[0];
     if (!originalFile) return;
     setError(null);
+    setSaved(false);
+    setPrefill(null);
     setBusy(true);
 
     if (originalFile.type !== "application/pdf" && !originalFile.name.toLowerCase().endsWith(".pdf")) {
@@ -131,8 +138,25 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     }
 
     try {
+      let t: TranscriptParse | null = null;
+      try { t = await call((api) => api.parseTranscript(originalFile)); } catch { t = null; } // an unreadable file is a wrong transcript, not a crash
+      if (!t || !readsAsTranscript(t)) { setPrefill("rejected"); return; }
       await call((api) => api.uploadDocument(originalFile, "transcript")); // replaces any existing transcript
-      await prefillFromTranscript(originalFile);
+      const next = mergeParsed(f, t);
+      if (complete && !editing) {
+        try {
+          await call((api) => api.updateProfile(saveBody(next)));
+          const bits = [
+            next.cgpa !== f.cgpa ? `CGPA ${f.cgpa || "—"} → ${next.cgpa}` : "",
+            next.year_of_study !== f.year_of_study ? `Year ${next.year_of_study}` : "",
+            next.school !== f.school || next.degree !== f.degree ? `${next.degree || next.school}` : "",
+            JSON.stringify(next.completed_modules) !== JSON.stringify(f.completed_modules) ? `${next.completed_modules.length} modules` : "",
+          ].filter(Boolean);
+          setF(next); setBaseline(JSON.stringify(next));
+          setChanges(bits.length ? bits.join(" · ") : "Your details already matched it.");
+          setPrefill("updated");
+        } catch { setF(next); setEditing(true); setPrefill("filled"); } // it would not save as it stands: let the student correct it
+      } else { setF(next); setPrefill("filled"); }
       await refresh();
     } catch (err) {
       setError(err as ApiError);
@@ -195,6 +219,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     setBusy(true);
     setError(null);
     setSaved(false);
+    setPrefill(null);
     try {
       await call((api) =>
         api.updateProfile({
@@ -207,7 +232,9 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
         })
       );
       await refresh();
+      setBaseline(JSON.stringify(f));
       setSaved(true);
+      setEditing(false); // back to reading it
     } catch (err) {
       setError(err as ApiError);
     } finally {
@@ -215,61 +242,74 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     }
   }
 
+  const complete = !!p?.profile_complete;
+  const inline = error && !error.field ? <Banner tone="bad">{error.message}</Banner>
+    : mustComplete && !complete ? <Banner tone="accent" title="One step before you apply.">Upload your transcript, then check your academic details.</Banner>
+    : null;
+  const locked = !transcriptDoc; // the transcript comes first: until it is uploaded nothing else can be filled in
+  const editMode = !locked && (editing || !complete); // without a transcript there is nothing to edit yet: the profile reads as dashes
+  const headline = [f.degree, f.school, f.year_of_study ? `Year ${f.year_of_study}` : null].filter(Boolean).join(" · ");
+
+  function startEdit() { setSaved(false); setPrefill(null); setEditing(true); }
+  function cancelEdit() {
+    const next = fromProfile(p);
+    setF(next); setBaseline(JSON.stringify(next));
+    setError(null); setPrefill(null); setSaved(false); setEditing(false);
+  }
+  function pickTranscript() {
+    if (transcriptFile.current) {
+      transcriptFile.current.value = "";
+      transcriptFile.current.click();
+    }
+  }
+
   return (
     <form onSubmit={save}>
       <PageTitle title={mustComplete ? "Complete your profile" : "My profile"} />
 
-      {mustComplete && !p?.profile_complete && (
-        <div className="mb-4">
-          <Banner tone="accent" title="One step before you apply.">
-            Fill in your academic details and upload your transcript.
-          </Banner>
-        </div>
-      )}
+      {/* The two file inputs live here so they exist in every mode. The transcript one comes first on the page. */}
+      <input ref={transcriptFile} type="file" accept="application/pdf" className="hidden" onClick={(e) => { (e.target as HTMLInputElement).value = ""; }} onChange={handleTranscriptUpload} />
+      <input ref={file} type="file" accept="application/pdf" className="hidden" onChange={uploadSupporting} />
 
-      {prefill && (
-        <div className="mb-4">
-          {prefill === "filled" ? (
-            <Banner tone="accent" title="Filled in from your transcript.">
-              Check CGPA, school, degree, year and modules, then press Save changes.
-            </Banner>
-          ) : (
-            <Banner tone="warn" title="We could not read details from this transcript.">
-              Your file is uploaded. Fill in the details below by hand.
-            </Banner>
-          )}
-        </div>
-      )}
+      {/* One notice at a time, most important first. "Saved" and the transcript note go away by themselves. */}
+      <Reveal show={!!inline}>{inline}</Reveal>
+      <Toast show={saved} tone="good" title="Saved." onClose={() => setSaved(false)}>Your profile is up to date.</Toast>
+      <Toast show={!saved && prefill === "updated"} tone="good" title="Profile updated from your transcript." duration={7000} onClose={() => setPrefill(null)}>{changes}</Toast>
+      <Toast show={!saved && prefill === "filled"} tone="accent" title="Filled in from your transcript." duration={9000} onClose={() => setPrefill(null)}>Check the details, then press Save changes.</Toast>
+      <Toast show={!saved && prefill === "rejected"} tone="warn" title="That does not look like an NTU transcript." duration={9000} onClose={() => setPrefill(null)}>It needs your Cumulative GPA and the courses you passed. Nothing was uploaded.</Toast>
 
-      {saved && (
-        <div className="mb-4">
-          <Banner tone="good" title="Saved.">
-            Your profile is up to date.
-          </Banner>
-        </div>
-      )}
-
-      {error && !error.field && (
-        <div className="mb-4">
-          <Banner tone="bad">{error.message}</Banner>
-        </div>
-      )}
-
-      <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
-        <Card className="flex flex-col gap-7">
-          <div className="flex items-center gap-4">
-            <Avatar name={me?.user.name ?? ""} size={52} tone="navy" />
-            <div className="min-w-0">
-              <div className="text-[18px] font-semibold tracking-[-0.01em] truncate">{me?.user.name}</div>
-              <div className="text-[13.5px] text-muted truncate">{me?.user.email}</div>
+      <div className="grid grid-cols-[minmax(0,1fr)_340px] items-stretch gap-5">
+        <Card padded={false} className="h-full min-w-0">
+          <div aria-hidden className="h-[72px] rounded-t-[16px] bg-[radial-gradient(120%_160%_at_0%_0%,#a9c8f5_0%,#d3e3fb_42%,#eaf1fd_100%)]" />
+          <div className="px-8">
+            <div className="-mt-9 flex items-end justify-between gap-4">
+              <div className="rounded-full ring-4 ring-white shadow-[0_12px_28px_-14px_rgba(47,100,180,0.55)]">
+                <Avatar name={me?.user.name ?? ""} size={76} tone="navy" />
+              </div>
+              {/* The same spot in both modes: Edit profile while reading, Cancel and Save while editing */}
+              <div className="flex items-center gap-2">
+                {!editMode && !locked && <Button type="button" variant="secondary" onClick={startEdit}>Edit profile</Button>}
+                {editMode && (
+                  <>
+                    {dirty && <span className="mr-1 inline-flex items-center gap-2 text-[13px] text-muted"><span aria-hidden className="h-2 w-2 rounded-full bg-warn" />Unsaved changes</span>}
+                    {complete && <Button type="button" variant="secondary" onClick={cancelEdit}>Cancel</Button>}
+                    <Button type="submit" disabled={busy}>{busy ? "Saving..." : "Save changes"}</Button>
+                  </>
+                )}
+              </div>
             </div>
-            <Pill tone={p?.profile_complete ? "good" : "warn"} className="ml-auto shrink-0">{p?.profile_complete ? "Profile complete" : "Incomplete"}</Pill>
+            <div className="mt-3 min-w-0 pb-6">
+              <h2 className="truncate text-[24px] leading-[1.2] tracking-[-0.02em]">{me?.user.name}</h2>
+              <div className={`mt-0.5 truncate text-[14.5px] ${headline ? "text-text/80" : "text-faint"}`}>{headline || "—"}</div>
+              <div className="mt-0.5 truncate text-[13.5px] text-muted">{me?.user.email}</div>
+            </div>
           </div>
 
-          <section>
-            <h2 className="text-[16px]">Academic details</h2>
-            <div className="text-[13.5px] text-muted mt-0.5 mb-4">Supervisors see this when they review your applications.</div>
-          <div className="grid grid-cols-2 gap-4">
+          <fieldset className="m-0 min-w-0 divide-y divide-border border-0 border-t border-border p-0 px-8">
+            <Group title="Academic details">
+              {editMode ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
             <Field label="School">
               <Select id="school" value={f.school} onChange={(e) => setF({ ...f, school: e.target.value })} required>
                 <option value="">Choose</option>
@@ -367,166 +407,209 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
               </Select>
             </Field>
           </div>
-
-          </section>
-
-          <section className="flex flex-col gap-4">
-            <h2 className="text-[16px]">Modules and interests</h2>
-          <Field label="Completed modules" error={err("completed_modules")}>
-            <CoursePicker value={f.completed_modules} onChange={(v) => setF({ ...f, completed_modules: v })} />
-          </Field>
-
-          <Field label="Research interests" error={err("research_interests")}>
-            <TopicPicker value={f.research_interests} onChange={(v) => setF({ ...f, research_interests: v })} />
-          </Field>
-
-          </section>
-
-          <div className="flex items-center gap-3 pt-5 border-t border-border">
-            <Button type="submit" size="lg" disabled={busy}>
-              {busy ? "Saving..." : "Save changes"}
-            </Button>
-          </div>
-        </Card>
-
-        <Card className="flex flex-col gap-7">
-          {/* Dedicated Academic Transcript Slot (the first file input on the page, which the end-to-end test relies on) */}
-          <input
-            ref={transcriptFile}
-            type="file"
-            accept="application/pdf"
-            className="hidden"
-            onClick={(e) => { (e.target as HTMLInputElement).value = ""; }}
-            onChange={handleTranscriptUpload}
-          />
-
-          <section>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[16px]">Academic transcript</h2>
-              <Pill tone="accent">Required</Pill>
-            </div>
-            <div className="text-[13.5px] text-muted mt-0.5 mb-4">
-              Official NTU transcript (PDF, max 5 MB). Used for CGPA and prerequisite eligibility.
-            </div>
-
-            {transcriptDoc ? (
-              <div className="card-flat p-3.5">
-                <div className="flex items-center gap-3">
-                  <DocTile />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13.5px] font-semibold text-text" title={transcriptDoc.file_name}>{transcriptDoc.file_name}</div>
-                    <div className="text-[12px] text-muted tabular">{(transcriptDoc.file_size / 1024).toFixed(0)} KB · uploaded {fmtDate(transcriptDoc.uploaded_at)}</div>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <Button type="button" size="sm" variant="soft" onClick={() => viewDoc(transcriptDoc.id)} disabled={activeDocId === transcriptDoc.id}>View</Button>
-                  <Button
-                    type="button" size="sm" variant="secondary" disabled={busy}
-                    onClick={() => {
-                      if (transcriptFile.current) {
-                        transcriptFile.current.value = "";
-                        transcriptFile.current.click();
-                      }
-                    }}
-                  >
-                    Re-upload
-                  </Button>
-                  <DeleteIcon label="Delete transcript" disabled={activeDocId === transcriptDoc.id} onClick={() => removeDoc(transcriptDoc.id)} />
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-[16px] border border-dashed border-[#b9c9e2] bg-accent-soft/40 px-4 py-6 text-center">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => {
-                    if (transcriptFile.current) {
-                      transcriptFile.current.value = "";
-                      transcriptFile.current.click();
-                    }
-                  }}
-                >
-                  <I.Upload size={14} /> Upload Academic Transcript
-                </Button>
-                <div className="text-[12.5px] text-faint mt-2">PDF only, max 5 MB</div>
-              </div>
-            )}
-          </section>
-
-          {/* Supporting Documents (Max 5) */}
-          <section className="border-t border-border pt-6">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[16px]">Supporting documents</h2>
-              <span className="text-[12.5px] font-medium text-muted tabular">{supportingCount} of 5</span>
-            </div>
-            <div className="text-[13.5px] text-muted mt-0.5 mb-4">
-              Optional files such as a CV, certificates or writing samples. PDF only, up to 5 MB each.
-            </div>
-
-            <div className="flex flex-col gap-2 mb-4">
-              {supportingDocs.length === 0 ? (
-                <div className="rounded-[14px] border border-dashed border-[#c3d0e4] bg-white/40 px-4 py-4 text-[13px] text-faint text-center">No supporting documents yet</div>
+                </>
               ) : (
-                supportingDocs.map((d) => (
-                  <div key={d.id} className="card-flat flex items-center gap-3 px-3 py-2.5">
-                    <DocTile small />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13.5px] font-medium text-text" title={d.file_name}>{d.file_name}</div>
-                      <div className="text-[12px] text-faint tabular">{fmtDate(d.uploaded_at)}</div>
-                    </div>
-                    <Button type="button" size="sm" variant="text" onClick={() => viewDoc(d.id)} disabled={activeDocId === d.id}>View</Button>
-                    <DeleteIcon label={`Delete ${d.file_name}`} disabled={activeDocId === d.id} onClick={() => removeDoc(d.id)} />
-                  </div>
-                ))
+                <dl className="grid grid-cols-[1fr_2fr_1fr_1fr] gap-6">
+                  <Item label="School" value={f.school} />
+                  <Item label="Degree" value={f.degree} />
+                  <Item label="CGPA" value={f.cgpa} />
+                  <Item label="Year of study" value={f.year_of_study ? `Year ${f.year_of_study}` : ""} />
+                </dl>
               )}
-            </div>
+            </Group>
 
-            <input ref={file} type="file" accept="application/pdf" className="hidden" onChange={uploadSupporting} />
-            {!atMaxSupporting ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={busy}
-                onClick={() => {
-                  if (file.current) {
-                    file.current.value = "";
-                    file.current.click();
-                  }
-                }}
-              >
-                <I.Upload size={14} /> Upload supporting document
-              </Button>
-            ) : (
-              <div className="card-flat px-3.5 py-3 text-center text-[12.5px] text-muted">
-                Maximum of 5 documents reached. Delete an existing document to upload another.
+            <Group title="Modules">
+              {editMode ? (
+                <Field label="Completed modules" error={err("completed_modules")}>
+                  <CoursePicker value={f.completed_modules} onChange={(v) => setF({ ...f, completed_modules: v })} />
+                </Field>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">{f.completed_modules.length ? f.completed_modules.map((m) => <Pill key={m}>{m}</Pill>) : <span className="text-[15px] text-faint">—</span>}</div>
+              )}
+            </Group>
+          </fieldset>
+        </Card>
+
+        {/* Documents sit beside the profile, so an upload shows the form filling in. */}
+        <div className="flex min-w-0 flex-col gap-5">
+        <Card className={`!p-6 ${locked ? "flex-1" : ""}`}>
+          <h2 className="text-[16px]">Documents</h2>
+
+          {locked ? (
+            <div className="mt-4 rounded-[16px] border border-dashed border-[#b9c9e2] bg-accent-soft/40 px-5 py-8 text-center">
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-white text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)]"><I.Upload size={20} /></span>
+              <div className="mt-3 text-[15px] font-semibold">Upload your transcript</div>
+              <p className="mx-auto mt-1 max-w-[240px] text-[13px] leading-[1.5] text-muted">We read your CGPA, year and modules from it. The rest unlocks after.</p>
+              <Button type="button" className="mt-4" disabled={busy} onClick={pickTranscript}>{busy ? "Uploading..." : "Upload transcript"}</Button>
+              <div className="mt-2 text-[12px] text-faint">PDF, up to 5 MB</div>
+            </div>
+          ) : (
+            <>
+              <ul className="mt-3 divide-y divide-border">
+                {transcriptDoc && (
+                  <DocRow name={transcriptDoc.file_name} meta={`Transcript · ${(transcriptDoc.file_size / 1024).toFixed(0)} KB`} busy={activeDocId === transcriptDoc.id} onView={() => viewDoc(transcriptDoc.id)}>
+                    <IconAction label="Replace transcript" disabled={busy} onClick={pickTranscript}><I.Upload size={16} /></IconAction>
+                  </DocRow>
+                )}
+                {supportingDocs.map((d) => (
+                  <DocRow key={d.id} name={d.file_name} meta={`Supporting · ${fmtDate(d.uploaded_at)}`} busy={activeDocId === d.id} onView={() => viewDoc(d.id)}>
+                    <IconAction label={`Delete ${d.file_name}`} danger disabled={activeDocId === d.id} onClick={() => removeDoc(d.id)}><I.Trash size={16} /></IconAction>
+                  </DocRow>
+                ))}
+              </ul>
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
+                  {!atMaxSupporting ? (
+                    <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => { if (file.current) { file.current.value = ""; file.current.click(); } }}>
+                      <I.Upload size={14} /> Add a document
+                    </Button>
+                  ) : (
+                    <span className="text-[12.5px] text-muted">Limit reached. Delete one to add another.</span>
+                  )}
+                  <span className="text-[12.5px] text-muted tabular">{supportingCount} of 5</span>
+                </div>
+            </>
+          )}
+          {err("file") && <div className="mt-3 text-[12.5px] font-medium text-bad-ink">{err("file")}</div>}
+        </Card>
+
+        <Card className="flex-1 !p-6">
+            <h2 className="text-[16px]">Research interests</h2>
+            <InterestNetwork topics={f.research_interests} name={me?.user.name ?? ""} onRemove={editMode ? (t) => setF({ ...f, research_interests: f.research_interests.filter((x) => x !== t) }) : undefined} />
+            {editMode && (
+              <div className="mt-4 border-t border-border pt-4">
+                <InterestSearch chosen={f.research_interests} onAdd={(t) => setF({ ...f, research_interests: [...f.research_interests, t] })} error={err("research_interests")} />
               </div>
             )}
-            {err("file") && <div className="text-[12.5px] text-bad-ink font-medium mt-2">{err("file")}</div>}
-          </section>
         </Card>
+        </div>
       </div>
     </form>
   );
 }
 
-/** A file icon on a small white tile with a blue hairline. */
-function DocTile({ small }: { small?: boolean }) {
+/** Search topics and show the matches as labels underneath; click one to add it as a node. Nothing opens over the page. */
+function InterestSearch({ chosen, onAdd, error }: { chosen: string[]; onAdd: (t: string) => void; error?: string | null }) {
+  const [q, setQ] = useState("");
+  const [found, setFound] = useState<{ value: string; group?: string }[]>([]);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    let live = true;
+    searchTopics(q, true).then((r) => { if (live) setFound(r); }).catch(() => { if (live) setFound([]); });
+    return () => { live = false; };
+  }, [q]);
+  const shown = found.filter((o) => !chosen.includes(o.value)).slice(0, 12);
   return (
-    <span className={`${small ? "w-8 h-8 rounded-[10px]" : "w-10 h-10 rounded-[12px]"} shrink-0 grid place-items-center bg-white text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)]`}>
-      <I.File size={small ? 15 : 17} />
-    </span>
+    <Field label="Research interests" error={error}>
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-faint"><I.Search size={16} /></span>
+        <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search topics" className={`${inputCls()} w-full pl-10`} />
+      </div>
+      <div role="listbox" aria-label="Matching topics" className="mt-1 flex min-h-[34px] flex-wrap gap-1.5">
+        {shown.map((o) => (
+          <button key={o.value} type="button" role="option" aria-selected="false" title={o.group}
+            onClick={() => { onAdd(o.value); setQ(""); input.current?.focus(); }}
+            className="inline-flex items-center gap-1 rounded-pill bg-white px-3 py-1 text-[12.5px] font-medium text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)] transition-colors hover:bg-accent-soft">
+            <I.Plus size={12} />{o.value}
+          </button>
+        ))}
+        {q.trim() && shown.length === 0 && <span className="py-1 text-[13px] text-muted">{found.length ? "Already added" : "No standard topic matches"}</span>}
+      </div>
+      <div className="text-[12px] text-faint">{q.trim() ? "Click a topic to add it." : "Suggestions. Type to search all topics."}</div>
+    </Field>
   );
 }
 
-/** Delete as a trash can: quiet until hovered, then red (the same control as Withdraw on My applications). */
-function DeleteIcon({ label, disabled, onClick }: { label: string; disabled?: boolean; onClick: () => void }) {
+/** Your interests as a small network: you in the middle, each topic a node joined to you by a line that draws itself in,
+ *  and to its neighbours down each side. Topics alternate left and right so the labels never collide.
+ *  With onRemove, a node can be clicked to take it away. A picture of the list, nothing more. */
+function InterestNetwork({ topics, name, onRemove }: { topics: string[]; name: string; onRemove?: (t: string) => void }) {
+  const W = 292, NW = 108, ROW = 62, PAD = 34, cx = W / 2;
+  const yOf = (i: number) => PAD + Math.floor(i / 2) * ROW + (i % 2 ? 30 : 0);
+  const H = Math.max(130, Math.max(0, ...topics.map((_, i) => yOf(i))) + PAD); // as tall as the last node needs, no more
+  const cy = H / 2;
+  const initials = name.split(" ").filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase();
+  if (!topics.length) return <div className="mt-3 text-[15px] text-faint">—</div>;
+  const nodes = topics.map((t, i) => {
+    const right = i % 2 === 1;
+    return { t, right, y: yOf(i), x: right ? W - NW / 2 : NW / 2 };
+  });
+  return (
+    <div className="relative mt-3 select-none" style={{ height: H }} role="group" aria-label={`Interest network: ${topics.join(", ")}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full" aria-hidden>
+        <defs>
+          <linearGradient id="net-line" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#6fa8ee" /><stop offset="1" stopColor="#2f64b4" />
+          </linearGradient>
+        </defs>
+        {nodes.map((n, i) => nodes[i + 2] && (
+          <line key={`s${n.t}`} x1={n.x} y1={n.y} x2={n.x} y2={nodes[i + 2].y} stroke="#9db4d6" strokeOpacity="0.5" strokeWidth="1" strokeDasharray="2 3" />
+        ))}
+        {nodes.map((n, i) => (
+          <path key={n.t} d={`M${cx} ${cy} Q${(cx + n.x) / 2} ${cy} ${n.x} ${n.y}`} pathLength={1} fill="none" stroke="url(#net-line)" strokeOpacity="0.6" strokeWidth="1.4" strokeLinecap="round"
+            style={{ strokeDasharray: 1, animation: `net-draw .9s cubic-bezier(0.16, 1, 0.3, 1) ${0.08 * i}s backwards` }} />
+        ))}
+        <circle cx={cx} cy={cy} r="15" fill="none" stroke="#6fa8ee" strokeWidth="1.2" style={{ transformOrigin: `${cx}px ${cy}px`, animation: "ping-ring 3.4s ease-out infinite" }} />
+      </svg>
+      <span className="absolute z-[1] grid h-[30px] w-[30px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-gradient-to-b from-[#7fa6dc] to-[#2f5aa0] text-[11px] font-semibold text-white shadow-[0_8px_18px_-8px_rgba(47,100,180,0.7)] ring-2 ring-white"
+        style={{ left: cx, top: cy }}>{initials}</span>
+      {nodes.map((n, i) => {
+        const cls = `absolute -translate-y-1/2 rounded-[14px] bg-white px-2.5 py-1.5 text-center text-[12px] font-medium leading-[1.25] text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border),0_6px_14px_-8px_rgba(47,100,180,0.5)] ${n.right ? "right-0" : "left-0"}`;
+        const style = { top: n.y, width: NW, animation: `net-pop .5s cubic-bezier(0.16, 1, 0.3, 1) ${0.18 + 0.08 * i}s backwards` };
+        return onRemove ? (
+          <button key={n.t} type="button" title={`Remove ${n.t}`} aria-label={`Remove ${n.t}`} onClick={() => onRemove(n.t)} style={style}
+            className={`${cls} group transition-colors hover:bg-bad-soft hover:text-bad-ink`}>
+            <span className="line-clamp-2">{n.t}</span>
+            <span aria-hidden className="absolute -right-1.5 -top-1.5 hidden h-4 w-4 place-items-center rounded-full bg-bad text-white group-hover:grid"><I.X size={9} /></span>
+          </button>
+        ) : (
+          <span key={n.t} title={n.t} style={style} className={cls}><span className="line-clamp-2">{n.t}</span></span>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A block of the profile: its title, then its content. The blocks are separated by hairlines. */
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="py-7">
+      <h2 className="text-[16px]">{title}</h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+/** One labelled value in the read-only view. */
+function Item({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[12.5px] text-muted">{label}</dt>
+      <dd className={`mt-0.5 truncate text-[15px] ${value ? "font-medium text-text" : "text-faint"}`}>{value || "—"}</dd>
+    </div>
+  );
+}
+
+/** A document as a plain row: the file, what it is, and its actions as icons. */
+function DocRow({ name, meta, busy, onView, children }: { name: string; meta: string; busy?: boolean; onView: () => void; children?: React.ReactNode }) {
+  return (
+    <li className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-neutral-soft text-muted"><I.File size={16} /></span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[13.5px] font-medium text-text" title={name}>{name}</div>
+        <div className="text-[12px] text-muted tabular">{meta}</div>
+      </div>
+      <IconAction label={`View ${name}`} disabled={busy} onClick={onView}><I.Eye size={16} /></IconAction>
+      {children}
+    </li>
+  );
+}
+
+/** A round icon button, quiet until hovered. The label is its tooltip and its accessible name. */
+function IconAction({ label, danger, disabled, onClick, children }: { label: string; danger?: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick}
-      className="ml-auto w-9 h-9 shrink-0 rounded-full inline-flex items-center justify-center text-muted transition-colors hover:bg-bad-soft hover:text-bad-ink disabled:text-border-strong disabled:hover:bg-transparent">
-      <I.Trash size={16} />
+      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors disabled:text-border-strong disabled:hover:bg-transparent ${danger ? "hover:bg-bad-soft hover:text-bad-ink" : "hover:bg-accent-soft hover:text-accent-ink"}`}>
+      {children}
     </button>
   );
 }
