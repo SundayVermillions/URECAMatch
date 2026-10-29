@@ -115,7 +115,7 @@ export function CycleTimeline() {
         {sentence && (
           // 0fr to 1fr animates the width without measuring anything; the right edge stays put, so it folds toward the right.
           <span className="grid overflow-hidden" style={{ gridTemplateColumns: wide ? "1fr" : "0fr", opacity: wide ? 1 : 0, transition: `grid-template-columns 650ms ${EASE}, opacity 350ms ease` }}>
-            <span className="overflow-hidden whitespace-nowrap font-medium text-text pl-2.5 pr-1">{sentence}<span aria-hidden className="mx-2 text-faint">·</span></span>
+            <span className="overflow-hidden whitespace-nowrap"><span className="block font-medium text-text pl-2.5">{sentence}<span aria-hidden className="mx-2 text-faint">·</span></span></span>
           </span>
         )}
         <span className={`whitespace-nowrap ${sentence ? "pl-2 font-semibold text-accent-ink" : "pl-2 font-medium text-text"}`}>{remaining || phase.label}</span>

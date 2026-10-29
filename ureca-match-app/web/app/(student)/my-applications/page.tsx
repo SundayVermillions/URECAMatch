@@ -6,7 +6,7 @@ import { PageTitle } from "@/components/shell/app-shell";
 import { CycleTimeline } from "@/components/student/cycle-timeline";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Empty, IconButton, Loading, Modal, Status, fmtDate, fmtDeadline } from "@/components/ui";
+import { Banner, Button, Card, Empty, IconButton, Modal, Skeleton, Status, fmtDate, fmtDeadline } from "@/components/ui";
 import { ApiError, type Match } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 import { useStanding } from "@/lib/use-standing";
@@ -71,8 +71,9 @@ export default function MyApplications() {
           <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-pill bg-black/[0.05] text-[12.5px] font-medium text-muted"><I.Lock size={12} /> Locked</span>
         )}
       </SectionHead>
-      {apps.loading && !apps.data ? <Loading /> : active.length === 0 ? (
-        <Empty title="No applications this round" note={canEdit ? "Browse projects and apply. Each application becomes a preference you can reorder here." : me?.phase.label}>
+      {active.length > 1 && <p className="-mt-2 mb-4 px-1 text-[13.5px] text-muted">{canEdit ? "Your first choice is at the top. Matching follows this order until applications close." : "Matching follows this order."}</p>}
+      {apps.loading && !apps.data ? <RowSkeletons /> : active.length === 0 ? (
+        <Empty icon={<I.Layers size={20} />} title="No applications this round" note={canEdit ? "Browse projects and apply. Each application becomes a preference you can reorder here." : me?.phase.label}>
           {canEdit && <Link href="/browse"><Button variant="soft">Browse projects</Button></Link>}
         </Empty>
       ) : (
@@ -81,7 +82,7 @@ export default function MyApplications() {
             <Row key={a.id}
               lead={<Thumb url={cover(a.listing_id)} rank={a.preference_rank ?? i + 1} first={i === 0} />}
               title={a.listing_title} meta={`${a.supervisor_name} · applied ${fmtDate(a.submitted_at)}`}>
-              <span className="inline-flex rounded-pill bg-black/[0.04] p-0.5">
+              <span className="inline-flex rounded-pill bg-[#dfe8f5]/70 p-0.5">
                 <IconButton disabled={!canEdit || i === 0} onClick={() => move(a.id, -1)} aria-label="Move up"><I.ArrowUp /></IconButton>
                 <IconButton disabled={!canEdit || i === active.length - 1} onClick={() => move(a.id, 1)} aria-label="Move down"><I.ArrowDown /></IconButton>
               </span>
@@ -107,7 +108,7 @@ export default function MyApplications() {
         {canEdit && !standing.viewOnly && <Link href="/propose"><Button size="sm" variant="soft"><I.Plus /> Propose a project</Button></Link>}
       </SectionHead>
       {proposalList.length === 0 ? (
-        <div className="rounded-[18px] border border-dashed border-border-strong px-5 py-6 text-[13.5px] text-faint text-center">No proposals yet</div>
+        <div className="rounded-[18px] border border-dashed border-[#c3d0e4] bg-white/40 px-5 py-6 text-[13.5px] text-faint text-center">No proposals yet</div>
       ) : (
         <div className="flex flex-col gap-3">
           {proposalList.map((p) => (
@@ -157,7 +158,7 @@ function SectionHead({ title, count, first, children }: { title: string; count?:
 /** One application, proposal or past result: a soft card with a lead, the title and who it is with, and actions. */
 function Row({ lead, title, meta, muted, children }: { lead?: React.ReactNode; title: string; meta: string; muted?: boolean; children?: React.ReactNode }) {
   return (
-    <div className={`flex items-center gap-4 rounded-[18px] bg-surface ring-1 ring-black/[0.05] shadow-[var(--shadow-card)] px-5 py-4 ${muted ? "opacity-75" : ""}`}>
+    <div className={`card-surface flex items-center gap-4 !rounded-[18px] px-5 py-4 transition-shadow ${muted ? "opacity-75" : "hover:shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(47,100,180,0.14),0_16px_32px_-20px_rgba(47,100,180,0.4)]"}`}>
       {lead}
       <div className="flex-1 min-w-0">
         <div className="text-[15.5px] font-semibold tracking-[-0.01em] truncate">{title}</div>
@@ -171,9 +172,9 @@ function Row({ lead, title, meta, muted, children }: { lead?: React.ReactNode; t
 /** The match offer, first thing on the page: pale blue while it waits for an answer, green once accepted. */
 function OfferCard({ m, round, cover, answerable, lapsed, onAccept, onDecline }: { m: Match; round?: number; cover: string | null; answerable: boolean; lapsed: boolean; onAccept: () => void; onDecline: () => void }) {
   const waiting = m.status === "published", accepted = m.status === "accepted";
-  const tint = accepted ? "from-[#eaf8ef] via-white to-[#f1fbf5]" : waiting ? "from-[#e8f1ff] via-white to-[#f1ebff]" : "from-[#f3f3f5] via-white to-[#f7f7f9]";
+  const tint = accepted ? "from-[#eaf8ef] via-white to-[#f1fbf5]" : waiting ? "from-[#e3efff] via-white to-[#e6f3fd]" : "from-[#f1f4f9] via-white to-[#f5f7fb]";
   return (
-    <section className={`relative mb-2 rounded-[26px] bg-gradient-to-br ${tint} ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_24px_48px_-28px_rgba(40,60,130,0.35)] p-7`}>
+    <section className={`relative mb-2 rounded-[26px] bg-gradient-to-br ${tint} shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(15,40,90,0.07),0_24px_48px_-28px_rgba(47,100,180,0.4)] p-7`}>
       <div className="flex items-start gap-6">
         <div className="hidden sm:block w-[148px] h-[112px] rounded-[18px] overflow-hidden bg-black/[0.05] shrink-0 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.4)]">
           {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full grid place-items-center text-faint"><I.Bulb size={26} /></div>}
@@ -214,8 +215,9 @@ function Thumb({ url, rank, first }: { url: string | null; rank?: number; first?
   return (
     <span className="relative shrink-0 w-[88px] h-[66px] rounded-[14px] overflow-hidden bg-black/[0.05] block">
       {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : <span className="h-full w-full grid place-items-center text-faint"><I.Bulb size={20} /></span>}
+      <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-[#0b1f3a]/25 to-transparent shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]" />
       {rank !== undefined && (
-        <span className={`absolute top-1.5 left-1.5 w-6 h-6 rounded-full grid place-items-center text-[12px] font-semibold tabular ring-2 ring-white ${first ? "bg-[#1c2566] text-white" : "bg-white text-text"}`}>{rank}</span>
+        <span className={`absolute top-1.5 left-1.5 w-6 h-6 rounded-full grid place-items-center text-[12px] font-semibold tabular ring-2 ring-white ${first ? "bg-[#0b1f3a] text-white" : "bg-white text-text"}`}>{rank}</span>
       )}
     </span>
   );
@@ -228,5 +230,20 @@ function TrashButton({ label, disabled, onClick }: { label: string; disabled?: b
       className="w-9 h-9 rounded-full inline-flex items-center justify-center text-muted transition-colors hover:bg-bad-soft hover:text-bad-ink disabled:text-border-strong disabled:hover:bg-transparent">
       <I.Trash size={17} />
     </button>
+  );
+}
+
+/** Placeholder rows, the same shape as Row, while the applications load. */
+function RowSkeletons() {
+  return (
+    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading applications">
+      {[0, 1].map((i) => (
+        <Card key={i} padded={false} className="flex items-center gap-4 !rounded-[18px] px-5 py-4">
+          <Skeleton className="w-[88px] h-[66px] !rounded-[14px]" />
+          <div className="flex-1 flex flex-col gap-2.5"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-3 w-1/3" /></div>
+          <Skeleton className="w-20 h-8 !rounded-full" />
+        </Card>
+      ))}
+    </div>
   );
 }
