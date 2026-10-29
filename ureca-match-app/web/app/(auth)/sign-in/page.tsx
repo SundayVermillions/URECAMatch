@@ -61,10 +61,10 @@ function SignInForm() {
   }
 
   return (
-    <form onSubmit={submit} className="bg-surface border border-border rounded-modal p-7 flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-4">
       <div>
-        <h1 className="text-[22px]">Sign in</h1>
-        <div className="text-[13px] text-muted mt-1">Use your NTU e-mail address.</div>
+        <h1 className="text-[28px]">Welcome back</h1>
+        <div className="text-[14px] text-muted mt-1">Sign in with your NTU e-mail address.</div>
       </div>
 
       {isExpired && !error && (
@@ -126,7 +126,7 @@ function SignInForm() {
                 key={d.id}
                 type="button"
                 onClick={() => demo(d.id)}
-                className="text-left text-[13px] px-3 py-2 rounded-button border border-border hover:bg-sunken"
+                className="text-left text-[13px] px-3 py-2 rounded-button border border-white/70 bg-white/50 hover:bg-white/80 transition-colors"
               >
                 {d.label}
               </button>

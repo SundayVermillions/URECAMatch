@@ -23,7 +23,7 @@ export default function CreateAccount() {
   const err = (k: string) => (error?.field === k ? error.message : null);
 
   return (
-    <form onSubmit={submit} className="bg-surface border border-border rounded-modal p-7 flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-4">
       <div><h1 className="text-[22px]">Create account</h1><div className="text-[13px] text-muted mt-1">We will send a verification code to your NTU e-mail.</div></div>
       {error && !error.field && <Banner tone="bad">{error.message}</Banner>}
       <Field label="I am a">
