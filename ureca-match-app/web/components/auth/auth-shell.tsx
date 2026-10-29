@@ -144,23 +144,29 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
   const [instant, setInstant] = useState(false);
 
   useEffect(() => {
-    const read = () => setDims({ vw: window.innerWidth, vh: window.innerHeight, desktop: window.innerWidth >= 1024 });
-    read();
-    window.addEventListener("resize", read);
-    return () => window.removeEventListener("resize", read);
+    const measure = () => ({ vw: window.innerWidth, vh: window.innerHeight, desktop: window.innerWidth >= 1024 });
+    // Decide whether to play the intro in the same batch as the first measurement. A returning visitor (or reduced motion)
+    // then mounts straight in the final layout, so the centred intro frame never shows on a refresh.
+    const boot = () => {
+      const m = measure();
+      setDims(m);
+      if (m.desktop && (window.matchMedia("(prefers-reduced-motion: reduce)").matches || readSeen())) {
+        setInstant(true);
+        setSplit(true);
+      }
+    };
+    boot();
+    const onResize = () => setDims(measure());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   const desktop = dims?.desktop ?? false;
   useEffect(() => {
-    if (!desktop) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const skip = reduced || readSeen();
-    const t = setTimeout(() => {
-      if (skip) setInstant(true);
-      setSplit(true);
-    }, skip ? 0 : INTRO_MS);
+    if (!desktop || split) return; // already decided: skipped, or the intro has finished
+    const t = setTimeout(() => setSplit(true), INTRO_MS);
     return () => clearTimeout(t);
-  }, [desktop]);
+  }, [desktop, split]);
 
   useEffect(() => {
     if (split) markSeen();
@@ -196,7 +202,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
       {/* One glass sheet holds both halves, so the page reads as a single object */}
       <motion.div
         className="glass-panel absolute z-0 inset-4 rounded-[36px]"
-        initial={{ opacity: 0, scale: 0.97 }}
+        initial={instant ? false : { opacity: 0, scale: 0.97 }}
         animate={split ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.97 }}
         transition={{ duration: dur(1.2), delay: split ? dur(0.25) : 0, ease: EASE }}
       >
@@ -218,7 +224,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         <motion.div
           className="absolute z-10"
           style={{ width: intro, height: intro, left: "50%", top: "50%", marginLeft: -intro / 2, marginTop: -intro / 2 }}
-          initial={{ opacity: 0, scale: 0.86, x: 0, y: vh * -0.04 }}
+          initial={instant ? false : { opacity: 0, scale: 0.86, x: 0, y: vh * -0.04 }}
           animate={split
             ? { opacity: 1, scale: final / intro, x: finalX, y: vh * -0.1 }
             : { opacity: 1, scale: 1, x: 0, y: vh * -0.04 }}
@@ -238,7 +244,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
       <motion.div
         aria-hidden={split}
         className="absolute z-20 left-0 right-0 bottom-[7%] flex flex-col items-center pointer-events-none"
-        initial={{ opacity: 0, y: 16 }}
+        initial={instant ? false : { opacity: 0, y: 16 }}
         animate={split ? { opacity: 0, y: -8 } : { opacity: 1, y: 0 }}
         transition={split ? { duration: dur(0.5), ease: EASE } : { duration: 1.2, delay: 1.2, ease: EASE }}
       >
@@ -249,7 +255,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
       <motion.div
         className="absolute z-20 left-4 top-4 bottom-4 flex flex-col justify-between p-10 pointer-events-none"
         style={{ width: `calc((100% - 2rem) * ${LEFT})` }}
-        initial={{ opacity: 0 }}
+        initial={instant ? false : { opacity: 0 }}
         animate={{ opacity: split ? 1 : 0 }}
         transition={{ duration: dur(1.1), delay: split ? dur(0.6) : 0, ease: EASE }}
       >
@@ -269,7 +275,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
               <motion.li
                 key={s}
                 className="relative flex items-center gap-3"
-                initial={{ opacity: 0, y: 10 }}
+                initial={instant ? false : { opacity: 0, y: 10 }}
                 animate={split ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
                 transition={{ duration: dur(0.8), delay: split ? dur(1 + i * 0.12) : 0, ease: EASE }}
               >
@@ -293,7 +299,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           width: `calc((100% - 2rem) * ${1 - LEFT})`,
           background: "linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.3))",
         }}
-        initial={{ opacity: 0, x: 48 }}
+        initial={instant ? false : { opacity: 0, x: 48 }}
         animate={split ? { opacity: 1, x: 0 } : { opacity: 0, x: 48 }}
         transition={{ duration: dur(1.2), delay: split ? dur(0.55) : 0, ease: EASE }}
       >

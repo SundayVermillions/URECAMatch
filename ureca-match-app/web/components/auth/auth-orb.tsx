@@ -194,6 +194,9 @@ export default function AuthOrb({ size, dots, links: linkColors, nodes: nodeColo
     renderer.setClearColor(0x000000, 0);
     renderer.domElement.style.display = "block";
     el.appendChild(renderer.domElement);
+    renderer.domElement.style.opacity = "0";
+    renderer.domElement.style.transition = "opacity 0.9s ease";
+    requestAnimationFrame(() => { renderer.domElement.style.opacity = "1"; });
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 20);
