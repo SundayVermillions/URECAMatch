@@ -11,7 +11,7 @@ type Variant = "primary" | "secondary" | "soft" | "destructive" | "text";
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white shadow-[0_1px_2px_rgba(0,113,227,0.25)] hover:bg-accent-ink active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint disabled:shadow-none",
   secondary: "bg-neutral-soft text-text hover:bg-[#e8e8ed] active:scale-[0.98] disabled:text-faint disabled:hover:bg-neutral-soft",
-  soft: "bg-accent-soft text-accent-ink hover:bg-accent-border active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint",
+  soft: "bg-accent-soft text-accent-ink ring-1 ring-inset ring-accent-border/70 hover:bg-accent hover:text-white hover:ring-accent active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint disabled:ring-0",
   destructive: "bg-bad text-white hover:bg-bad-ink active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint",
   text: "text-accent hover:text-accent-ink px-1 disabled:text-faint",
 };
@@ -20,7 +20,7 @@ const sizes = { lg: "h-11 px-6 text-[15px]", md: "h-9 px-4 text-[13.5px]", sm: "
 export function Button({ variant = "primary", size = "md", className = "", children, ...rest }:
   React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: keyof typeof sizes }) {
   return (
-    <button {...rest} className={`inline-flex items-center justify-center gap-2 rounded-button font-display font-medium whitespace-nowrap transition-[background-color,transform] duration-150 ${variants[variant]} ${sizes[size]} ${className}`}>
+    <button {...rest} className={`inline-flex items-center justify-center gap-2 rounded-button font-display font-medium whitespace-nowrap transition-[background-color,color,box-shadow,transform] duration-150 ${variants[variant]} ${sizes[size]} ${className}`}>
       {children}
     </button>
   );
@@ -317,13 +317,14 @@ export function ScoreRing({ score, size = 32 }: { score: number; size?: number }
 
 // ------------------------------------------------------------------ surfaces
 
-export function Card({ children, className = "", padded = true }: { children: React.ReactNode; className?: string; padded?: boolean }) {
-  return <div className={`card-surface ${padded ? "p-6" : ""} ${className}`}>{children}</div>;
+/** `flat` is for a tile that sits inside another card: a hairline and no lift, so shadows do not stack. */
+export function Card({ children, className = "", padded = true, flat = false }: { children: React.ReactNode; className?: string; padded?: boolean; flat?: boolean }) {
+  return <div className={`${flat ? "card-flat" : "card-surface"} ${padded ? "p-6" : ""} ${className}`}>{children}</div>;
 }
 
-export function Stat({ label, value, note, tone }: { label: string; value: string | number; note?: string; tone?: "good" | "bad" }) {
+export function Stat({ label, value, note, tone, flat = false }: { label: string; value: string | number; note?: string; tone?: "good" | "bad"; flat?: boolean }) {
   return (
-    <div className="card-surface px-5 py-4">
+    <div className={`${flat ? "card-flat" : "card-surface"} px-5 py-4`}>
       <div className="text-[13px] text-muted font-medium">{label}</div>
       <div className={`font-display text-[28px] font-semibold tracking-[-0.02em] mt-1 tabular ${tone === "good" ? "text-good-ink" : tone === "bad" ? "text-bad-ink" : ""}`}>{value}</div>
       {note && <div className="text-[11.5px] text-faint mt-0.5">{note}</div>}
@@ -335,9 +336,10 @@ export function Progress({ value, max }: { value: number; max: number }) {
   return <div className="h-1.5 bg-neutral-soft rounded-full overflow-hidden"><div className="h-full bg-accent rounded-full transition-[width] duration-500" style={{ width: `${max ? Math.round((value / max) * 100) : 0}%` }} /></div>;
 }
 
-export function Empty({ title, note, children }: { title: string; note?: string; children?: React.ReactNode }) {
+export function Empty({ title, note, children, icon }: { title: string; note?: string; children?: React.ReactNode; icon?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-1.5 text-center card-surface px-6 py-14">
+      {icon && <div className="mb-2 w-11 h-11 rounded-full grid place-items-center bg-gradient-to-b from-accent-soft to-white text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)]">{icon}</div>}
       <div className="font-display text-[15px] font-semibold">{title}</div>
       {note && <div className="text-[13.5px] text-muted max-w-md">{note}</div>}
       {children && <div className="mt-3">{children}</div>}
@@ -355,6 +357,11 @@ export function Spinner({ label }: { label?: string }) {
 }
 
 export function Loading() { return <div className="py-10 flex justify-center"><Spinner /></div>; }
+
+/** A grey-blue shimmering block that holds a place while data loads. Size and shape come from className. */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div aria-hidden className={`skeleton ${className}`} />;
+}
 
 // ------------------------------------------------------------------ feedback (style sheet 04)
 
@@ -388,15 +395,20 @@ export function Field({ label, error, hint, children }: { label: string; error?:
 
 /** A disabled field is greyed out. */
 export const inputCls = (invalid?: boolean) =>
-  `h-10 px-3.5 rounded-button border bg-surface text-[14px] outline-none transition-shadow focus:border-accent focus:ring-4 focus:ring-accent/15 disabled:bg-neutral-soft disabled:text-faint ${invalid ? "border-bad ring-4 ring-bad/10" : "border-border-strong disabled:border-border"}`;
+  `h-10 px-3.5 rounded-button border bg-surface text-[14px] outline-none transition-shadow focus:border-accent focus:ring-4 focus:ring-accent/15 disabled:bg-neutral-soft disabled:text-faint ${invalid ? "border-bad ring-4 ring-bad/10" : "border-border-strong enabled:hover:border-[#b3bfd3] disabled:border-border"}`;
 export function Input({ invalid, className = "", ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
   return <input {...rest} className={`${inputCls(invalid)} ${className}`} />;
 }
 export function Textarea({ invalid, className = "", ...rest }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { invalid?: boolean }) {
   return <textarea {...rest} className={`${inputCls(invalid)} h-auto py-2.5 leading-[1.5] ${className}`} />;
 }
-export function Select({ invalid, className = "", children, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }) {
-  return <select {...rest} className={`${inputCls(invalid)} ${className}`}>{children}</select>;
+/** The dropdown arrow, drawn in the muted text colour. The option list that opens is still the browser's own, which keeps it accessible. */
+const CHEVRON = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")";
+export function Select({ invalid, className = "", children, style, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }) {
+  return (
+    <select {...rest} style={{ backgroundImage: CHEVRON, backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", ...style }}
+      className={`${inputCls(invalid)} appearance-none pr-9 enabled:cursor-pointer disabled:cursor-not-allowed ${className}`}>{children}</select>
+  );
 }
 
 /** Drawer: 460 px, from the right, scrim 28% (style sheet 03). Esc closes. */
@@ -522,12 +534,12 @@ export function TagPicker({ value, onChange, search, invalid, placeholder, idle 
 /** Apple-style segmented switch with optional counts. */
 export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; count?: number }[] }) {
   return (
-    <div className="inline-flex p-1 rounded-pill bg-black/[0.05]" role="tablist">
+    <div className="inline-flex p-1 rounded-pill bg-[#dfe8f5]/70" role="tablist">
       {options.map((o) => {
         const on = o.value === value;
         return (
           <button key={o.value} type="button" role="tab" aria-selected={on} onClick={() => onChange(o.value)}
-            className={`h-8 px-4 rounded-pill text-[13px] font-medium inline-flex items-center gap-1.5 transition-all ${on ? "bg-surface text-text shadow-[0_1px_3px_rgba(0,0,0,0.1)]" : "text-muted hover:text-text"}`}>
+            className={`h-8 px-4 rounded-pill text-[13px] font-medium inline-flex items-center gap-1.5 transition-all ${on ? "bg-white text-text shadow-[0_1px_2px_rgba(15,40,90,0.12),0_4px_10px_-6px_rgba(47,100,180,0.35)]" : "text-muted hover:text-text"}`}>
             {o.label}
             {o.count !== undefined && <span className={`text-[12px] tabular ${on ? "text-muted" : "text-faint"}`}>{o.count}</span>}
           </button>
