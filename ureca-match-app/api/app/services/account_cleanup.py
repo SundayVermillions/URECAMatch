@@ -152,6 +152,8 @@ def clean_up(store: Store, admin: User, user: User, now: datetime, reason: str) 
 
     for p in _proposals(store, user):
         p.status, p.decided_at = ProposalStatus.declined, now
+        if p.student_id != user.id:
+            p.decision_note = f"{user.name}'s account was closed, so the proposal could not be answered."
         store.save_proposal(p)
         if p.student_id == user.id:
             told[p.supervisor_id].append(f"{p.student_name}'s proposal {p.title} was withdrawn.")

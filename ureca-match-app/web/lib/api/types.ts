@@ -1986,6 +1986,8 @@ export interface components {
             submitted_at: string;
             /** Decided At */
             decided_at?: string | null;
+            /** Decision Note */
+            decision_note?: string | null;
             /**
              * Document Ids
              * @default []

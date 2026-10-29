@@ -61,7 +61,10 @@ def test_REQ_PROPOSE_withdraw_pending_proposal(client_for, fresh_store):
 def test_REQ_PROPOSE_supervisor_cannot_answer_a_withdrawn_proposal(client_for):
     client_for("stu-9").post("/me/proposals/prp-2/withdraw")
     assert client_for("sup-1").post("/supervisor/proposals/prp-2/accept", json={}).status_code == 409
-    assert client_for("sup-1").post("/supervisor/proposals/prp-2/decline", json={}).status_code == 409
+    assert (
+        client_for("sup-1").post("/supervisor/proposals/prp-2/decline", json={"note": "Not a fit this semester."}).status_code
+        == 409
+    )
 
 
 def test_REQ_PROPOSE_cannot_withdraw_after_the_supervisor_accepted(client_for, fresh_store):
@@ -72,7 +75,7 @@ def test_REQ_PROPOSE_cannot_withdraw_after_the_supervisor_accepted(client_for, f
 
 
 def test_REQ_PROPOSE_cannot_withdraw_after_the_supervisor_declined(client_for):
-    client_for("sup-1").post("/supervisor/proposals/prp-2/decline", json={})
+    client_for("sup-1").post("/supervisor/proposals/prp-2/decline", json={"note": "Not a fit this semester."})
     assert client_for("stu-9").post("/me/proposals/prp-2/withdraw").status_code == 409
 
 
@@ -106,7 +109,7 @@ def test_REQ_PROPOSE_can_propose_again_after_withdrawing_or_a_decline(client_for
     first = student.post("/proposals", json=body()).json()["id"]
     student.post(f"/me/proposals/{first}/withdraw")
     second = student.post("/proposals", json=body(title="A second try after withdrawing")).json()["id"]
-    client_for("sup-1").post(f"/supervisor/proposals/{second}/decline", json={})
+    client_for("sup-1").post(f"/supervisor/proposals/{second}/decline", json={"note": "Not a fit this semester."})
     assert student.post("/proposals", json=body(title="A third try after a decline")).status_code == 201
 
 

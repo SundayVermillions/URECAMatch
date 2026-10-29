@@ -4590,6 +4590,7 @@
       "status": "submitted",
       "submitted_at": "2026-09-06T09:00:00Z",
       "decided_at": null,
+      "decision_note": null,
       "document_ids": [
         "doc-stu-3-t"
       ],
@@ -4612,6 +4613,7 @@
       "status": "submitted",
       "submitted_at": "2026-09-06T16:00:00Z",
       "decided_at": null,
+      "decision_note": null,
       "document_ids": [
         "doc-stu-9-t"
       ],
@@ -4634,6 +4636,7 @@
       "status": "accepted",
       "submitted_at": "2026-09-06T23:00:00Z",
       "decided_at": "2026-09-08T09:00:00Z",
+      "decision_note": null,
       "document_ids": [
         "doc-stu-14-t"
       ],
@@ -4656,6 +4659,7 @@
       "status": "declined",
       "submitted_at": "2026-09-07T06:00:00Z",
       "decided_at": "2026-09-08T09:00:00Z",
+      "decision_note": "The scope is too broad for one semester. Narrow it to a single dataset and resubmit.",
       "document_ids": [
         "doc-stu-21-t"
       ],

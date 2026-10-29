@@ -7478,6 +7478,17 @@
             ],
             "title": "Decided At"
           },
+          "decision_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Note"
+          },
           "document_ids": {
             "items": {
               "type": "string"

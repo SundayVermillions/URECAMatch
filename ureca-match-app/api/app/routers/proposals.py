@@ -25,6 +25,8 @@ from app.models import (
 from app.services import catalog, placement, windows
 from app.services.notify import notify
 
+MIN_DECLINE_REASON = 10  # same length the admin's justification needs
+
 router = APIRouter(tags=["proposals"])
 
 
@@ -278,14 +280,18 @@ def accept(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: S
 @router.post("/supervisor/proposals/{proposal_id}/decline", response_model=Proposal)
 def decline(proposal_id: str, body: MatchDecision, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Proposal:
     p = _get(store, proposal_id, user)
-    p.status, p.decided_at = ProposalStatus.declined, settings.now()
+    # REQ-REVPROP-2: a decline needs a reason, and the student reads it. Checked here, whatever the screen does.
+    reason = (body.note or "").strip()
+    if len(reason) < MIN_DECLINE_REASON:
+        raise invalid("reason_required", f"Give the student a reason of at least {MIN_DECLINE_REASON} characters.", "note")
+    p.status, p.decided_at, p.decision_note = ProposalStatus.declined, settings.now(), reason
     store.save_proposal(p)
     notify(
         store,
         [p.student_id],
         NotificationEvent.proposal_decided,
         "Your proposal was declined",
-        f"{user.name} declined {p.title}." + (f" Note: {body.note}" if body.note else ""),
+        f"{user.name} declined {p.title}. Reason: {reason}",
         settings.now(),
         "/my-applications",
     )

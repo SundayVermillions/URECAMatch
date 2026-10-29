@@ -49,7 +49,10 @@ def test_REQ_OUTCOME_2_cannot_accept_a_proposal_after_the_student_became_ineligi
 def test_REQ_OUTCOME_2_that_proposal_can_still_be_declined(client_for, fresh_store):
     pid = client_for("stu-1").post("/proposals", json=body()).json()["id"]
     fresh_store.student("stu-1").eligible_for_matching = False
-    assert client_for("sup-1").post(f"/supervisor/proposals/{pid}/decline", json={}).status_code == 200
+    assert (
+        client_for("sup-1").post(f"/supervisor/proposals/{pid}/decline", json={"note": "Not a fit this semester."}).status_code
+        == 200
+    )
 
 
 # ---------------------------------------------------------------- no blank proposals (REQ-PROPOSE-1)

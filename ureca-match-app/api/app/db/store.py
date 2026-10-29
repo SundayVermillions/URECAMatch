@@ -460,6 +460,7 @@ class SupabaseStore(MockStore):
         "status",
         "submitted_at",
         "decided_at",
+        "decision_note",
         "document_ids",
     }
     # Two foreign keys point at users, so each join names the constraint it follows.
