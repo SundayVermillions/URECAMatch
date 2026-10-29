@@ -60,7 +60,7 @@ def test_REQ_REVPROP_2_cannot_accept_proposal_of_placed_student(as_supervisor, f
 
 def test_REQ_REVPROP_2_placed_student_proposal_can_still_be_declined(as_supervisor, fresh_store):
     p = _pending_proposal(fresh_store, "stu-33")
-    r = as_supervisor.post(f"/supervisor/proposals/{p.id}/decline", json={})
+    r = as_supervisor.post(f"/supervisor/proposals/{p.id}/decline", json={"note": "Not a fit this semester."})
     assert r.status_code == 200 and r.json()["status"] == "declined"
 
 

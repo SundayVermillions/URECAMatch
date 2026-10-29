@@ -33,7 +33,7 @@ def test_REQ_REVPROP_3_accept_allowed_inside_cycle(as_supervisor):
 def test_REQ_REVPROP_3_decline_still_allowed_after_close(as_supervisor, monkeypatch):
     """SRS 4.18.3 restricts accepting only. Declining is not a registration action."""
     _set_now(monkeypatch, datetime(2026, 10, 1, 9, tzinfo=UTC))
-    r = as_supervisor.post("/supervisor/proposals/prp-2/decline", json={})
+    r = as_supervisor.post("/supervisor/proposals/prp-2/decline", json={"note": "Not a fit this semester."})
     assert r.status_code == 200 and r.json()["status"] == "declined"
 
 

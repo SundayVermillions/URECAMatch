@@ -122,7 +122,8 @@ export default function MyApplications() {
       ) : (
         <ListCard>
           {proposalList.map((p) => (
-            <ListRow key={p.id} lead={<Thumb url={null} />} title={p.title} meta={`to ${p.supervisor_name} · sent ${fmtDate(p.submitted_at)}`}>
+            <ListRow key={p.id} lead={<Thumb url={null} />} title={p.title} meta={`to ${p.supervisor_name} · sent ${fmtDate(p.submitted_at)}`}
+              note={p.status === "declined" && p.decision_note ? <><b className="font-semibold">Reason from {p.supervisor_name}:</b> {p.decision_note}</> : undefined}>
               <Status value={p.status} />
               {p.status === "submitted" && ( // only until the supervisor answers
                 <TrashButton label="Withdraw proposal" onClick={() => { setTarget(p.id); setConfirm("withdraw-proposal"); }} />
@@ -171,7 +172,7 @@ function ListCard({ children }: { children: React.ReactNode }) {
 }
 
 /** One application, proposal or past result: an optional big rank number, a photo, the title and who it is with, and actions. */
-function ListRow({ rank, first, lead, title, meta, muted, children }: { rank?: number; first?: boolean; lead?: React.ReactNode; title: string; meta: string; muted?: boolean; children?: React.ReactNode }) {
+function ListRow({ rank, first, lead, title, meta, note, muted, children }: { rank?: number; first?: boolean; lead?: React.ReactNode; title: string; meta: string; note?: React.ReactNode; muted?: boolean; children?: React.ReactNode }) {
   return (
     <div className={`flex items-center gap-5 px-6 py-4 transition-colors ${muted ? "opacity-75" : "hover:bg-accent-soft/30"}`}>
       {rank !== undefined && (
@@ -181,6 +182,7 @@ function ListRow({ rank, first, lead, title, meta, muted, children }: { rank?: n
       <div className="flex-1 min-w-0">
         <div className="truncate text-[15.5px] font-semibold tracking-[-0.01em]">{title}</div>
         <div className="mt-0.5 truncate text-[13px] text-muted">{meta}</div>
+        {note && <div className="mt-2 rounded-[10px] bg-bad-soft/70 px-3 py-2 text-[12.5px] leading-[1.55] text-bad-ink">{note}</div>}
         {first && <span className="mt-1.5 inline-flex h-5 items-center rounded-pill bg-accent-soft px-2 text-[11px] font-semibold text-accent-ink">First choice</span>}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">{children}</div>

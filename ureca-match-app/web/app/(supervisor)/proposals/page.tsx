@@ -5,10 +5,11 @@ import { PageTitle } from "@/components/shell/app-shell";
 import { I } from "@/components/shell/icons";
 import { DocumentViewer } from "@/components/supervisor/document-viewer";
 import { StudentSummary } from "@/components/supervisor/student-summary";
-import { Avatar, Banner, Button, Card, Drawer, Empty, Loading, Modal, Segmented, Status, fmtDate } from "@/components/ui";
+import { Avatar, Banner, Button, Card, Drawer, Empty, Field, Loading, Modal, Segmented, Status, Textarea, fmtDate } from "@/components/ui";
 import { ApiError, type Document, type Proposal } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
+const MIN_REASON = 10; // same minimum as the API (routers/proposals.py)
 const fmtSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 export default function Proposals() {
@@ -18,9 +19,19 @@ export default function Proposals() {
   const [confirm, setConfirm] = useState<{ p: Proposal; accept: boolean } | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [profile, setProfile] = useState<Proposal | null>(null); // REQ-REVPROP-1: proposal whose student is shown in the drawer
+  const [reason, setReason] = useState(""); // REQ-REVPROP-2: why a proposal is declined; the student reads it
+  const [reasonError, setReasonError] = useState<string | null>(null);
+  const reasonOk = reason.trim().length >= MIN_REASON;
+  const closeConfirm = () => { setConfirm(null); setReason(""); setReasonError(null); };
   async function decide() {
-    if (!confirm) return;
-    try { await call((api) => api.decideProposal(confirm.p.id, confirm.accept)); reload(); } catch (e) { setError(e as ApiError); } finally { setConfirm(null); }
+    if (!confirm || (!confirm.accept && !reasonOk)) return;
+    setReasonError(null);
+    try { await call((api) => api.decideProposal(confirm.p.id, confirm.accept, confirm.accept ? undefined : reason.trim())); reload(); closeConfirm(); }
+    catch (e) {
+      const err = e as ApiError;
+      if (err.field === "note") { setReasonError(err.message); return; } // stay in the dialog, beside the box
+      setError(err); closeConfirm();
+    }
   }
   const pending = (data ?? []).filter((p) => p.status === "submitted");
   const decided = (data ?? []).filter((p) => p.status !== "submitted");
@@ -46,6 +57,7 @@ export default function Proposals() {
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] font-semibold text-text truncate">{p.title}</div>
                   <div className="text-[12.5px] text-muted">{p.student_name} · decided {fmtDate(p.decided_at)}</div>
+                  {p.decision_note && <div className="mt-1 text-[12.5px] text-muted">Your reason: {p.decision_note}</div>}
                 </div>
                 <Status value={p.status} />
               </div>
@@ -64,9 +76,20 @@ export default function Proposals() {
         {profile && <StudentProfile p={profile} />}
       </Drawer>
 
-      <Modal open={!!confirm} onClose={() => setConfirm(null)} title={confirm?.accept ? "Accept and register this student?" : "Decline this proposal?"}
-        footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button><Button variant={confirm?.accept ? "primary" : "destructive"} onClick={decide}>{confirm?.accept ? "Accept and register" : "Decline"}</Button></>}>
-        {confirm?.accept ? `${confirm.p.student_name} is registered to "${confirm.p.title}" under you. Their other applications, open offers and pending proposals are withdrawn.` : `${confirm?.p.student_name} will be notified. They can keep applying to listed projects.`}
+      <Modal open={!!confirm} onClose={closeConfirm} title={confirm?.accept ? "Accept and register this student?" : "Decline this proposal?"}
+        footer={<><Button variant="secondary" onClick={closeConfirm}>Cancel</Button><Button variant={confirm?.accept ? "primary" : "destructive"} disabled={!confirm?.accept && !reasonOk} onClick={decide}>{confirm?.accept ? "Accept and register" : "Decline"}</Button></>}>
+        {confirm?.accept ? `${confirm.p.student_name} is registered to "${confirm.p.title}" under you. Their other applications, open offers and pending proposals are withdrawn.` : (
+          <div className="flex flex-col gap-4">
+            <div>{confirm?.p.student_name} will be told, and will read your reason. They can keep applying to listed projects.</div>
+            <Field label="Reason for the student" error={reasonError} hint="Say what would make a proposal work, so they can improve it.">
+              <Textarea rows={4} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} invalid={!!reasonError} autoFocus />
+              <div className={`flex items-center gap-1.5 text-[12.5px] transition-colors ${reasonOk ? "text-good-ink" : "text-muted"}`}>
+                <span aria-hidden className={`grid h-[14px] w-[14px] shrink-0 place-items-center rounded-full transition-colors ${reasonOk ? "bg-good text-white" : "shadow-[inset_0_0_0_1.5px_var(--border-strong)]"}`}>{reasonOk && <I.Tick size={9} />}</span>
+                At least {MIN_REASON} characters
+              </div>
+            </Field>
+          </div>
+        )}
       </Modal>
     </>
   );

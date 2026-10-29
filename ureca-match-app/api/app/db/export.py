@@ -183,6 +183,7 @@ def _seed_sql(d: dict) -> str:
                 "status",
                 "submitted_at",
                 "decided_at",
+                "decision_note",
                 "document_ids",
             ],
             [p.model_dump() for p in d["proposals"]],

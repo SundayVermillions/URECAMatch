@@ -539,6 +539,7 @@ class Proposal(BaseModel):
     status: ProposalStatus
     submitted_at: datetime
     decided_at: datetime | None = None
+    decision_note: str | None = None  # why a supervisor declined it (REQ-REVPROP-2); the student sees it
     document_ids: list[str] = []
     # Filled in only when a supervisor reads their proposals (REQ-REVPROP-1). Not stored.
     student: ApplicantStudent | None = None

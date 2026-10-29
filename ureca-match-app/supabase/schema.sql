@@ -172,6 +172,7 @@ create table self_proposed_applications (                          -- REQ-PROPOS
   status             proposal_status not null default 'submitted',
   submitted_at       timestamptz not null default now(),
   decided_at         timestamptz,
+  decision_note      text,                                              -- why a supervisor declined it (REQ-REVPROP-2)
   document_ids       text[] not null default '{}'
 );
 

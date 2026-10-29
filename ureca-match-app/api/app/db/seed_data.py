@@ -768,6 +768,11 @@ def make_proposals(users: list[User]) -> list[Proposal]:
                 status=status,
                 submitted_at=dt(6, 9) + timedelta(hours=len(out) * 7),
                 decided_at=dt(8, 9) if status != ProposalStatus.submitted else None,
+                decision_note=(
+                    "The scope is too broad for one semester. Narrow it to a single dataset and resubmit."
+                    if status == ProposalStatus.declined
+                    else None
+                ),
                 document_ids=[f"doc-{sid}-t"],
             )
         )

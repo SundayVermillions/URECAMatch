@@ -412,6 +412,7 @@ export class MockClient implements ApiClient {
     }
     for (const p of this.db.proposals.filter((x) => ids("proposal").has(x.id))) {
       p.status = "declined"; p.decided_at = this.iso();
+      if (p.student_id !== u.id) p.decision_note = `${u.name}'s account was ${reason}, so the proposal could not be answered.`;
       if (p.student_id === u.id) tell(p.supervisor_id, `${p.student_name}'s proposal ${p.title} was withdrawn.`);
       else tell(p.student_id, `Your proposal ${p.title} to ${p.supervisor_name} was declined.`);
     }
@@ -654,6 +655,9 @@ export class MockClient implements ApiClient {
     const u = this.need("supervisor"); const p = this.db.proposals.find((p) => p.id === id);
     if (!p || p.supervisor_id !== u.id) throw new M.ApiError(404, "not_found", "Proposal was not found.");
     if (p.status !== "submitted") throw new M.ApiError(409, "already_decided", "This proposal has already been decided.");
+    // REQ-REVPROP-2: a decline needs a reason, and the student reads it (mirror of the API check)
+    const reason = (note ?? "").trim();
+    if (!accept && reason.length < 10) throw new M.ApiError(422, "reason_required", "Give the student a reason of at least 10 characters.", "note");
     if (accept) { // REQ-REVPROP-3: registering a student needs an open cycle. Declining stays open.
       const c = this.activeCycle(); const t = this.now.getTime();
       if (!c || t < Date.parse(c.opening_date) || t > Date.parse(c.closing_date))
@@ -664,6 +668,7 @@ export class MockClient implements ApiClient {
         throw new M.ApiError(409, "not_eligible", "This student declined or did not answer an offer, so this proposal can only be declined.");
     }
     p.status = accept ? "accepted" : "declined"; p.decided_at = this.iso();
+    if (!accept) p.decision_note = reason;
     if (accept) {
       // The student is placed now: withdraw any other match still holding a slot for them, and tell its supervisor.
       for (const m of this.cycleMatches(p.student_id).filter((m) => ["proposed", "approved", "reassigned", "published"].includes(m.status))) {
@@ -681,7 +686,7 @@ export class MockClient implements ApiClient {
       // The student is placed, so their other proposals still waiting for a supervisor are withdrawn.
       this.withdrawPendingProposals(p.student_id, "was registered to another project");
     }
-    this.notify([p.student_id], "proposal_decided", accept ? "Your proposal was accepted" : "Your proposal was declined", `${u.name} ${accept ? "accepted" : "declined"} ${p.title}.${note ? ` Note: ${note}` : ""}`, "/my-applications");
+    this.notify([p.student_id], "proposal_decided", accept ? "Your proposal was accepted" : "Your proposal was declined", accept ? `${u.name} accepted ${p.title}.${note ? ` Note: ${note}` : ""}` : `${u.name} declined ${p.title}. Reason: ${reason}`, "/my-applications");
     return p;
   }
 
