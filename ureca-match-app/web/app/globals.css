@@ -4,21 +4,21 @@
    Product roles are pinned to tonal-scale stops; components reference the role. */
 :root {
   /* Design refresh (2026-10). Apple-inspired neutrals, one accent. Diverges from SRS 3.1.1: see docs/srs-updates.md */
-  --bg: #f5f5f7;            /* page background */
+  --bg: #f1f5fb;            /* page background, a cool ice blue to match the sign-in screen */
   --surface: #ffffff;       /* cards, sidebar, drawers */
-  --sunken: #f5f5f7;        /* wells inside a card */
-  --border: #e8e8ed;        /* hairline */
-  --border-strong: #d2d2d7; /* inputs */
+  --sunken: #f3f6fb;        /* wells inside a card */
+  --border: #e3e9f2;        /* hairline */
+  --border-strong: #cdd6e3; /* inputs */
   --text: #1d1d1f;
-  --muted: #6e6e73;
-  --faint: #86868b;
+  --muted: #5f6b7e;
+  --faint: #78849a;
   /* Accent = bright blue for buttons, links, focus and badges. In the sidebar the selected item
      and all icons stay neutral on purpose. See docs/srs-updates.md. */
   --accent: #0071e3;
   --accent-ink: #0066cc;    /* hover, text on a soft fill */
-  --accent-soft: #eaf3fd;
+  --accent-soft: #e8f1fd;
   --accent-border: #cde2fa;
-  --navy: #1d1d1f;          /* logo and dark avatars */
+  --navy: #0b1f3a;          /* logo and dark avatars: the headline ink from the sign-in screen */
   --good: #248a3d;
   --good-ink: #1a7431;
   --good-soft: #e9f6ec;
@@ -28,7 +28,11 @@
   --bad: #e30000;
   --bad-ink: #c2000b;
   --bad-soft: #ffeeed;
-  --neutral-soft: #f0f0f2;
+  --neutral-soft: #eef2f7;
+  /* Brand blues from the sign-in screen: ink to steel to sky. For marks, gradients and the globe. */
+  --brand-ink: #0b1f3a;
+  --brand-steel: #3b6fb6;
+  --brand-sky: #6fa8ee;
 
   /* Applicants and ranking page palette (2026-10), used under .ap-theme: the app's own neutrals and blue accent. */
   --ap-bg: #f5f5f7;
@@ -106,11 +110,11 @@
   html, body { height: 100%; }
   body {
     margin: 0;
-    /* Very soft ambient colour, fixed behind everything, so glass surfaces (the sidebar) have something to blur. */
+    /* Soft ice-blue and lilac light, fixed behind everything, so glass surfaces (the sidebar) have something to blur. */
     background:
-      radial-gradient(1100px 700px at -10% -10%, rgba(120, 160, 255, 0.16), transparent 60%),
-      radial-gradient(900px 600px at 110% 0%, rgba(255, 170, 200, 0.12), transparent 60%),
-      radial-gradient(1000px 800px at 50% 120%, rgba(130, 220, 200, 0.12), transparent 60%),
+      radial-gradient(1100px 700px at -10% -10%, rgba(143, 186, 255, 0.30), transparent 60%),
+      radial-gradient(900px 600px at 110% 0%, rgba(196, 176, 255, 0.18), transparent 60%),
+      radial-gradient(1000px 800px at 50% 120%, rgba(160, 210, 255, 0.20), transparent 60%),
       var(--bg);
     background-attachment: fixed;
     color: var(--text);
@@ -167,6 +171,9 @@ div:has(> .ap-theme) { max-width: 1600px; }
 .ap-skeleton { background: linear-gradient(90deg, var(--ap-line) 0%, var(--ap-bg) 50%, var(--ap-line) 100%); background-size: 480px 100%; animation: uri-shimmer 1.2s linear infinite; border-radius: 4px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* A page eases in when it opens. "backwards" so nothing is held after it ends (a lingering transform would trap fixed drawers). */
+.page-in { animation: page-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 @keyframes ping-ring { from { transform: scale(0.96); opacity: 0.7; } to { transform: scale(1.3); opacity: 0; } }
 
 /* Uri, the recommendation guide on Browse (components/student/uri.tsx, uri-picks.tsx). */
@@ -188,6 +195,17 @@ div:has(> .ap-theme) { max-width: 1600px; }
    backdrop-filter is declared twice on purpose: Safari and Firefox do not support url() filters
    there, drop the second line, and keep the plain frosted blur from the first. */
 @layer components {
+  /* The one card surface (Card, Stat, Empty): a faint top-down white gradient, a hairline, a bright top edge and a soft blue-tinted lift.
+     Solid enough to need no blur, so long lists stay fast. */
+  .card-surface {
+    border-radius: var(--radius-card);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.82));
+    box-shadow:
+      inset 0 1px 0 #fff,
+      0 0 0 1px rgba(15, 40, 90, 0.06),
+      0 1px 2px rgba(15, 40, 90, 0.04),
+      0 18px 36px -20px rgba(47, 100, 180, 0.38);
+  }
   .liquid-glass {
     border-radius: 14px;
     /* Mostly clear body: a faint top-lit tint, not a white fill. */

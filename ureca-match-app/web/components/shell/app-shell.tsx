@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useMe } from "./app-provider";
 import { DEBUG_CLOCK_ON, DebugClock } from "./debug-clock";
 import { I } from "./icons";
+import { BrandMark } from "./brand-mark";
 import { GlassIndicator, LiquidGlassFilter } from "./liquid-glass";
 import type { Role } from "@/lib/api/models";
 import { Avatar } from "@/components/ui";
@@ -62,7 +63,7 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
       <aside className="h-full rounded-[20px] bg-white/60 backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-black/[0.05] shadow-[0_4px_24px_rgba(0,0,0,0.04)] flex flex-col justify-between p-3">
         <div>
           <div className="flex items-center gap-2.5 px-2.5 pb-6 pt-2">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="12" r="3.4" stroke="var(--navy)" strokeWidth="1.8" /><circle cx="18" cy="12" r="3.4" stroke="var(--navy)" strokeWidth="1.8" /><line x1="9.4" y1="12" x2="14.6" y2="12" stroke="var(--navy)" strokeWidth="1.8" strokeLinecap="round" /></svg>
+            <BrandMark size={28} />
             <span className="font-display font-semibold text-[16px] tracking-[-0.02em]">URECAMatch</span>
           </div>
           <div className="eyebrow px-2.5 pb-2">{SECTION[role]}</div>
@@ -93,8 +94,8 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
       </div>
       <main className="flex-1 min-w-0 overflow-y-auto">
         {DEBUG_CLOCK_ON && <DebugClock onChanged={() => setEpoch((n) => n + 1)} />}
-        {/* The key remounts the page after the debug clock moves, so every screen re-fetches for the new "now". */}
-        <div key={epoch} className="max-w-[1080px] pt-10 pb-16 pl-12 pr-10">{children}</div>
+        {/* The key remounts the page after the debug clock moves, so every screen re-fetches for the new "now", and when the route changes, so the entrance plays. */}
+        <div key={`${epoch}:${path}`} className="page-in max-w-[1080px] pt-10 pb-16 pl-12 pr-10">{children}</div>
       </main>
     </div>
   );
