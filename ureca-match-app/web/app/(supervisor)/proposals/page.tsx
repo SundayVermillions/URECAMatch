@@ -1,10 +1,11 @@
 "use client";
 /** ManageSelf-ProposedProjects (4.18). REQ-REVPROP-1..3. Screen: StudentProposalPage. */
 import { useState } from "react";
-import { PageHeader } from "@/components/shell/app-shell";
+import { PageTitle } from "@/components/shell/app-shell";
 import { I } from "@/components/shell/icons";
 import { DocumentViewer } from "@/components/supervisor/document-viewer";
-import { Avatar, Banner, Button, Card, Drawer, Empty, Loading, Modal, Pill, Segmented, Status, fmtDate } from "@/components/ui";
+import { StudentSummary } from "@/components/supervisor/student-summary";
+import { Avatar, Banner, Button, Card, Drawer, Empty, Loading, Modal, Segmented, Status, fmtDate } from "@/components/ui";
 import { ApiError, type Document, type Proposal } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
@@ -26,24 +27,24 @@ export default function Proposals() {
 
   return (
     <>
-      <PageHeader title="Student proposals" description="Projects students have proposed to you. Accepting registers the student to the project and removes them from matching."
+      <PageTitle title="Student proposals"
         right={<Segmented value={tab} onChange={setTab} options={[{ value: "waiting", label: "Waiting", count: pending.length }, { value: "decided", label: "Decided", count: decided.length }]} />} />
       {error && <div className="mb-5"><Banner tone="bad">{error.message}</Banner></div>}
 
       {loading && !data ? <Loading /> : tab === "waiting" ? (
-        pending.length === 0 ? <Empty title="No proposals waiting" note="When a student proposes a project to you, it appears here." /> : (
+        pending.length === 0 ? <Empty icon={<I.Bulb size={20} />} title="No proposals waiting" note="When a student proposes a project to you, it appears here." /> : (
           <div className="flex flex-col gap-4">
             {pending.map((p) => <ProposalCard key={p.id} p={p} onView={() => setProfile(p)} onDecide={(accept) => setConfirm({ p, accept })} />)}
           </div>
         )
       ) : (
-        decided.length === 0 ? <Empty title="Nothing decided yet" note="Proposals you accept or decline are kept here." /> : (
+        decided.length === 0 ? <Empty icon={<I.Check size={20} />} title="Nothing decided yet" note="Proposals you accept or decline are kept here." /> : (
           <Card padded={false} className="overflow-hidden">
             {decided.map((p, i) => (
               <div key={p.id} className={`flex items-center gap-3.5 px-5 py-3.5 ${i > 0 ? "border-t border-border" : ""}`}>
-                <Avatar name={p.student_name} size={32} />
+                <Avatar name={p.student_name} size={36} tone="auto" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-medium text-text truncate">{p.title}</div>
+                  <div className="text-[14px] font-semibold text-text truncate">{p.title}</div>
                   <div className="text-[12.5px] text-muted">{p.student_name} · decided {fmtDate(p.decided_at)}</div>
                 </div>
                 <Status value={p.status} />
@@ -107,7 +108,7 @@ function ProposalCard({ p, onView, onDecide }: { p: Proposal; onView: () => void
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-3 px-6 py-3.5 border-t border-border bg-bg/60 rounded-b-card">
+      <div className="flex items-center gap-3 px-6 py-3.5 border-t border-border bg-white/40">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {docs.map((d) => (
             <span key={d.id} className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-pill bg-surface ring-1 ring-border text-[12.5px] text-muted max-w-[220px]">
@@ -128,28 +129,18 @@ function StudentProfile({ p }: { p: Proposal }) {
   const s = p.student;
   return (
     <>
-      <div className="flex flex-col items-center text-center pt-1">
-        <Avatar name={p.student_name} size={64} tone="navy" />
-        <div className="text-[20px] font-semibold tracking-[-0.015em] mt-3">{p.student_name}</div>
-        <div className="text-[13.5px] text-muted mt-0.5">{s ? `${s.school} · Year ${s.year_of_study ?? "-"}` : "Student"} · proposed {fmtDate(p.submitted_at)}</div>
-      </div>
-
       {s ? (
-        <>
-          <div className="grid grid-cols-3 bg-bg rounded-row py-3">
-            <Stat label="CGPA" value={s.cgpa?.toFixed(2) ?? "-"} suffix="/ 5" />
-            <Stat label="Year" value={String(s.year_of_study ?? "-")} divider />
-            <Stat label="Modules" value={String(s.completed_modules.length)} divider />
-          </div>
-          <Section title="Completed modules">
-            {s.completed_modules.length ? <div className="flex flex-wrap gap-1.5">{s.completed_modules.map((m) => <Pill key={m}>{m}</Pill>)}</div> : <Muted>None listed</Muted>}
-          </Section>
-          <Section title="Research interests">
-            {s.research_interests.length ? <div className="flex flex-wrap gap-1.5">{s.research_interests.map((t) => <Pill key={t}>{t}</Pill>)}</div> : <Muted>None listed</Muted>}
-          </Section>
-        </>
+        <StudentSummary name={p.student_name} email={s.email} school={s.school} year={s.year_of_study} cgpa={s.cgpa}
+          modules={s.completed_modules} interests={s.research_interests} note={`proposed ${fmtDate(p.submitted_at)}`} />
       ) : (
-        <Banner tone="warn">This student has not completed their profile yet.</Banner>
+        <>
+          <div className="flex flex-col items-center pt-1 text-center">
+            <Avatar name={p.student_name} size={64} tone="navy" />
+            <div className="mt-3 text-[20px] font-semibold tracking-[-0.015em]">{p.student_name}</div>
+            <div className="mt-0.5 text-[13.5px] text-muted">Student · proposed {fmtDate(p.submitted_at)}</div>
+          </div>
+          <Banner tone="warn">This student has not completed their profile yet.</Banner>
+        </>
       )}
 
       <Section title="Proposal">
@@ -181,15 +172,6 @@ function DocumentRow({ d, first }: { d: Document; first: boolean }) {
       </summary>
       {opened && <DocumentViewer id={d.id} name={d.file_name} />}
     </details>
-  );
-}
-
-function Stat({ label, value, suffix, divider }: { label: string; value: string; suffix?: string; divider?: boolean }) {
-  return (
-    <div className={`text-center px-2 ${divider ? "border-l border-border" : ""}`}>
-      <div className="text-[18px] font-semibold tabular text-text">{value}{suffix && <span className="text-[12px] font-normal text-faint ml-1">{suffix}</span>}</div>
-      <div className="text-[12px] text-muted mt-0.5">{label}</div>
-    </div>
   );
 }
 

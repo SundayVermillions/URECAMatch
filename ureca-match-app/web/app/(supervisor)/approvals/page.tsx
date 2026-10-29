@@ -4,9 +4,12 @@
  *  supervisor may only decline (REQ-APPRV-4). Use case 3-3 step 3: a match opens the student's profile in a drawer.
  *  Matches are grouped by round, so a student stays on screen, marked declined, after the supervisor declines them. */
 import { useState } from "react";
-import { PageHeader } from "@/components/shell/app-shell";
+import { PageTitle } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
-import { Avatar, Banner, Button, Drawer, Empty, Field, Loading, Modal, PdfViewer, Pill, Status, Textarea, fmtDate, fmtDeadline } from "@/components/ui";
+import { I } from "@/components/shell/icons";
+import { CycleTimeline } from "@/components/student/cycle-timeline";
+import { StudentSummary } from "@/components/supervisor/student-summary";
+import { Avatar, Banner, Button, Card, Drawer, Empty, Field, Loading, Modal, PdfViewer, Pill, Skeleton, Status, Textarea, fmtDate, fmtDeadline } from "@/components/ui";
 import { ApiError, type Match } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
@@ -14,6 +17,8 @@ export default function Approvals() {
   const { me, refresh } = useMe();
   const call = useCall();
   const { data, loading, reload } = useApi((api) => api.supervisorMatches(), []);
+  const mine = useApi((api) => api.myListings(), []); // for each project's cover and slots
+  const [history, setHistory] = useState(false);
   const [decline, setDecline] = useState<Match | null>(null);
   const [profile, setProfile] = useState<Match | null>(null);
   const [reason, setReason] = useState("");
@@ -38,49 +43,78 @@ export default function Approvals() {
       : m.status === "reassigned" ? "Placed by the URECA office, so it cannot be declined"
       : m.status === "declined" ? "The student declined the offer"
       : m.status === "timed_out" ? "The student didn't reply in time" : null;
+  // Matches of this round grouped by project, so a supervisor reads "these students are coming to this project".
+  const listing = (id: string) => (mine.data ?? []).find((l) => l.id === id);
+  const groups = [...new Set(thisRound.map((m) => m.listing_id))].map((id) => ({ id, title: thisRound.find((m) => m.listing_id === id)!.listing_title, rows: thisRound.filter((m) => m.listing_id === id) }));
   return (
     <>
-      <PageHeader title="Match approvals" description="Students the matching places on your projects are offered a place when the approval window closes. Decline any student you cannot take before then." />
+      <PageTitle title="Match approvals" right={<CycleTimeline />} />
       {error && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
-      {open && <div className="mb-4"><Banner tone="accent" title={`Approval window open until ${fmtDeadline(phase?.window_ends_at)}.`}>You do not need to approve anyone. Students you leave are offered a place when the window closes.</Banner></div>}
-      {loading && !data ? <Loading /> : thisRound.length === 0 ? (
-        <Empty title="No students to review" note={open ? "The matching did not place any students on your projects this round." : "Students matched to your projects appear here when matching runs, as soon as the review window closes."} />
+      {loading && !data ? (
+        <div aria-busy="true" aria-label="Loading matches" className="flex flex-col gap-4"><Skeleton className="h-[190px] !rounded-[16px]" /><Skeleton className="h-[130px] !rounded-[16px]" /></div>
+      ) : thisRound.length === 0 ? (
+        <Empty icon={<I.Check size={20} />} title="No students to review" note={open ? "The matching did not place any students on your projects this round." : "Students matched to your projects appear here when matching runs, as soon as the review window closes."} />
       ) : (
-        <ul className="flex flex-col gap-2">
-          {thisRound.map((m) => (
-            <li key={m.id} className="bg-surface border border-border rounded-row flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3">
-              <Avatar name={m.student_name} size={32} tone={m.status === "rejected" ? "neutral" : "navy"} />
-              {/* On narrow screens the actions wrap below instead of squeezing the name. */}
-              <div className="flex-1 min-w-[220px]">
-                <div className="text-[13.5px] font-semibold truncate">{m.student_name}</div>
-                <div className="text-[12.5px] text-muted truncate">→ <strong className="text-text">{m.listing_title}</strong>{m.preference_rank ? ` · their preference ${m.preference_rank}` : ""}</div>
-                {note(m) && <div className={`text-[11.5px] mt-0.5 ${m.status === "rejected" ? "text-bad-ink" : "text-muted"}`}>{note(m)}</div>}
-                <button type="button" onClick={() => setProfile(m)} className="text-[12.5px] font-medium text-accent hover:text-accent-ink mt-0.5">View profile</button>
-              </div>
-              <div className="flex items-center gap-2 ml-auto shrink-0">
-                <Status value={m.status} />
-                {canDecline(m) && <Button size="sm" variant="secondary" onClick={() => setDecline(m)}>Decline</Button>}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-col gap-4">
+          {groups.map((g) => {
+            const l = listing(g.id);
+            return (
+              <Card key={g.id} padded={false} className="overflow-hidden">
+                <div className="flex items-center gap-4 border-b border-border px-6 py-4">
+                  {l?.cover_url ? <img src={l.cover_url} alt="" className="h-[44px] w-[64px] shrink-0 rounded-[10px] object-cover" />
+                    : <div className="grid h-[44px] w-[64px] shrink-0 place-items-center rounded-[10px] bg-neutral-soft text-faint"><I.Folder size={18} /></div>}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-display text-[15.5px] font-semibold tracking-[-0.01em]">{g.title}</div>
+                    <div className="text-[12.5px] text-muted">{g.rows.length} {g.rows.length === 1 ? "student" : "students"} matched{l ? ` · ${l.available_slots} ${l.available_slots === 1 ? "slot" : "slots"}` : ""}</div>
+                  </div>
+                  {open && <div className="shrink-0 text-right text-[12.5px] leading-snug text-muted">You can decline until<br /><b className="font-semibold text-text">{fmtDeadline(phase?.window_ends_at)}</b></div>}
+                </div>
+                <ul className="divide-y divide-border">
+                  {g.rows.map((m) => (
+                    <li key={m.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3.5">
+                      <Avatar name={m.student_name} size={38} tone={m.status === "rejected" ? "neutral" : "navy"} />
+                      <div className="min-w-[200px] flex-1">
+                        <div className="flex items-center gap-2 text-[14.5px] font-semibold">{m.student_name}{m.preference_rank ? <Pill>Choice {m.preference_rank}</Pill> : null}</div>
+                        {note(m) && <div className={`mt-0.5 text-[12px] ${m.status === "rejected" ? "text-bad-ink" : "text-muted"}`}>{note(m)}</div>}
+                        <button type="button" onClick={() => setProfile(m)} className="mt-0.5 text-[12.5px] font-medium text-accent hover:text-accent-ink">View profile</button>
+                      </div>
+                      <div className="ml-auto flex shrink-0 items-center gap-2.5">
+                        <Status value={m.status} />
+                        {canDecline(m) && <Button size="sm" variant="secondary" className="hover:!bg-bad-soft hover:!text-bad-ink" onClick={() => setDecline(m)}>Decline</Button>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            );
+          })}
+          {open && <p className="flex items-center gap-2 px-1 text-[12.5px] text-muted"><I.Info size={14} />You do not need to approve anyone. Students you leave are offered a place when the window closes.</p>}
+        </div>
       )}
       {earlier.length > 0 && (
-        <>
-          <h2 className="mt-7 mb-3">Earlier rounds</h2>
-          <ul className="flex flex-col gap-2">
-            {earlier.map((m) => (
-              <li key={m.id} className="bg-surface border border-border rounded-row flex items-center gap-3.5 px-4 py-3">
-                <Avatar name={m.student_name} size={32} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13.5px] font-semibold">{m.student_name}</div><div className="text-[12.5px] text-muted truncate">→ {m.listing_title}</div>
-                  {note(m) && <div className="text-[11.5px] text-muted mt-0.5">{note(m)}</div>}
-                </div>
-                <Status value={m.status} />
-              </li>
-            ))}
-          </ul>
-        </>
+        <div className="mt-8">
+          <button type="button" onClick={() => setHistory((v) => !v)} aria-expanded={history} className="inline-flex items-center gap-1.5 px-1 text-[14px] font-medium text-muted transition-colors hover:text-text">
+            <span className={`transition-transform ${history ? "" : "-rotate-90"}`}><I.ChevronDown size={15} /></span>
+            Earlier rounds <span className="tabular text-faint">{earlier.length}</span>
+          </button>
+          {history && (
+            <Card padded={false} className="step-in mt-3 overflow-hidden">
+              <ul className="divide-y divide-border">
+                {earlier.map((m) => (
+                  <li key={m.id} className="flex items-center gap-4 px-6 py-3.5">
+                    <Avatar name={m.student_name} size={36} tone="auto" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[14px] font-semibold">{m.student_name}</div>
+                      <div className="truncate text-[12.5px] text-muted">{m.listing_title}</div>
+                      {note(m) && <div className="mt-0.5 text-[12px] text-muted">{note(m)}</div>}
+                    </div>
+                    <Status value={m.status} />
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </div>
       )}
       <Drawer open={!!profile} onClose={() => setProfile(null)} title="Matched student"
         footer={profile && canDecline(profile) ? <Button variant="secondary" onClick={() => { setDecline(profile); setProfile(null); }}>Decline</Button> : undefined}>
@@ -107,17 +141,9 @@ function StudentBehindMatch({ m }: { m: Match }) {
   const st = a.student;
   return (
     <>
-      <div className="flex items-center gap-3.5">
-        <Avatar name={st.name} size={48} tone="navy" />
-        <div><div className="font-display text-[18px] font-bold">{st.name}</div><div className="text-[12.5px] text-muted">{st.school} · Year {st.year_of_study ?? "-"} · for {m.listing_title}</div></div>
-        <span className="ml-auto">{a.rank ? <Pill tone="accent">You ranked #{a.rank}</Pill> : <Pill>{a.application_id ? "Not ranked" : "Assigned by the URECA office"}</Pill>}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2.5">
-        <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="eyebrow">CGPA</div><div className="text-[15px] font-bold mt-0.5 tabular">{st.cgpa?.toFixed(2) ?? "-"} / 5.00</div></div>
-        <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="eyebrow">Prerequisites</div><div className={`text-[13px] font-bold mt-0.5 ${a.meets_prerequisites ? "text-good-ink" : "text-warn-ink"}`}>{a.meets_prerequisites ? "Met" : "Some missing"}</div></div>
-        <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="eyebrow">Modules</div><div className="text-[13px] font-semibold mt-0.5">{st.completed_modules.join(", ") || "None listed"}</div></div>
-        <div className="bg-sunken rounded-[9px] px-3 py-2.5"><div className="eyebrow">Interests</div><div className="text-[13px] font-semibold mt-0.5">{st.research_interests.join(", ") || "None listed"}</div></div>
-      </div>
+      <StudentSummary name={st.name} email={st.email || `${st.id}@e.ntu.edu.sg`} school={st.school} degree={st.degree} year={st.year_of_study} cgpa={st.cgpa}
+        modules={st.completed_modules} interests={st.research_interests} missing={a.meets_prerequisites ? [] : undefined}
+        badge={a.rank ? <Pill tone="accent">You ranked #{a.rank}</Pill> : <Pill>{a.application_id ? "Not ranked" : "Assigned by the URECA office"}</Pill>} note={`for ${m.listing_title}`} />
       {a.application_id ? (
         <div><div className="eyebrow mb-1.5">Statement of interest · applied {fmtDate(a.submitted_at)}</div><p className="text-[13px] leading-[1.65]">{a.statement}</p></div>
       ) : <div className="text-[13px] text-muted">The URECA office assigned this student without an application to your project.</div>}
