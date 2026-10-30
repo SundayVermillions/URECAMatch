@@ -41,7 +41,8 @@ function cleanCourses(values: string[], field: string) {
   return out;
 }
 
-export const DEMO_NOW = new Date("2026-09-07T10:00:00Z");
+// REQ-ROUND-1: the browser starts at Round 2's opening in the generated seed.
+export const DEMO_NOW = new Date(seedJson.cycle.rounds[1].application_start);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const sleep = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "short" });

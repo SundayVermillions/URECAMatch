@@ -8,6 +8,8 @@ from functools import lru_cache
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.demo import DEMO_NOW
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -32,8 +34,8 @@ class Settings(BaseSettings):
     app_url: str = "http://localhost:3000"  # base for links in e-mails
     gemini_api_key: str = ""  # AI match (REQ-VRANK-1). Empty means local scoring only
     gemini_model: str = "gemini-3.5-flash-lite"
-    # Fixed "now" for mock mode so the demo is deterministic: inside Round 2's application window.
-    demo_now: datetime = datetime(2026, 9, 7, 10, 0, tzinfo=UTC)
+    # Fixed "now" for mock mode: the start of Round 2, 3 Nov 2026 at 17:00 SGT.
+    demo_now: datetime = DEMO_NOW
     # Developer tool: lets /debug/clock replace "now" so a cycle can be tested without waiting. Off unless DEBUG_CLOCK=true.
     debug_clock: bool = False
     # Run the schedule (matching, publishing, offer expiry) before every request. Unset means on in mock mode and off in

@@ -31,7 +31,7 @@ Sign in with any seeded account (password `password`) or use the demo buttons on
 | Supervisor | sup-1 Prof. Marcus Chua |
 | Admin | adm-1 Jonathan Teo |
 
-The demo clock is fixed at 7 Sep 2026 (inside Round 2's application window) so every screen has data.
+The demo clock is fixed at 3 Nov 2026, 17:00 SGT, when Round 2 applications open. The mock browser and API use the same seed timeline.
 
 ## How it fits together
 

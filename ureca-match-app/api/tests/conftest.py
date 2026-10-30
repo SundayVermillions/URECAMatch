@@ -6,11 +6,12 @@ X-Demo-User header) or `client_for("stu-7")` for a specific seeded user.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.db import seed_data
 from app.db import store as store_module
 from app.main import app
 from app.settings import get_settings, set_clock_override
@@ -23,6 +24,12 @@ APPROVAL_CLOSED = datetime(2026, 9, 14, 9, tzinfo=UTC)  # Round 2's results are 
 @pytest.fixture(autouse=True)
 def fresh_store(monkeypatch):
     monkeypatch.setenv("API_MODE", "mock")
+    # Existing requirement tests intentionally exercise the original, fixed September scenario.
+    # The default November seed has its own integration tests in test_DEMO_timeline.py.
+    monkeypatch.setenv("DEMO_NOW", "2026-09-07T10:00:00Z")
+    monkeypatch.setattr(get_settings(), "demo_now", datetime(2026, 9, 7, 10, tzinfo=UTC))
+    build_seed = seed_data.build
+    monkeypatch.setattr(seed_data, "build", lambda: build_seed(offset=timedelta(0)))
     monkeypatch.setattr(get_settings(), "email_mode", "off")  # tests never send e-mail, whatever .env says
     monkeypatch.setattr(get_settings(), "gemini_api_key", "")  # nor call Gemini with a real key from .env
     store_module.reset_store()
