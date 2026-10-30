@@ -51,6 +51,7 @@ export class LiveClient implements ApiClient {
   createListing = (b: M.ListingCreate) => this.req<M.Listing>("POST", "/supervisor/listings", b);
   updateListing = (id: string, b: M.ListingUpdate) => this.req<M.Listing>("PUT", `/supervisor/listings/${id}`, b);
   closeListing = (id: string) => this.req<M.Listing>("POST", `/supervisor/listings/${id}/close`);
+  reopenListing = (id: string) => this.req<M.Listing>("POST", `/supervisor/listings/${id}/reopen`);
   uploadCover = (id: string, file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.Listing>("POST", `/supervisor/listings/${id}/cover`, undefined, f); };
   addGalleryPhoto = (id: string, file: File) => { const f = new FormData(); f.append("file", file); return this.req<M.Listing>("POST", `/supervisor/listings/${id}/gallery`, undefined, f); };
   removeGalleryPhoto = (id: string, index: number) => this.req<M.Listing>("DELETE", `/supervisor/listings/${id}/gallery/${index}`);

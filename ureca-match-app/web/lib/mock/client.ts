@@ -155,12 +155,12 @@ export class MockClient implements ApiClient {
     const c = this.activeCycle(), t = this.now.getTime();
     if (!c) return { cycle_id: null, round_id: null, round_number: null, window: "before_cycle", window_ends_at: null, label: "No application cycle is open" };
     if (t < Date.parse(c.opening_date))
-      return { cycle_id: c.id, round_id: null, round_number: null, window: "before_cycle", window_ends_at: null, label: "No application cycle is open" };
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "before_cycle", window_ends_at: null, label: `The cycle opens ${when(c.opening_date)}` };
     if (t > Date.parse(c.closing_date))
       return { cycle_id: c.id, round_id: null, round_number: null, window: "closed", window_ends_at: null, label: "The application cycle has closed" };
     if (c.rounds.length === 0 || t < Date.parse(c.rounds[0].application_start)) {
       const ends = c.rounds.length ? c.rounds[0].application_start : c.closing_date;
-      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: ends, label: `Applications open ${when(ends)}` };
+      return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: ends, label: c.rounds.length ? `Applications open ${when(ends)}` : "The rounds are not scheduled yet" };
     }
     // Between rounds, the latest round that has started (its results and offers are what is happening).
     const started = c.rounds.filter((r) => Date.parse(r.application_start) <= t).sort((x, y) => Date.parse(y.application_start) - Date.parse(x.application_start));
@@ -589,6 +589,18 @@ export class MockClient implements ApiClient {
       `${l.supervisor_name} closed ${l.title}, so your application was withdrawn. Your other preferences moved up.`, "/my-applications");
     return l;
   }
+  /** Mirror of routers/listings.py reopen() (REQ-PROJ-4): only while a cycle is open; slots restart from this cycle's accepted students. */
+  async reopenListing(id: string) {
+    const u = this.need("supervisor"); const l = this.listingOr404(id);
+    if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "No access.");
+    if (l.status !== "closed") throw new M.ApiError(409, "not_closed", "This project is not closed.");
+    const c = this.activeCycle();
+    if (!c || this.now.getTime() > Date.parse(c.closing_date)) throw new M.ApiError(422, "cycle_not_open", "No cycle is open. Reopen this project once the next cycle is created.");
+    const rounds = new Set(c.rounds.map((r) => r.id));
+    l.filled_slots = this.db.matches.filter((m) => m.listing_id === l.id && rounds.has(m.round_id) && m.status === "accepted").length;
+    l.status = "published";
+    return this.decorate(l, u);
+  }
   // One project per cycle (mirror of services/placement.py): placed = an accepted match in the active cycle.
   private cycleMatches(studentId: string) {
     const rounds = new Set((this.activeCycle()?.rounds ?? []).map((r) => r.id));
@@ -819,6 +831,7 @@ export class MockClient implements ApiClient {
     if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
     if (c.status === "closed") throw new M.ApiError(409, "already_closed", "This cycle is already closed.");
     c.status = "closed";
+    for (const l of this.db.listings) if (l.status === "published") l.status = "closed"; // REQ-PROJ-4: projects live only while a cycle is open
     this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle closed", `The ${c.academic_year} cycle is now closed.`);
     this.audit(a, "cycle_updated", [c.id], "closed"); return c;
   }

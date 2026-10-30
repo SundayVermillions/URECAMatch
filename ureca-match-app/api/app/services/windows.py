@@ -42,7 +42,8 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_number=None,
             window=Window.before_cycle,
             window_ends_at=None,
-            label="No application cycle is open",
+            # A cycle that exists but has not opened yet is not "no cycle": say when it opens.
+            label="No application cycle is open" if cycle is None else f"The cycle opens {when(cycle.opening_date)}",
             now=now,
         )
     if now > cycle.closing_date:
@@ -65,7 +66,8 @@ def phase(cycle: Cycle | None, now: datetime) -> Phase:
             round_number=None,
             window=Window.pre_application,
             window_ends_at=ends,
-            label=f"Applications open {when(ends)}",
+            # With no rounds, the closing date is not when applications open.
+            label=f"Applications open {when(ends)}" if first else "The rounds are not scheduled yet",
             now=now,
         )
     if r.application_start <= now <= r.application_end:

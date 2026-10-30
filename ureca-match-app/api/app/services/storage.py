@@ -47,10 +47,10 @@ class MockStorageService:
 
 class SupabaseStorageService:
     def __init__(self) -> None:
-        from supabase import create_client
+        from app.db.client import make_client
 
         s = get_settings()
-        self.client = create_client(s.supabase_url, s.supabase_service_role_key)
+        self.client = make_client(s.supabase_url, s.supabase_service_role_key)
 
     def put(
         self,

@@ -25,7 +25,7 @@ from app.models import (
     SupervisorSummary,
     Window,
 )
-from app.services import catalog, placement, recommend, windows
+from app.services import catalog, listing_lifecycle, placement, recommend, windows
 from app.services.notify import notify
 from app.services.storage import get_storage
 
@@ -89,6 +89,8 @@ def browse(
 ) -> list[Listing]:
     """REQ-BROWSE-1: open in every phase, including before the cycle opens.
     REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive."""
+    if store.cycle is not None and not listing_lifecycle.cycle_open(store.cycle, settings.now()):
+        return []  # REQ-PROJ-4: past the closing date nothing is on offer, even before the schedule has closed the projects
     out = []
     submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
     for lst in store.all_listings():
@@ -191,10 +193,10 @@ def update(listing_id: str, body: ListingUpdate, user: SupervisorUser, store: St
         raise not_found("Project")
     if lst.supervisor_id != user.id:
         raise forbidden()
+    if _cycle_closed(store, settings):  # REQ-PROJ-2: first, since the schedule closes every project when the cycle ends
+        raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
     if lst.status == ListingStatus.closed:
         raise conflict("listing_closed", "This project is closed, so it can no longer be edited.")
-    if _cycle_closed(store, settings):  # REQ-PROJ-2
-        raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
     _check_text(body.title, body.description)
     _check_faculty(body.offering_faculty)
     # REQ-PROJ-3: never below the students who accepted plus the offers still open. Otherwise those offers could be
@@ -239,6 +241,26 @@ def _check_text(title: str | None, description: str | None) -> None:
         raise invalid("title_too_short", "Give the project a title of at least 5 characters.", "title")
     if description is not None and len(description.strip()) < 20:
         raise invalid("description_too_short", "Describe the project in at least 20 characters.", "description")
+
+
+@router.post("/supervisor/listings/{listing_id}/reopen", response_model=Listing)
+def reopen(listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> Listing:
+    """REQ-PROJ-4: a closed project goes back on Browse for the open cycle, with its content kept. Only while a cycle is
+    open, from its pre-application period to its closing date. The slot count restarts from this cycle's accepted
+    students, so last cycle's students do not fill it."""
+    lst = store.listing(listing_id)
+    if lst is None:
+        raise not_found("Project")
+    if lst.supervisor_id != user.id:
+        raise forbidden()
+    if lst.status != ListingStatus.closed:
+        raise conflict("not_closed", "This project is not closed.")
+    cycle = store.cycle
+    if not listing_lifecycle.cycle_open(cycle, settings.now()):
+        raise invalid("cycle_not_open", "No cycle is open. Reopen this project once the next cycle is created.")
+    lst.filled_slots = listing_lifecycle.accepted_in_cycle(store, lst.id, cycle)
+    lst.status = ListingStatus.published
+    return store.save_listing(lst)
 
 
 @router.post("/supervisor/listings/{listing_id}/close", response_model=Listing)
@@ -323,10 +345,10 @@ def _editable(listing_id: str, user, store, settings) -> Listing:
     lst = store.listing(listing_id)
     if lst is None or lst.supervisor_id != user.id:
         raise not_found("Project")
-    if lst.status == ListingStatus.closed:
-        raise conflict("listing_closed", "This project is closed, so it can no longer be edited.")
     if _cycle_closed(store, settings):
         raise invalid("cycle_closed", "The application cycle has closed. Listings can no longer be edited.")
+    if lst.status == ListingStatus.closed:
+        raise conflict("listing_closed", "This project is closed, so it can no longer be edited.")
     return lst
 
 

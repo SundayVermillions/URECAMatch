@@ -100,7 +100,12 @@ export default function SupervisorProjects() {
                       <Button size="sm" disabled={cycleClosed} onClick={() => run(() => call((api) => api.updateListing(l.id, { publish: true })))}>Publish</Button>
                     </>
                   )}
-                  {l.status === "closed" && <Link href={`/projects/${l.id}/applicants`}><Button size="sm" variant="secondary">Applicants</Button></Link>}
+                  {l.status === "closed" && (
+                    <>
+                      <Link href={`/projects/${l.id}/applicants`}><Button size="sm" variant="secondary">Applicants</Button></Link>
+                      {!cycleClosed && <Button size="sm" onClick={() => run(() => call((api) => api.reopenListing(l.id)))}>Reopen</Button>}
+                    </>
+                  )}
                 </div>
               </div>
             ))}

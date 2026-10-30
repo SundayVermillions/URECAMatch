@@ -42,7 +42,7 @@ export function ListingForm({ existing }: { existing?: Listing }) {
   const [location, setLocation] = useState(existing?.research_location ?? "");
   const committed = (existing?.filled_slots ?? 0) + (existing?.held_slots ?? 0); // accepted plus open offers: REQ-PROJ-3
   const minSlots = Math.max(1, committed);
-  const [slots, setSlots] = useState(existing?.available_slots ?? 2);
+  const [slots, setSlots] = useState(existing?.available_slots ?? 1);
   // Optional project details
   const [outcomes, setOutcomes] = useState(existing?.outcomes ?? "");
   const [skills, setSkills] = useState(existing?.skills ?? "");

@@ -258,6 +258,13 @@ end $$;
 create trigger audit_log_no_update before update or delete on audit_log
   for each row execute function audit_log_immutable();
 
+-- Shared fake clock for demos (DEBUG_CLOCK=true): one row, so every API process sees the same "now". Null is the real clock.
+create table app_clock (
+  id          int primary key default 1 check (id = 1),
+  override_at timestamptz
+);
+insert into app_clock (id, override_at) values (1, null);
+
 -- ------------------------------------------------------------------ RLS: the anon key sees nothing; the API uses the service role.
 do $$ declare t text;
 begin

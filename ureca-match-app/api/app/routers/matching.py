@@ -38,7 +38,7 @@ from app.models import (
     RoundSummary,
     UserListItem,
 )
-from app.services import placement, windows
+from app.services import listing_lifecycle, placement, windows
 from app.services.audit import SYSTEM, audit
 from app.services.matching.algorithm import ListingPrefs, StudentPrefs, match
 from app.services.notify import notify
@@ -786,6 +786,8 @@ def advance(store, now) -> None:
     Notifications go out after the lock is released, even if a later step fails, since the earlier steps are done."""
     outbox: Outbox = []
     try:
+        if store.cycle is not None and now > store.cycle.closing_date:
+            listing_lifecycle.close_published(store)  # REQ-PROJ-4: the closing date passed, so its projects close
         if windows.cycle_closed(store.cycle, now):
             return  # nothing is matched, published or expired for a cycle that has closed
         if not _due(store, now):
