@@ -1,6 +1,6 @@
 "use client";
-/** Demo only: a floating "Fill demo" button that types the prepared text into the page's form, so a live demo does not wait on typing.
- *  Shown only when NEXT_PUBLIC_DEBUG_CLOCK=true. A page registers what its button does with useDemoFill. Each browser tab remembers
+/** Demo only: a "Fill demo" section that types the prepared text into the page's form, so a live demo does not wait on typing.
+ *  Shown only when NEXT_PUBLIC_DEBUG_CLOCK=true, inside the debug clock panel. A page registers what its button does with useDemoFill. Each browser tab remembers
  *  which student it plays. The text lives in lib/demo-data.ts. */
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DEMO, type DemoRole } from "@/lib/demo-data";
@@ -44,28 +44,31 @@ export async function demoFile(url: string): Promise<File> {
 const getRole = (): DemoRole => { try { return sessionStorage.getItem(ROLE_KEY) === "s2" ? "s2" : "s1"; } catch { return "s1"; } };
 const setRole = (r: DemoRole) => { try { sessionStorage.setItem(ROLE_KEY, r); } catch { /* the tab just forgets it */ } emit(); };
 
-export function DemoFillButton() {
+/** Lives inside the debug clock panel, so it never shows in normal use. It appears only on a page that registered a fill. */
+export function DemoFillPanel({ onStart }: { onStart: () => void }) {
   const handler = useSyncExternalStore(subscribe, () => current, () => null);
   const role = useSyncExternalStore(subscribe, getRole, () => "s1" as DemoRole);
   const [busy, setBusy] = useState(false);
   if (!DEMO_FILL_ON || !handler) return null;
   async function run() {
     if (!handler || busy) return;
-    setBusy(true);
+    setBusy(true); onStart();
     try { await handler(role); } finally { setBusy(false); }
   }
   return (
-    <div className="fixed bottom-4 right-20 z-50 flex items-center gap-1.5 rounded-pill bg-white/85 p-1.5 pl-3 shadow-[0_8px_28px_-10px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.08] backdrop-blur-xl">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Demo</span>
-      {(["s1", "s2"] as DemoRole[]).map((r) => (
-        <button key={r} type="button" onClick={() => setRole(r)} aria-pressed={role === r}
-          className={`h-7 rounded-pill px-3 text-[12px] font-medium transition-colors ${role === r ? "bg-accent text-white" : "text-muted hover:bg-black/[0.05]"}`}>
-          {DEMO[r].label}
-        </button>
-      ))}
+    <div className="flex flex-col gap-2 border-t border-black/[0.08] pt-3">
+      <div className="font-semibold text-[13.5px]">Fill demo</div>
+      <div className="grid grid-cols-2 gap-2">
+        {(["s1", "s2"] as DemoRole[]).map((r) => (
+          <button key={r} type="button" onClick={() => setRole(r)} aria-pressed={role === r}
+            className={`h-8 rounded-pill text-[12.5px] font-medium transition-colors ${role === r ? "bg-accent text-white" : "bg-neutral-soft text-muted hover:text-text"}`}>
+            {DEMO[r].label}
+          </button>
+        ))}
+      </div>
       <button type="button" onClick={run} disabled={busy}
-        className="h-7 rounded-pill bg-text px-3.5 text-[12px] font-semibold text-white disabled:opacity-60">
-        {busy ? "Filling..." : "Fill"}
+        className="h-9 rounded-pill bg-text text-[13px] font-semibold text-white disabled:opacity-60">
+        {busy ? "Filling..." : "Fill this page"}
       </button>
     </div>
   );

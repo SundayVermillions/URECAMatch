@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useMe } from "./app-provider";
 import { DEBUG_CLOCK_ON, DebugClock } from "./debug-clock";
-import { DemoFillButton } from "@/lib/demo-fill";
 import { I } from "./icons";
 import { BrandMark } from "./brand-mark";
 import { GlassIndicator, LiquidGlassFilter } from "./liquid-glass";
@@ -108,7 +107,6 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
           Upload your transcript, check your details and save before opening other pages.
         </Toast>
         {DEBUG_CLOCK_ON && <DebugClock onChanged={() => setEpoch((n) => n + 1)} />}
-        <DemoFillButton />
         {/* The key remounts the page after the debug clock moves, so every screen re-fetches for the new "now", and when the route changes, so the entrance plays. */}
         <div key={`${epoch}:${path}`} className="page-in max-w-[1080px] pt-10 pb-16 pl-12 pr-10">{children}</div>
       </main>

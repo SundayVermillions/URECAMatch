@@ -69,16 +69,16 @@ export const DEMO_DECLINE_PROPOSAL = "Too broad. Pick one dataset and one questi
 
 /** The extra project the supervisor creates live, only to show the create-project flow. Students do not apply to it. */
 export const DEMO_NEW_PROJECT = {
-  title: "Wearable Sensing for Fall Detection in Older Adults",
+  title: "Rooftop Farming: Sensing and Forecasting Crop Yield",
   description:
-    "Design and test a fall detector that runs on a low-power wearable. The student will collect motion data from volunteers, train a small classifier, " +
-    "and measure how often it raises a false alarm during normal daily activity, with the aim of a version a care home could trial.",
-  tags: ["Signal Processing", "Machine Learning", "Healthcare AI"],
-  location: "N4-01 Wearables Lab",
-  outcomes: ["Collect a labelled motion dataset.", "Train and compare two small classifiers.", "Measure false alarms over a week of normal use.", "Write a short report and demo the prototype."].join("\n"),
-  skills: "Sensor data, signal processing, model evaluation, scientific writing",
+    "Build a low-cost sensor kit for a rooftop vegetable farm and use its readings to forecast yield. The student will log light, soil moisture and " +
+    "temperature for one growing cycle, train a simple forecasting model, and compare its predictions with the harvest records kept by the farm.",
+  tags: ["Sustainability", "Data Science", "Climate Science"],
+  location: "N3-01 Green Systems Lab",
+  outcomes: ["Build and place the sensor kit.", "Log one full growing cycle.", "Train and test a yield forecast.", "Share the findings with the farm."].join("\n"),
+  skills: "Sensor logging, time series forecasting, data cleaning, working with a partner",
   hours: "6",
-  mode: "hybrid",
+  mode: "on_site",
   video: "https://www.youtube.com/watch?v=aircAruvnKk",
-  cover: "/covers/cover-wearable.jpg",
+  cover: "/covers/cover-haze.jpg",
 };

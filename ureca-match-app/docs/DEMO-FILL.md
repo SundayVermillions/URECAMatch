@@ -1,6 +1,6 @@
 # Demo fill
 
-A floating **Demo** button that types the prepared text into forms, so the live demo does not wait on typing. It only appears when `NEXT_PUBLIC_DEBUG_CLOCK=true`. Add it to `DEMO-SETUP.md`'s settings.
+A **Fill demo** section inside the debug clock panel (click the clock at the top right) that types the prepared text into forms, so the live demo does not wait on typing. It only appears when `NEXT_PUBLIC_DEBUG_CLOCK=true`. Add it to `DEMO-SETUP.md`'s settings.
 
 ## Settings
 
@@ -19,8 +19,8 @@ Restart the API after changing `.env`. Both settings are read when the API start
 ## Using it
 
 1. Open a tab per actor, as in `DEMO-SETUP.md`.
-2. In each student tab, pick **Student 1** or **Student 2** on the Demo button. The tab remembers it.
-3. Click **Fill** on the page you want filled. It types field by field. Nothing is sent for you: you press Save, Apply or Send.
+2. In each student tab, open the clock panel and pick **Student 1** or **Student 2** under Fill demo. The tab remembers it.
+3. On the page you want filled, click **Fill this page**. It types field by field. Nothing is sent for you: you press Save, Apply or Send.
 
 | Page | What Fill does |
 | --- | --- |
@@ -28,7 +28,7 @@ Restart the API after changing `.env`. Both settings are read when the API start
 | Apply to a project | Types the statement |
 | Propose a project | Picks Prof. Marcus Chua, types title, description, interests and statement, stops on Review |
 | Propose a project (Revise on a declined one) | Same, with the improved text |
-| Supervisor, New project | Types a second project and sets the cover. Stops on the last step |
+| Supervisor, New project | Types a second project that is not in the seed (rooftop farming) and sets the cover. Stops on the last step |
 | Supervisor, Proposals, Decline dialog open | Types the decline reason |
 
 Not filled: sign up and sign in.
