@@ -28,7 +28,7 @@ Restart the API after changing `.env`. Both settings are read when the API start
 | Apply to a project | Types the statement |
 | Propose a project | Picks Prof. Marcus Chua, types title, description, interests and statement, stops on Review |
 | Propose a project (Revise on a declined one) | Same, with the improved text |
-| Supervisor, New project | Types a second project that is not in the seed (rooftop farming) and sets the cover. Stops on the last step |
+| Supervisor, New project | Types a second project that is not in the seed (Graph Learning for Traffic Forecasting, no prerequisites) and sets the cover. Stops on the last step |
 | Supervisor, Proposals, Decline dialog open | Types the decline reason |
 
 Not filled: sign up and sign in.

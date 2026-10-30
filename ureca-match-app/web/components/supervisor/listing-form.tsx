@@ -106,6 +106,7 @@ export function ListingForm({ existing }: { existing?: Listing }) {
     setTags([]);
     for (const t of NEW.tags) { setTags((x) => [...x, t]); await sleep(400); }
     await typeText(setLocation, NEW.location);
+    setSlots(NEW.slots);
     setStep(2); await sleep(500);
     await typeText(setOutcomes, NEW.outcomes);
     await typeText(setSkills, NEW.skills);

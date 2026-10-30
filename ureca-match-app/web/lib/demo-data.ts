@@ -67,18 +67,27 @@ export const DEMO: Record<DemoRole, {
 /** What the supervisor types when they decline Student 2's first proposal. */
 export const DEMO_DECLINE_PROPOSAL = "Too broad. Pick one dataset and one question, and show a small experiment you have already run. Then send it again.";
 
-/** The extra project the supervisor creates live, only to show the create-project flow. Students do not apply to it. */
+/** The extra project the supervisor creates live, only to show the create-project flow. Students do not apply to it.
+ *  Prerequisites are left empty on purpose. */
 export const DEMO_NEW_PROJECT = {
-  title: "Rooftop Farming: Sensing and Forecasting Crop Yield",
+  title: "Graph Learning for Traffic Forecasting",
   description:
-    "Build a low-cost sensor kit for a rooftop vegetable farm and use its readings to forecast yield. The student will log light, soil moisture and " +
-    "temperature for one growing cycle, train a simple forecasting model, and compare its predictions with the harvest records kept by the farm.",
-  tags: ["Sustainability", "Data Science", "Climate Science"],
-  location: "N3-01 Green Systems Lab",
-  outcomes: ["Build and place the sensor kit.", "Log one full growing cycle.", "Train and test a yield forecast.", "Share the findings with the farm."].join("\n"),
-  skills: "Sensor logging, time series forecasting, data cleaning, working with a partner",
-  hours: "6",
-  mode: "on_site",
-  video: "https://www.youtube.com/watch?v=aircAruvnKk",
-  cover: "/covers/cover-haze.jpg",
+    "Build a graph neural network that predicts traffic speeds across Singapore's road network 15 to 60 minutes ahead. You will turn LTA DataMall sensor " +
+    "readings into a road graph, train a spatio-temporal GNN (such as STGCN or Graph WaveNet) in PyTorch Geometric, and compare it with LSTM and " +
+    "historical-average baselines. Expected outcome: a trained model, an evaluation report on MAE and RMSE across peak and off-peak hours, and a short " +
+    "demo map of the predictions.",
+  tags: ["Machine Learning", "Deep Learning", "Transportation", "Data Science"],
+  location: "N4-02c Lab",
+  slots: 2,
+  outcomes: [
+    "Clean and map LTA traffic sensor data onto a road graph",
+    "Train and tune a spatio-temporal GNN",
+    "Benchmark against LSTM and historical-average baselines",
+    "Write a short report and build a prediction map demo",
+  ].join("\n"),
+  skills: "PyTorch Geometric, time-series modelling, model evaluation, scientific writing",
+  hours: "8",
+  mode: "hybrid",
+  video: "https://www.youtube.com/watch?v=WEWq93tioC4", // Friendly Introduction to Temporal Graph Neural Networks (and some Traffic Forecasting)
+  cover: "/demo/cover-traffic.jpg",
 };
