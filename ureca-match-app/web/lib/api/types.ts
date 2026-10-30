@@ -234,6 +234,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/listings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin Listings
+         * @description REQ-PROJ-4: the admin sees every project and where it stands, drafts and closed ones included. Read only. Students
+         *     still see published projects only (REQ-BROWSE-3). Published first, then drafts, then closed; by title within each.
+         */
+        get: operations["admin_listings_admin_listings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/recommendations": {
         parameters: {
             query?: never;
@@ -454,7 +475,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** My Proposals */
+        /**
+         * My Proposals
+         * @description Only this cycle's proposals: when the cycle ends, the list is empty and the next cycle starts clean.
+         */
         get: operations["my_proposals_me_proposals_get"];
         put?: never;
         post?: never;
@@ -542,7 +566,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Mine */
+        /**
+         * Mine
+         * @description Only this cycle's applications: when it ends, the list is empty and the next cycle starts clean.
+         */
         get: operations["mine_me_applications_get"];
         put?: never;
         post?: never;
@@ -1422,6 +1449,8 @@ export interface components {
              * @default []
              */
             document_ids: string[];
+            /** Cover Url */
+            cover_url?: string | null;
         };
         /** ApplicationCreate */
         ApplicationCreate: {
@@ -2947,6 +2976,38 @@ export interface operations {
                 tag?: string | null;
                 supervisor?: string | null;
             };
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Listing"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_listings_admin_listings_get: {
+        parameters: {
+            query?: never;
             header?: {
                 authorization?: string | null;
                 "x-demo-user"?: string | null;

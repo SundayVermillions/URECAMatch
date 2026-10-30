@@ -15,7 +15,7 @@ from app.models import (
     Ok,
     PreferenceRankingUpdate,
 )
-from app.services import placement, windows
+from app.services import cycle_scope, placement, windows
 
 router = APIRouter(tags=["applications"])
 
@@ -26,8 +26,13 @@ def _require_window(store, settings):
 
 
 @router.get("/me/applications", response_model=list[Application])
-def mine(user: StudentUser, store: StoreDep) -> list[Application]:
-    return sorted(store.applications_for(student_id=user.id), key=lambda a: a.preference_rank or 99)
+def mine(user: StudentUser, store: StoreDep, settings: SettingsDep) -> list[Application]:
+    """Only this cycle's applications: when it ends, the list is empty and the next cycle starts clean."""
+    cycle = cycle_scope.running_cycle(store, settings.now())
+    rows = cycle_scope.applications_in(cycle, store.applications_for(student_id=user.id))
+    covers = {lst.id: lst.cover_url for lst in store.all_listings()}  # read once, not once per application
+    mine = [a.model_copy(update={"cover_url": covers.get(a.listing_id)}) for a in rows]
+    return sorted(mine, key=lambda a: a.preference_rank or 99)
 
 
 def _active(store, student_id: str, round_id: str | None) -> list[Application]:
@@ -107,4 +112,4 @@ def rank(body: PreferenceRankingUpdate, user: StudentUser, store: StoreDep, sett
     for i, aid in enumerate(body.application_ids, start=1):
         active[aid].preference_rank = i
     store.save_applications(*active.values())
-    return mine(user, store)
+    return mine(user, store, settings)

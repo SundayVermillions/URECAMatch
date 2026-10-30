@@ -104,3 +104,12 @@ def test_REQ_PROJ_2_no_photo_changes_after_cycle_closes(as_supervisor, monkeypat
     monkeypatch.setattr(get_settings(), "demo_now", datetime(2026, 10, 5, 9, tzinfo=UTC))
     r = as_supervisor.post("/supervisor/listings/lst-1/gallery", files={"file": PNG})
     assert r.status_code == 422 and r.json()["code"] == "cycle_closed"
+
+
+def test_REQ_PROJ_mock_mode_uploaded_images_still_show(as_supervisor):
+    """The mock API stores nothing, so a path like /covers/x.jpg would be a broken image. It carries the picture instead."""
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+    r = as_supervisor.post("/supervisor/listings/lst-1/cover", files={"file": ("c.png", png, "image/png")})
+    assert r.status_code == 200 and r.json()["cover_url"].startswith("data:image/png;base64,")
+    r = as_supervisor.post("/supervisor/listings/lst-1/gallery", files={"file": ("g.png", png, "image/png")})
+    assert r.json()["gallery_urls"][-1].startswith("data:image/png;base64,")

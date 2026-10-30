@@ -119,4 +119,4 @@ def test_REQ_PROJ_2_real_images_are_accepted_whatever_the_label_says(as_supervis
 
 def test_REQ_PROJ_2_the_stored_name_follows_the_real_type(as_supervisor):
     r = as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": ("c.jpg", PNG, "image/jpeg")})
-    assert ".png" in r.json()["cover_url"]
+    assert r.json()["cover_url"].startswith("data:image/png;")  # sent as a jpeg, stored as the png it is

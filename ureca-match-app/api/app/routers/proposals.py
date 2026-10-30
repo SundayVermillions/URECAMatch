@@ -22,7 +22,7 @@ from app.models import (
     Role,
     Window,
 )
-from app.services import catalog, placement, windows
+from app.services import catalog, cycle_scope, placement, windows
 from app.services.notify import notify
 
 MIN_DECLINE_REASON = 10  # same length the admin's justification needs
@@ -113,8 +113,9 @@ def propose(body: ProposalCreate, user: StudentUser, store: StoreDep, settings: 
 
 
 @router.get("/me/proposals", response_model=list[Proposal])
-def my_proposals(user: StudentUser, store: StoreDep) -> list[Proposal]:
-    return store.proposals_for(student_id=user.id)
+def my_proposals(user: StudentUser, store: StoreDep, settings: SettingsDep) -> list[Proposal]:
+    """Only this cycle's proposals: when the cycle ends, the list is empty and the next cycle starts clean."""
+    return cycle_scope.proposals_in(cycle_scope.running_cycle(store, settings.now()), store.proposals_for(student_id=user.id))
 
 
 @router.post("/me/proposals/{proposal_id}/withdraw", response_model=Proposal)

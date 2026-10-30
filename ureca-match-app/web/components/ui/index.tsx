@@ -397,7 +397,9 @@ const TOAST = {
   bad: { tile: "bg-bad-soft text-bad-ink", bar: "#e30000", ring: "rgba(227,0,0,0.3)" },
   accent: { tile: "bg-accent-soft text-accent-ink", bar: "#0071e3", ring: "rgba(0,113,227,0.28)" },
 } as const;
-export function Toast({ show, tone, title, children, action, duration = 4000, onClose }: { show: boolean; tone: "good" | "warn" | "bad" | "accent"; title: string; children?: React.ReactNode; action?: React.ReactNode; duration?: number; onClose: () => void }) {
+/** How long every message stays on screen before it goes away by itself. One value, so they all disappear at the same pace. */
+export const TOAST_MS = 3000;
+export function Toast({ show, tone, title, children, action, duration = TOAST_MS, onClose }: { show: boolean; tone: "good" | "warn" | "bad" | "accent"; title: string; children?: React.ReactNode; action?: React.ReactNode; duration?: number; onClose: () => void }) {
   const [mounted, setMounted] = useState(show);
   const [open, setOpen] = useState(show);
   const [shown, setShown] = useState({ tone, title, children, action }); // what is on screen; frozen while it leaves

@@ -458,6 +458,7 @@ class Application(BaseModel):
     preference_rank: int | None = None
     status: ApplicationStatus
     document_ids: list[str] = []
+    cover_url: str | None = None  # the project's photo, so My applications shows it after the cycle ends, when Browse is empty
 
 
 class ApplicationCreate(BaseModel):

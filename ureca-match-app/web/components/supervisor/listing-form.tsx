@@ -154,9 +154,8 @@ export function ListingForm({ existing }: { existing?: Listing }) {
   const capacityField = (
     <div>
       <div className="mb-1.5 text-[13px] font-medium">Capacity</div>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center">
         <Stepper value={slots} onChange={setSlots} min={minSlots} max={20} format={(v) => `${v} ${v === 1 ? "slot" : "slots"}`} />
-        {existing && existing.filled_slots > 0 && <span className="text-[13px] text-muted">{committed} matched or offered, so at least {minSlots}</span>}
       </div>
       <div className="mt-1.5 text-[12px] text-faint">How many students you can take on this project.</div>
       {err("available_slots") && <div className="mt-2"><Banner tone="bad">{err("available_slots")}</Banner></div>}
@@ -171,7 +170,7 @@ export function ListingForm({ existing }: { existing?: Listing }) {
         <Input value={skills} onChange={(e) => setSkills(e.target.value)} maxLength={1000} placeholder="e.g. PyTorch, model evaluation, scientific writing" invalid={!!err("skills")} />
       </Field>
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Hours per week" error={err("hours_per_week")} hint="A typical week, 1 to 40.">
+        <Field label="Hours per week" error={err("hours_per_week")}>
           <Input type="number" min={1} max={40} value={hours} onChange={(e) => setHours(e.target.value)} placeholder="e.g. 8" invalid={!!err("hours_per_week")} />
         </Field>
         <Field label="Mode">

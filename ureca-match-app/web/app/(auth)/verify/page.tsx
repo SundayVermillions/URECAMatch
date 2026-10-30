@@ -14,7 +14,7 @@ function VerifyForm() {
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
   const [resentMsg, setResentMsg] = useState<string | null>(null);
-  useEffect(() => { if (!resentMsg) return; const t = setTimeout(() => setResentMsg(null), 6000); return () => clearTimeout(t); }, [resentMsg]); // the "code sent" note goes away by itself
+  useEffect(() => { if (!resentMsg) return; const t = setTimeout(() => setResentMsg(null), 3000); return () => clearTimeout(t); }, [resentMsg]); // the "code sent" note goes away by itself
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

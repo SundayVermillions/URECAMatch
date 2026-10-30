@@ -292,8 +292,9 @@ export default function Applicants() {
                 {all.length > 0 && <Button variant="soft" onClick={clearAll}>Clear filters</Button>}
               </Empty>
             ) : (
+              // No overflow-hidden on this card: it cut off the score tooltip on the first row. The end rows round their own corners.
               <Card padded={false}>
-                <ul className="divide-y divide-border rounded-[inherit]">
+                <ul className="divide-y divide-border [&>li:first-child]:rounded-t-[var(--radius-card)] [&>li:last-child]:rounded-b-[var(--radius-card)]">
                   {pool.map((a) => {
                     const s = scores?.get(a.application_id);
                     const added = ids.includes(a.application_id);

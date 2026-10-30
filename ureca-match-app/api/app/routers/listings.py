@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import base64
 import re
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, File, Query, Request, Response, UploadFile
+from fastapi import APIRouter, File, Query, UploadFile
 
-from app.deps import CurrentUser, SettingsDep, StoreDep, StudentUser, SupervisorUser
+from app.deps import AdminUser, CurrentUser, SettingsDep, StoreDep, StudentUser, SupervisorUser
 from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
     AccountStatus,
@@ -27,7 +28,7 @@ from app.models import (
 )
 from app.services import catalog, listing_lifecycle, placement, recommend, windows
 from app.services.notify import notify
-from app.services.storage import MockStorageService, get_storage
+from app.services.storage import get_storage
 
 router = APIRouter(tags=["listings"])
 
@@ -107,6 +108,16 @@ def browse(
             continue
         out.append(_decorate(lst, user, submitted, held))
     return out
+
+
+@router.get("/admin/listings", response_model=list[Listing])
+def admin_listings(user: AdminUser, store: StoreDep, settings: SettingsDep) -> list[Listing]:
+    """REQ-PROJ-4: the admin sees every project and where it stands, drafts and closed ones included. Read only. Students
+    still see published projects only (REQ-BROWSE-3). Published first, then drafts, then closed; by title within each."""
+    submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
+    order = {ListingStatus.published: 0, ListingStatus.draft: 1, ListingStatus.closed: 2}
+    rows = [_decorate(lst, user, submitted, held) for lst in store.all_listings()]
+    return sorted(rows, key=lambda lst: (order[lst.status], lst.title.lower()))
 
 
 @router.get("/me/recommendations", response_model=list[Recommendation])
@@ -306,19 +317,19 @@ def close(listing_id: str, user: SupervisorUser, store: StoreDep, settings: Sett
 
 @router.post("/supervisor/listings/{listing_id}/cover", response_model=Listing)
 async def cover(
-    listing_id: str, request: Request, user: SupervisorUser, store: StoreDep, settings: SettingsDep, file: Annotated[UploadFile, File()]
+    listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep, file: Annotated[UploadFile, File()]
 ) -> Listing:
     """Upload or replace a listing's cover image. Changing the cover is an edit, so REQ-PROJ-2 applies."""
     lst = _editable(listing_id, user, store, settings)
     data, content_type = await _read_image(file)
     path = get_storage().put("covers", f"{listing_id}.{IMAGE_TYPES[content_type]}", data, content_type=content_type)
-    lst.cover_url = _public_cover_url(path, settings, request)
+    lst.cover_url = _public_cover_url(path, settings, data, content_type)
     return store.save_listing(lst)
 
 
 @router.post("/supervisor/listings/{listing_id}/gallery", response_model=Listing)
 async def add_photo(
-    listing_id: str, request: Request, user: SupervisorUser, store: StoreDep, settings: SettingsDep, file: Annotated[UploadFile, File()]
+    listing_id: str, user: SupervisorUser, store: StoreDep, settings: SettingsDep, file: Annotated[UploadFile, File()]
 ) -> Listing:
     """Add a photo to the listing's gallery (lab, equipment, sample results). Same rules as the cover."""
     lst = _editable(listing_id, user, store, settings)
@@ -327,18 +338,8 @@ async def add_photo(
     data, content_type = await _read_image(file)
     name = f"gallery/{listing_id}-{uuid4().hex[:8]}.{IMAGE_TYPES[content_type]}"  # a new name, so no cache-busting needed
     path = get_storage().put("covers", name, data, content_type=content_type)
-    lst.gallery_urls = [*lst.gallery_urls, _public_cover_url(path, settings, request)]
+    lst.gallery_urls = [*lst.gallery_urls, _public_cover_url(path, settings, data, content_type)]
     return store.save_listing(lst)
-
-
-@router.get("/mock-files/{path:path}", include_in_schema=False)
-def mock_file(path: str) -> Response:
-    """Serves an image uploaded in mock mode, which has no storage bucket. Not found in any other mode."""
-    storage = get_storage()
-    found = storage.files.get(path) if isinstance(storage, MockStorageService) else None
-    if found is None:
-        raise not_found("File")
-    return Response(content=found[0], media_type=found[1])
 
 
 @router.delete("/supervisor/listings/{listing_id}/gallery/{index}", response_model=Listing)
@@ -401,13 +402,15 @@ def _video_url(url: str | None) -> str | None:
     raise invalid("video_not_supported", "Paste a YouTube or Vimeo link.", "video_url")
 
 
-def _public_cover_url(path: str, settings, request: Request) -> str:
+def _public_cover_url(path: str, settings, data: bytes | None = None, content_type: str = "image/jpeg") -> str:
     """The `covers` bucket is public, so a plain URL works (no signing, unlike private transcripts).
     `?v=` changes on every upload: the file name stays the same, so without it browsers would keep the old image."""
     version = int(settings.now().timestamp())
     if settings.api_mode == "supabase":
         return f"{settings.supabase_url.rstrip('/')}/storage/v1/object/public/{path}?v={version}"
-    return f"{str(request.base_url).rstrip('/')}/mock-files/{path}?v={version}"
+    if data is not None:  # mock mode stores nothing, so carry the picture itself and it still shows
+        return f"data:{content_type};base64,{base64.b64encode(data).decode()}"
+    return f"/{path}?v={version}"
 
 
 @router.get("/phase-check", response_model=Ok, include_in_schema=False)
