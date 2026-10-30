@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import re
 from typing import Annotated
 from uuid import uuid4
@@ -312,7 +313,7 @@ async def cover(
     lst = _editable(listing_id, user, store, settings)
     data, content_type = await _read_image(file)
     path = get_storage().put("covers", f"{listing_id}.{IMAGE_TYPES[content_type]}", data, content_type=content_type)
-    lst.cover_url = _public_cover_url(path, settings)
+    lst.cover_url = _public_cover_url(path, settings, data, content_type)
     return store.save_listing(lst)
 
 
@@ -327,7 +328,7 @@ async def add_photo(
     data, content_type = await _read_image(file)
     name = f"gallery/{listing_id}-{uuid4().hex[:8]}.{IMAGE_TYPES[content_type]}"  # a new name, so no cache-busting needed
     path = get_storage().put("covers", name, data, content_type=content_type)
-    lst.gallery_urls = [*lst.gallery_urls, _public_cover_url(path, settings)]
+    lst.gallery_urls = [*lst.gallery_urls, _public_cover_url(path, settings, data, content_type)]
     return store.save_listing(lst)
 
 
@@ -391,12 +392,14 @@ def _video_url(url: str | None) -> str | None:
     raise invalid("video_not_supported", "Paste a YouTube or Vimeo link.", "video_url")
 
 
-def _public_cover_url(path: str, settings) -> str:
+def _public_cover_url(path: str, settings, data: bytes | None = None, content_type: str = "image/jpeg") -> str:
     """The `covers` bucket is public, so a plain URL works (no signing, unlike private transcripts).
     `?v=` changes on every upload: the file name stays the same, so without it browsers would keep the old image."""
     version = int(settings.now().timestamp())
     if settings.api_mode == "supabase":
         return f"{settings.supabase_url.rstrip('/')}/storage/v1/object/public/{path}?v={version}"
+    if data is not None:  # mock mode stores nothing, so carry the picture itself and it still shows
+        return f"data:{content_type};base64,{base64.b64encode(data).decode()}"
     return f"/{path}?v={version}"
 
 

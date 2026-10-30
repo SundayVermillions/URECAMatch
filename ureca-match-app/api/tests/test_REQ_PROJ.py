@@ -110,7 +110,7 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 64
 def test_REQ_PROJ_2_cover_upload_sets_cover_url(as_supervisor):
     r = as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": ("cover.png", PNG, "image/png")})
     assert r.status_code == 200, r.text
-    assert "lst-2.png" in r.json()["cover_url"]
+    assert r.json()["cover_url"].startswith("data:image/png;base64,")  # the mock API carries the picture itself
 
 
 def test_REQ_PROJ_2_cover_must_be_jpeg_or_png(as_supervisor):
