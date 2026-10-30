@@ -39,9 +39,7 @@ def test_REQ_SRANK_applications_and_proposals_are_cleared_after_the_cycle(as_stu
 
 
 def test_REQ_SRANK_a_new_cycle_starts_with_nothing_carried_over(as_student, client_for, as_admin, clock):
-    clock(datetime(2027, 3, 1, tzinfo=UTC))
-    cycle = as_admin.get("/cycle").json()
-    as_admin.post(f"/admin/cycles/{cycle['id']}/close")
+    clock(datetime(2027, 3, 1, tzinfo=UTC))  # the cycle has closed, so the next one can be created
     made = as_admin.post(
         "/admin/cycles",
         json={

@@ -174,7 +174,7 @@ Order matters. Some steps only work in the right window.
 | Mailpit stays empty | Check `EMAIL_MODE=smtp`, the Mailpit window is open, the address is in `EMAIL_ALLOWLIST`, and there is no comment on that line |
 | "Sent 0 of 11" from the sample script | The allowlist excludes that address. Test with a listed one. |
 | Broken cover image | The API must be on the latest `main` (images are fixed in mock mode) |
-| Nothing updates after a clock jump | Refresh once or twice. Admin: open Matching Rounds. |
+| Nothing updates after a clock jump | Refresh once or twice. Admin: open Application Cycle. |
 | Port 3000, 8000 or 8025 is busy | Close the older terminal that still runs it |
 
 ## 9. Other setups

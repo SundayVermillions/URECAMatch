@@ -754,7 +754,12 @@ export interface paths {
          */
         get: operations["list_cycles_admin_cycles_get"];
         put?: never;
-        /** Create Cycle */
+        /**
+         * Create Cycle
+         * @description REQ-CYCLE-1, use case 1-1. One cycle at a time: the next one can be created once the current one has closed,
+         *     and creating it moves that one to the history. A cycle cannot be closed early; to end it sooner, an admin moves
+         *     its closing date (REQ-CYCLE-2).
+         */
         post: operations["create_cycle_admin_cycles_post"];
         delete?: never;
         options?: never;
@@ -778,46 +783,6 @@ export interface paths {
          */
         put: operations["update_cycle_admin_cycles__cycle_id__put"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/cycles/{cycle_id}/close": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Close Cycle
-         * @description Close a cycle. It stays in the history and can be reopened later (REQ-CYCLE-1).
-         */
-        post: operations["close_cycle_admin_cycles__cycle_id__close_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/cycles/{cycle_id}/reopen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Reopen Cycle
-         * @description Reopen a closed cycle. Only one cycle may be active at a time (REQ-CYCLE-1).
-         */
-        post: operations["reopen_cycle_admin_cycles__cycle_id__reopen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4133,74 +4098,6 @@ export interface operations {
                 "application/json": components["schemas"]["CycleUpdate"];
             };
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Cycle"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    close_cycle_admin_cycles__cycle_id__close_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-demo-user"?: string | null;
-            };
-            path: {
-                cycle_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Cycle"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reopen_cycle_admin_cycles__cycle_id__reopen_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-demo-user"?: string | null;
-            };
-            path: {
-                cycle_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

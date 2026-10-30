@@ -57,8 +57,6 @@ export interface ApiClient {
   listCycles(): Promise<M.Cycle[]>;
   getCycle(id: string): Promise<M.Cycle>;
   createCycle(body: M.CycleCreate): Promise<M.Cycle>;
-  closeCycle(id: string): Promise<M.Cycle>;
-  reopenCycle(id: string): Promise<M.Cycle>;
   updateCycle(id: string, body: M.CycleUpdate): Promise<M.Cycle>;
   setRounds(cycleId: string, body: M.RoundsUpdate): Promise<M.Cycle>;
   saveSchedule(cycleId: string, body: M.ScheduleUpdate): Promise<M.Cycle>; // Cycle settings: dates and rounds in one save

@@ -1,11 +1,14 @@
 """Slice D. Application cycle and round configuration on the seeded store.
 REQ-CYCLE-1..4, REQ-ROUND-1..3, REQ-OUTCOME-3."""
 
+from datetime import UTC, datetime
+
 CYCLE_ID = "cyc-2627s1"
 PAST_CYCLE_ID = "cyc-2526s2"
+AFTER_CLOSE = datetime(2026, 10, 3, 9, tzinfo=UTC)  # the day after the seeded cycle closes
 
 
-# ---------------------------------------------------------------- CYCLE-1: history, reopen, overlap
+# ---------------------------------------------------------------- CYCLE-1: history, overlap
 
 
 def test_REQ_CYCLE_1_history_lists_past_and_active(as_admin):
@@ -20,24 +23,8 @@ def test_REQ_CYCLE_1_can_read_a_closed_cycle(as_admin):
     assert r.status_code == 200 and r.json()["status"] == "closed" and len(r.json()["rounds"]) == 3
 
 
-def test_REQ_CYCLE_1_reopen_refused_while_another_active(as_admin):
-    # The current cycle is active, so the past one cannot be reopened yet.
-    r = as_admin.post(f"/admin/cycles/{PAST_CYCLE_ID}/reopen")
-    assert r.status_code == 409 and r.json()["code"] == "cycle_active"
-
-
-def test_REQ_CYCLE_1_close_then_reopen_restores_active_cycle(as_admin):
-    assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 200
-    assert as_admin.get("/cycle").json() is None  # no active cycle while all are closed
-    reopened = as_admin.post(f"/admin/cycles/{PAST_CYCLE_ID}/reopen")
-    assert reopened.status_code == 200 and reopened.json()["status"] == "in_progress"
-    assert as_admin.get("/cycle").json()["id"] == PAST_CYCLE_ID
-    # Reopening an already-open cycle is refused.
-    assert as_admin.post(f"/admin/cycles/{PAST_CYCLE_ID}/reopen").status_code == 409
-
-
-def test_REQ_CYCLE_1_create_rejected_when_dates_overlap(as_admin):
-    assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 200
+def test_REQ_CYCLE_1_create_rejected_when_dates_overlap(as_admin, at):
+    at(AFTER_CLOSE)
     # Overlaps the (now closed) AY26/27 cycle, which runs 18 Aug to 2 Oct 2026.
     r = as_admin.post(
         "/admin/cycles",
@@ -49,6 +36,7 @@ def test_REQ_CYCLE_1_create_rejected_when_dates_overlap(as_admin):
         },
     )
     assert r.status_code == 409 and r.json()["code"] == "cycle_overlap"
+    assert as_admin.get(f"/admin/cycles/{CYCLE_ID}").json()["status"] != "closed"  # a refused create changes nothing
 
 
 # ---------------------------------------------------------------- CYCLE-1
@@ -78,41 +66,26 @@ def test_REQ_CYCLE_1_create_new_cycle_when_none_active(as_admin, fresh_store):
     assert r.json()["status"] == "draft" and r.json()["rounds"] == []
 
 
-def test_REQ_CYCLE_1_close_then_create_next_cycle(as_admin):
-    # The seeded cycle is active, so creating is refused until it is closed.
-    assert (
-        as_admin.post(
-            "/admin/cycles",
-            json={
-                "academic_year": "AY27/28 Semester 1",
-                "opening_date": "2027-08-01T09:00:00Z",
-                "closing_date": "2027-11-01T09:00:00Z",
-                "pre_application_days": 7,
-            },
-        ).status_code
-        == 409
-    )
-    closed = as_admin.post(f"/admin/cycles/{CYCLE_ID}/close")
-    assert closed.status_code == 200 and closed.json()["status"] == "closed"
-    # Closing twice is refused.
-    assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 409
-    # With the old cycle closed, a new one can now be created.
-    created = as_admin.post(
-        "/admin/cycles",
-        json={
-            "academic_year": "AY27/28 Semester 1",
-            "opening_date": "2027-08-01T09:00:00Z",
-            "closing_date": "2027-11-01T09:00:00Z",
-            "pre_application_days": 7,
-        },
-    )
+def test_REQ_CYCLE_1_next_cycle_created_once_the_current_one_has_closed(as_admin, at):
+    body = {
+        "academic_year": "AY27/28 Semester 1",
+        "opening_date": "2027-08-01T09:00:00Z",
+        "closing_date": "2027-11-01T09:00:00Z",
+        "pre_application_days": 7,
+    }
+    assert as_admin.post("/admin/cycles", json=body).status_code == 409  # the seeded cycle is still open
+    at(AFTER_CLOSE)
+    created = as_admin.post("/admin/cycles", json=body)
     assert created.status_code == 201 and created.json()["status"] == "draft"
+    # The old cycle moves to the history, and the new one is the active cycle.
+    assert as_admin.get(f"/admin/cycles/{CYCLE_ID}").json()["status"] == "closed"
+    assert as_admin.get("/cycle").json()["id"] == created.json()["id"]
 
 
-def test_REQ_CYCLE_1_close_notifies_students(as_admin, as_student):
-    assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 200
-    events = [n["event"] for n in as_student.get("/me/notifications").json()]
-    assert "cycle_changed" in events
+def test_REQ_CYCLE_1_cycles_cannot_be_closed_or_reopened_by_hand(as_admin):
+    # A cycle ends on its closing date. To end it sooner, an admin moves that date (REQ-CYCLE-2).
+    assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 404
+    assert as_admin.post(f"/admin/cycles/{PAST_CYCLE_ID}/reopen").status_code == 404
 
 
 def test_REQ_CYCLE_1_rejects_closing_before_opening(as_admin, fresh_store):
@@ -530,10 +503,9 @@ def test_REQ_ROUND_2_round_holding_carried_applications_cannot_be_removed(as_adm
 
 
 def test_REQ_CYCLE_4_closed_cycle_cannot_be_edited(as_admin):
-    assert as_admin.post(f"/admin/cycles/{CYCLE_ID}/close").status_code == 200
-    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json={"rounds": [{"number": n, **SPEC} for n in (1, 2, 3)]})
+    r = as_admin.put(f"/admin/cycles/{PAST_CYCLE_ID}/rounds", json={"rounds": [{"number": n, **SPEC} for n in (1, 2, 3)]})
     assert r.status_code == 409 and r.json()["code"] == "cycle_closed"
-    r = as_admin.put(f"/admin/cycles/{CYCLE_ID}", json={"closing_date": "2026-10-15T09:00:00Z"})
+    r = as_admin.put(f"/admin/cycles/{PAST_CYCLE_ID}", json={"closing_date": "2026-10-15T09:00:00Z"})
     assert r.status_code == 409 and r.json()["code"] == "cycle_closed"
 
 
