@@ -5,6 +5,7 @@ In mock mode, returns local preview URLs.
 In supabase mode, uploads bytes and signs URLs via Supabase Storage.
 """
 
+import base64
 from typing import Protocol
 
 from app.settings import get_settings
@@ -29,6 +30,7 @@ class StorageService(Protocol):
 class MockStorageService:
     def __init__(self, base_url: str = "") -> None:
         self.base_url = base_url
+        self._files: dict[str, tuple[bytes, str]] = {}  # uploads live in memory, like the rest of mock mode
 
     def put(
         self,
@@ -37,9 +39,15 @@ class MockStorageService:
         data: bytes,
         content_type: str = "application/pdf",
     ) -> str:
-        return f"{bucket}/{path.lstrip('/')}"
+        key = f"{bucket}/{path.lstrip('/')}"
+        self._files[key] = (data, content_type)
+        return key
 
     def signed_url(self, bucket: str, path: str, minutes: int = 10) -> str:
+        key = path if path.startswith(f"{bucket}/") else f"{bucket}/{path.lstrip('/')}"
+        if key in self._files:  # show what was uploaded, not a stock file
+            data, content_type = self._files[key]
+            return f"data:{content_type};base64,{base64.b64encode(data).decode()}"
         if bucket == "covers":
             return "/sample-cover.png"
         return "/sample-transcript.pdf"

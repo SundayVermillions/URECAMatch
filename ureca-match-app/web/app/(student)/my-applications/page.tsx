@@ -52,11 +52,13 @@ export default function MyApplications() {
     try { await call((api) => api.withdrawProposal(target)); proposals.reload(); } catch (e) { setError(e as ApiError); } finally { setConfirm(null); }
   }
   async function respond(accept: boolean) {
-    try { offer.setData(await call((api) => api.respondToOffer(accept))); await refresh(); } catch (e) { setError(e as ApiError); } finally { setConfirm(null); }
+    // Answering withdraws the other applications and waiting proposals on the server, so reload both lists.
+    try { offer.setData(await call((api) => api.respondToOffer(accept))); await refresh(); apps.reload(); proposals.reload(); } catch (e) { setError(e as ApiError); } finally { setConfirm(null); }
   }
   const m = offer.data;
   const offerRound = m ? cycle.data?.rounds.find((r) => r.id === m.round_id)?.number : undefined;
-  const proposalList = proposals.data ?? [];
+  // A declined proposal is replaced once the student sends a newer one to the same supervisor.
+  const proposalList = (proposals.data ?? []).filter((p) => p.status !== "declined" || !(proposals.data ?? []).some((q) => q.id !== p.id && q.supervisor_id === p.supervisor_id && q.submitted_at > p.submitted_at));
   // REQ-OUTCOME-3: an offer can be answered until its deadline while the cycle is open. The server may not have timed a
   // lapsed offer out yet, so the card compares the deadline with the server's clock (phase.now), not the browser's.
   const lapsed = m?.status === "published" && !!me && !!m.offer_expires_at && Date.parse(me.phase.now) > Date.parse(m.offer_expires_at);
@@ -131,6 +133,9 @@ export default function MyApplications() {
             <ListRow key={p.id} lead={<Thumb url={null} />} title={p.title} meta={`to ${p.supervisor_name} · sent ${fmtDate(p.submitted_at)}`}
               note={p.status === "declined" && p.decision_note ? <><b className="font-semibold">Reason from {p.supervisor_name}:</b> {p.decision_note}</> : undefined}>
               <Status value={p.status} />
+              {p.status === "declined" && canEdit && !standing.viewOnly && ( // answer the reason and send it again
+                <Link href={`/propose?from=${p.id}`}><Button size="sm" variant="soft">Revise</Button></Link>
+              )}
               {p.status === "submitted" && ( // only until the supervisor answers
                 <TrashButton label="Withdraw proposal" onClick={() => { setTarget(p.id); setConfirm("withdraw-proposal"); }} />
               )}
