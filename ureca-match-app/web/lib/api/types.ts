@@ -1224,13 +1224,13 @@ export interface paths {
         get: operations["get_clock_debug_clock_get"];
         /**
          * Put Clock
-         * @description Freeze the API clock at the given moment. Applies to every user until reset.
+         * @description Freeze the API clock at the given moment. Applies to every user, on every API process, until reset.
          */
         put: operations["put_clock_debug_clock_put"];
         post?: never;
         /**
          * Reset Clock
-         * @description Go back to the real clock (or the fixed demo clock in mock mode).
+         * @description Go back to the real clock (or the fixed demo clock in mock mode), for everyone.
          */
         delete: operations["reset_clock_debug_clock_delete"];
         options?: never;
