@@ -31,6 +31,7 @@ export interface ApiClient {
   createListing(body: M.ListingCreate): Promise<M.Listing>;
   updateListing(id: string, body: M.ListingUpdate): Promise<M.Listing>;
   closeListing(id: string): Promise<M.Listing>;
+  reopenListing(id: string): Promise<M.Listing>;
   uploadCover(id: string, file: File): Promise<M.Listing>;
   addGalleryPhoto(id: string, file: File): Promise<M.Listing>;
   removeGalleryPhoto(id: string, index: number): Promise<M.Listing>;

@@ -84,6 +84,9 @@ class Store(Protocol):
     def save_match(self, match: Match) -> None: ...  # update
     def remove_match(self, match: Match) -> None: ...
     def claim_round(self, round: Round, step: str, now: datetime) -> bool: ...  # atomic: True for exactly one caller
+    def get_clock(self) -> datetime | None: ...  # the shared debug clock; None means the real one
+    def set_clock(self, value: datetime | None) -> None: ...
+
     def release_round(self, round: Round, step: str) -> None: ...  # give a claim back after the step failed
     def publish_outcomes(self, matches: list[Match], applications: list[Application]) -> None: ...  # all or nothing
     # Slice E: the audit log is append only. There is no update or delete.
@@ -276,6 +279,15 @@ class MockStore:
             for name in type(updated).model_fields:
                 setattr(current, name, getattr(updated, name))
 
+    # --- Debug clock, shared by every API process in Supabase mode (table app_clock). In memory here.
+    _clock_value: datetime | None = None
+
+    def get_clock(self) -> datetime | None:
+        return self._clock_value
+
+    def set_clock(self, value: datetime | None) -> None:
+        self._clock_value = value
+
     # --- Slice E: audit log. Append only.
     def add_audit(self, entry: AuditEntry) -> None:
         self.audit.append(entry)
@@ -311,14 +323,13 @@ class SupabaseStore(MockStore):
 
     def __init__(self) -> None:
         super().__init__(seed=False)
-        from supabase import create_client
-
+        from app.db.client import make_client
         from app.settings import get_settings
 
         s = get_settings()
         if not s.supabase_url:
             raise RuntimeError("API_MODE=supabase needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.")
-        self.client = create_client(s.supabase_url, s.supabase_service_role_key)
+        self.client = make_client(s.supabase_url, s.supabase_service_role_key)
 
     def next_id(self, prefix: str) -> str:
         import uuid
@@ -720,6 +731,14 @@ class SupabaseStore(MockStore):
             return False
         setattr(round, step, now)
         return True
+
+    def get_clock(self) -> datetime | None:
+        rows = self.client.table("app_clock").select("override_at").eq("id", 1).execute().data or []
+        raw = rows[0]["override_at"] if rows else None
+        return datetime.fromisoformat(raw.replace("Z", "+00:00")) if raw else None
+
+    def set_clock(self, value: datetime | None) -> None:
+        self.client.table("app_clock").upsert({"id": 1, "override_at": value.isoformat() if value else None}).execute()
 
     def release_round(self, round: Round, step: str) -> None:
         if step not in CLAIM_STEPS:

@@ -45,7 +45,8 @@ def current_user(
                     settings.supabase_jwt_secret,
                     algorithms=["HS256"],
                     audience="authenticated",
-                    options={"verify_exp": False},
+                    # iat and nbf are not checked: the debug clock can run ahead of real time
+                    options={"verify_exp": False, "verify_iat": False, "verify_nbf": False},
                 )
             except jwt.PyJWTError as e:
                 raise ApiError(401, "session_expired", "Your session has expired. Sign in again.") from e

@@ -330,6 +330,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/supervisor/listings/{listing_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen
+         * @description REQ-PROJ-4: a closed project goes back on Browse for the open cycle, with its content kept. Only while a cycle is
+         *     open, from its pre-application period to its closing date. The slot count restarts from this cycle's accepted
+         *     students, so last cycle's students do not fill it.
+         */
+        post: operations["reopen_supervisor_listings__listing_id__reopen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/supervisor/listings/{listing_id}/close": {
         parameters: {
             query?: never;
@@ -1202,13 +1224,13 @@ export interface paths {
         get: operations["get_clock_debug_clock_get"];
         /**
          * Put Clock
-         * @description Freeze the API clock at the given moment. Applies to every user until reset.
+         * @description Freeze the API clock at the given moment. Applies to every user, on every API process, until reset.
          */
         put: operations["put_clock_debug_clock_put"];
         post?: never;
         /**
          * Reset Clock
-         * @description Go back to the real clock (or the fixed demo clock in mock mode).
+         * @description Go back to the real clock (or the fixed demo clock in mock mode), for everyone.
          */
         delete: operations["reset_clock_debug_clock_delete"];
         options?: never;
@@ -3139,6 +3161,40 @@ export interface operations {
                 "application/json": components["schemas"]["ListingUpdate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Listing"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reopen_supervisor_listings__listing_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

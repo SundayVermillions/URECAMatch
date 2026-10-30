@@ -1576,6 +1576,81 @@
         }
       }
     },
+    "/supervisor/listings/{listing_id}/reopen": {
+      "post": {
+        "tags": [
+          "listings"
+        ],
+        "summary": "Reopen",
+        "description": "REQ-PROJ-4: a closed project goes back on Browse for the open cycle, with its content kept. Only while a cycle is\nopen, from its pre-application period to its closing date. The slot count restarts from this cycle's accepted\nstudents, so last cycle's students do not fill it.",
+        "operationId": "reopen_supervisor_listings__listing_id__reopen_post",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Listing Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/supervisor/listings/{listing_id}/close": {
       "post": {
         "tags": [
@@ -5397,7 +5472,7 @@
           "debug"
         ],
         "summary": "Put Clock",
-        "description": "Freeze the API clock at the given moment. Applies to every user until reset.",
+        "description": "Freeze the API clock at the given moment. Applies to every user, on every API process, until reset.",
         "operationId": "put_clock_debug_clock_put",
         "parameters": [
           {
@@ -5471,7 +5546,7 @@
           "debug"
         ],
         "summary": "Reset Clock",
-        "description": "Go back to the real clock (or the fixed demo clock in mock mode).",
+        "description": "Go back to the real clock (or the fixed demo clock in mock mode), for everyone.",
         "operationId": "reset_clock_debug_clock_delete",
         "parameters": [
           {

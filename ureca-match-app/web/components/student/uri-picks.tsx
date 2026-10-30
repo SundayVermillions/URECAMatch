@@ -114,7 +114,7 @@ export function UriPicks({ name, interests, picks, placedIn, window: cycleWindow
       : out?.kind === "timed_out"
         ? `The offer for ${out.title ?? "your project"} ran out before you answered, so you are out of the remaining rounds this cycle. You can still browse every project, and I'll have picks ready when the next cycle opens.`
         : "You can no longer apply or propose this cycle. You can still browse every project, and I'll have picks ready when the next cycle opens.",
-    early: `${cycleWindow === "pre_application" && phaseLabel ? phaseLabel : "No application cycle is open yet"}. Browse and shortlist projects now, and I'll pick the ones that fit you once applications open.`,
+    early: `${phaseLabel || "No application cycle is open yet"}. Browse and shortlist projects now, and I'll pick the ones that fit you once applications open.`,
     review: "Applications are closed and supervisors are ranking their applicants. Results come after matching, and I'll tell you here as soon as they are out.",
     waiting: "The rankings are in and the matches are being finalised. Check back soon, the news will show up here.",
     offer: `${offer?.title} is waiting for your answer${offer?.expires ? ` until ${fmtDeadline(offer.expires)}` : ""}. Answer it in My applications, as you cannot apply to other projects while it is open.`,

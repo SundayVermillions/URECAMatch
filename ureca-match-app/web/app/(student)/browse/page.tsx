@@ -95,7 +95,7 @@ export default function Browse() {
       {me && !windowOpen && !standing.viewOnly && !uriShown && (
         <div className="mb-5">
           {early
-            ? <Banner tone="accent" title="You're early.">{me.phase.window === "pre_application" ? `${me.phase.label}.` : "No application cycle is open yet."} Browse and shortlist projects now, then come back to apply.</Banner>
+            ? <Banner tone="accent" title="You're early.">{me.phase.label}. Browse and shortlist projects now, then come back to apply.</Banner>
             : <Banner tone="warn" title="Applications are closed right now.">{me.phase.label}. You can still browse projects.</Banner>}
         </div>
       )}

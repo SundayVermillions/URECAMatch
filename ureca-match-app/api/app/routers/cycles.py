@@ -29,6 +29,7 @@ from app.models import (
     User,
 )
 from app.routers.matching import _schedule_lock, moved_offer_deadlines
+from app.services import listing_lifecycle
 from app.services.audit import audit
 from app.services.notify import notify
 from app.services.windows import when
@@ -104,6 +105,7 @@ def close_cycle(cycle_id: str, admin: AdminUser, store: StoreDep, settings: Sett
         raise conflict("already_closed", "This cycle is already closed.")
     c.status = CycleStatus.closed
     store.save_cycle(c)
+    listing_lifecycle.close_published(store)  # REQ-PROJ-4: projects live only while a cycle is open
     now = settings.now()
     audit(store, admin, AuditOperation.cycle_updated, [c.id], now, "closed")
     affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]

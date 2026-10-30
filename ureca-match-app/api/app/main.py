@@ -36,7 +36,7 @@ app = FastAPI(
     description="Boundary for the URECAMatch web app. Every rule from SRS section 4 is enforced here.",
     # REQ-EXEC-4, REQ-PUB-3: before any request is handled, run whatever the clock says is due (matching, publishing,
     # offer timeouts), so nobody has to be awake when a window closes.
-    dependencies=[Depends(matching.keep_schedule)],
+    dependencies=[Depends(debug.sync_clock), Depends(matching.keep_schedule)],
 )
 
 app.add_middleware(

@@ -15,15 +15,15 @@ import { useApi } from "@/lib/use-api";
 type Hero = { dot: string; eyebrow: string; title: string; body: string; action?: { href: string; label: string } };
 
 /** What the current round needs from the admin right now, from the same phase the API uses. */
-function heroFor(phase: Phase, round: Round | undefined): Hero {
+function heroFor(phase: Phase, round: Round | undefined, cycle: Cycle | null): Hero {
   const n = phase.round_number;
   const by = fmtDeadline(phase.window_ends_at);
   const matches = round ? { href: `/rounds/${round.id}/matches`, label: "Review matches" } : undefined;
   switch (phase.window) {
     case "before_cycle":
       return { dot: "bg-warn", eyebrow: "No cycle", title: "No cycle is open", body: "Create the cycle and its rounds before students can apply.", action: { href: "/rounds", label: "Set up the cycle" } };
-    case "pre_application":
-      return { dot: "bg-accent", eyebrow: `Round ${n}`, title: `Round ${n} has not started`, body: `${phase.label}.`, action: { href: "/rounds", label: "View rounds" } };
+    case "pre_application": // no round is current yet, so phase.round_number is null: this is the wait for Round 1
+      return { dot: "bg-accent", eyebrow: "Before Round 1", title: "Round 1 has not started", body: `${phase.label}.`, action: { href: "/rounds", label: "View rounds" } };
     case "application":
       return { dot: "bg-good", eyebrow: `Round ${n} · Applications`, title: `Round ${n} is open for applications`, body: `Applications close ${by}. Supervisors rank applicants after that.`, action: { href: "/rounds", label: "View rounds" } };
     case "review":
@@ -35,7 +35,12 @@ function heroFor(phase: Phase, round: Round | undefined): Hero {
     case "results":
       return { dot: "bg-good", eyebrow: `Round ${n} · Results`, title: `Round ${n} results are published`, body: "Students can accept or decline their offers.", action: matches && { ...matches, label: "View matches" } };
     case "closed":
-      return { dot: "bg-faint", eyebrow: "Cycle closed", title: "The cycle is closed", body: "No more applications or matching this cycle." };
+      return {
+        dot: "bg-faint", eyebrow: cycle ? `${cycle.academic_year} · Closed` : "Cycle closed",
+        title: cycle ? `${cycle.academic_year} has ended` : "The cycle has ended",
+        body: "No more applications or matching. Its projects are closed and its results are kept. Start the next cycle to open applications again, then supervisors reopen their projects.",
+        action: { href: "/rounds", label: "Start a new cycle" },
+      };
   }
 }
 
@@ -58,7 +63,7 @@ function SectionHead({ title, link }: { title: string; link?: { href: string; la
 
 function Hero({ phase, cycle, alerts }: { phase: Phase; cycle: Cycle | null; alerts: string[] }) {
   const round = cycle?.rounds.find((r) => r.id === phase.round_id);
-  const h = heroFor(phase, round);
+  const h = heroFor(phase, round, cycle);
   const left = timeLeft(phase.window_ends_at, phase.now);
   const attention = alerts.map(plain);
   return (
