@@ -42,6 +42,7 @@ from app.models import (
 from app.services.audit import SYSTEM
 from app.services.titles import split_title
 from app.services.windows import when
+from app.settings import get_settings
 
 rng = random.Random(2006)
 
@@ -882,6 +883,35 @@ def make_audit() -> list[AuditEntry]:
     ]
 
 
+DEMO_PROJECT = "lst-1"  # Deep Learning for Early Detection of Diabetic Retinopathy
+DEMO_PROJECT_MOVED_TO = "lst-3"  # where the earlier student's accepted match moves, so the account stu-33 keeps its offer history
+
+
+def make_demo_project_fresh(data: dict) -> None:
+    """DEMO_FRESH: nobody has applied to or been placed on the demo project, and it has one slot (demo set-up only)."""
+    other = next(lst for lst in data["listings"] if lst.id == DEMO_PROJECT_MOVED_TO)
+    demo = next(lst for lst in data["listings"] if lst.id == DEMO_PROJECT)
+    for a in data["applications"]:
+        if a.listing_id == DEMO_PROJECT and a.round_id == "rnd-1":  # the earlier placement moves to another project
+            a.listing_id, a.listing_title, a.supervisor_name = other.id, other.title, other.supervisor_name
+    for m in data["matches"]:
+        if m.listing_id == DEMO_PROJECT:
+            m.listing_id, m.listing_title, m.supervisor_id, m.supervisor_name = (
+                other.id,
+                other.title,
+                other.supervisor_id,
+                other.supervisor_name,
+            )
+    data["applications"] = [a for a in data["applications"] if a.listing_id != DEMO_PROJECT]
+    demo.available_slots, demo.filled_slots = 1, 0
+    other.filled_slots += 1
+    ranks: dict[tuple[str, str], int] = {}
+    for a in sorted(data["applications"], key=lambda x: (x.student_id, x.round_id, x.preference_rank or 99)):
+        if a.status == ApplicationStatus.submitted:  # close the gaps so every student's preferences run 1, 2, 3
+            ranks[(a.student_id, a.round_id)] = ranks.get((a.student_id, a.round_id), 0) + 1
+            a.preference_rank = ranks[(a.student_id, a.round_id)]
+
+
 def build(*, offset: timedelta = DEMO_OFFSET) -> dict:
     rng.seed(2006)  # restart the sequence so every build() gives identical data, whatever ran before
     users, students, supervisors = make_users()
@@ -900,6 +930,8 @@ def build(*, offset: timedelta = DEMO_OFFSET) -> dict:
         "notifications": make_notifications(),
         "audit": make_audit(),
     }
+    if get_settings().demo_fresh:
+        make_demo_project_fresh(data)
     if not offset:
         return data  # Tests may explicitly request the original September scenario.
 
@@ -933,12 +965,12 @@ def build(*, offset: timedelta = DEMO_OFFSET) -> dict:
     notices["ntf-1"].message = f"Apply and rank your projects by {when(second.application_end)}."
     notices["ntf-1"].created_at = second.application_start
     notices["ntf-2"].title = "Round 2 application deadline"
-    notices["ntf-2"].message = (
-        f"Applications close {when(second.application_end)}. Set your preference order in My applications before then."
-    )
-    notices["ntf-3"].message = (
-        f"Deep Learning for Early Detection of Diabetic Retinopathy. Respond by {when(second.application_end)}."
-    )
+    notices[
+        "ntf-2"
+    ].message = f"Applications close {when(second.application_end)}. Set your preference order in My applications before then."
+    notices[
+        "ntf-3"
+    ].message = f"Deep Learning for Early Detection of Diabetic Retinopathy. Respond by {when(second.application_end)}."
     notices["ntf-5"].title = f"Round 2 review opens {when(second.review_start)}"
     notices["ntf-5"].message = f"Rankings are due {when(second.review_end)}. You can start ranking applicants now."
     notices["ntf-5"].created_at = second.application_start

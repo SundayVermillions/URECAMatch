@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     # Run the schedule (matching, publishing, offer expiry) before every request. Unset means on in mock mode and off in
     # Supabase mode, where /internal/tick is the only driver.
     scheduler_on_request: bool | None = None
+    # Demo only: start the Deep Learning project (lst-1) with 1 slot and nobody applied, so the demo students are the whole pool.
+    demo_fresh: bool = False
 
     def runs_scheduler_on_request(self) -> bool:
         return self.api_mode == "mock" if self.scheduler_on_request is None else self.scheduler_on_request

@@ -5,6 +5,8 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
+import { DEMO } from "@/lib/demo-data";
+import { typeText, useDemoFill } from "@/lib/demo-fill";
 import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
@@ -25,6 +27,7 @@ export default function Apply() {
   const [docs, setDocs] = useState<string[]>(() => (me?.student?.documents ?? []).map((d) => d.id));
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  useDemoFill(async (role) => { await typeText(setStatement, DEMO[role].applyStatement); }); // demo only
   const standing = useStanding();
   if ((loading && !l) || standing.loading) return <Loading />;
   if (!l) return null;
