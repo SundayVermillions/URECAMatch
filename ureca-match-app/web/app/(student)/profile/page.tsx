@@ -295,7 +295,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
       <Reveal show={!!inline}>{inline}</Reveal>
       <Toast show={saved} tone="good" title="Saved." onClose={() => setSaved(false)}>Your profile is up to date.</Toast>
       <Toast show={!saved && prefill === "updated"} tone="good" title="Profile updated from your transcript." duration={7000} onClose={() => setPrefill(null)}>{changes}</Toast>
-      <Toast show={!saved && prefill === "filled"} tone="accent" title="Filled in from your transcript." duration={9000} onClose={() => setPrefill(null)}>Check the details, then press Save changes.</Toast>
+      <Toast show={!saved && prefill === "filled"} tone="accent" title="Transcript uploaded." duration={9000} onClose={() => setPrefill(null)}>Review your details and save changes.</Toast>
       <Toast show={!saved && prefill === "rejected"} tone="warn" title="That does not look like an NTU transcript." duration={9000} onClose={() => setPrefill(null)}>It needs your Cumulative GPA and the courses you passed. Nothing was uploaded.</Toast>
 
       <div className="grid grid-cols-[minmax(0,1fr)_340px] items-stretch gap-5">
@@ -459,7 +459,6 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             <div className="mt-4 rounded-[16px] border border-dashed border-[#b9c9e2] bg-accent-soft/40 px-5 py-8 text-center">
               <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-white text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)]"><I.Upload size={20} /></span>
               <div className="mt-3 text-[15px] font-semibold">Upload your transcript</div>
-              <p className="mx-auto mt-1 max-w-[240px] text-[13px] leading-[1.5] text-muted">We read your CGPA, year and modules from it. The rest unlocks after.</p>
               <Button type="button" className="mt-4" disabled={busy} onClick={pickTranscript}>{busy ? "Uploading..." : "Upload transcript"}</Button>
               <div className="mt-2 text-[12px] text-faint">PDF, up to 5 MB</div>
             </div>
