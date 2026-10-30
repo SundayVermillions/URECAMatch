@@ -105,5 +105,10 @@ export class LiveClient implements ApiClient {
   markRead = (id: string) => this.req<void>("POST", `/me/notifications/${id}/read`);
   adminDashboard = () => this.req<M.AdminDashboard>("GET", "/admin/dashboard");
   supervisorDashboard = () => this.req<M.SupervisorDashboard>("GET", "/supervisor/dashboard");
-  
+
+  conversations = () => this.req<M.Conversation[]>("GET", "/me/conversations");
+  chatContacts = () => this.req<M.ChatContact[]>("GET", "/me/conversations/contacts");
+  startConversation = (userId: string) => this.req<M.Conversation>("POST", "/me/conversations", { user_id: userId });
+  conversation = (id: string) => this.req<M.ConversationThread>("GET", `/me/conversations/${id}`);
+  sendMessage = (id: string, body: string) => this.req<M.Message>("POST", `/me/conversations/${id}/messages`, { body });
 }

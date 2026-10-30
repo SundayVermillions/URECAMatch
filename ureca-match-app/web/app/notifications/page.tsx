@@ -21,6 +21,7 @@ const ICON: Record<string, React.ReactNode> = {
   match_rejected: <I.Alert size={18} />,
   proposal_decided: <I.Bulb size={18} />,
   account_changed: <I.User size={18} />,
+  message_received: <I.Chat size={18} />,     // REQ-CHAT-6
 };
 const FALLBACK = <I.Bell size={18} />;
 const tileFor = (event: string, read: boolean) => (read ? "bg-neutral-soft text-faint" : event === "match_rejected" ? "bg-bad-soft text-bad-ink" : "bg-accent-soft text-accent-ink");

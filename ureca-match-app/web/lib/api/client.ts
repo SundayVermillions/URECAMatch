@@ -84,6 +84,12 @@ export interface ApiClient {
   markRead(id: string): Promise<void>;
   adminDashboard(): Promise<M.AdminDashboard>;
   supervisorDashboard(): Promise<M.SupervisorDashboard>;
+  // chat (REQ-CHAT-1..6): students and supervisors only
+  conversations(): Promise<M.Conversation[]>;
+  chatContacts(): Promise<M.ChatContact[]>;
+  startConversation(userId: string): Promise<M.Conversation>; // returns the pair's conversation if there is one already
+  conversation(id: string): Promise<M.ConversationThread>; // opening it marks it read
+  sendMessage(id: string, body: string): Promise<M.Message>;
 }
 
 export const API_MODE = (process.env.NEXT_PUBLIC_API_MODE ?? "mock") as "mock" | "live";

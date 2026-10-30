@@ -13,7 +13,7 @@ create type listing_status as enum ('draft', 'published', 'closed');
 create type application_status as enum ('submitted', 'withdrawn', 'matched', 'unmatched');
 create type proposal_status as enum ('submitted', 'accepted', 'declined', 'withdrawn');
 create type match_status as enum ('proposed', 'approved', 'rejected', 'reassigned', 'published', 'accepted', 'declined', 'timed_out');
-create type notification_event as enum ('cycle_changed', 'round_opened', 'results_published', 'offer_received', 'proposal_decided', 'matches_proposed', 'match_approved', 'match_rejected', 'account_changed');
+create type notification_event as enum ('cycle_changed', 'round_opened', 'results_published', 'offer_received', 'proposal_decided', 'matches_proposed', 'match_approved', 'match_rejected', 'account_changed', 'message_received');
 create type audit_operation as enum ('matching_executed', 'manual_reassignment', 'results_published', 'user_updated', 'user_deactivated', 'cycle_updated');
 
 -- ------------------------------------------------------------------ users (slice A)
@@ -234,6 +234,29 @@ create table notifications (
   link       text
 );
 create index on notifications (user_id, created_at desc);          -- REQ-NOTIF-1
+
+-- ------------------------------------------------------------------ chat (REQ-CHAT-1..6, added after the SRS)
+-- One conversation per student and supervisor. Who may write is checked by the API (routers/chat.py).
+create table conversations (
+  id              text primary key,
+  student_id      text not null references users(id) on delete cascade,
+  supervisor_id   text not null references users(id) on delete cascade,
+  created_at      timestamptz not null default now(),
+  last_message_at timestamptz,
+  unique (student_id, supervisor_id)                                  -- REQ-CHAT-2
+);
+create index on conversations (supervisor_id);
+
+create table messages (
+  id              text primary key,
+  conversation_id text not null references conversations(id) on delete cascade,
+  sender_id       text not null references users(id) on delete cascade,
+  body            text not null check (char_length(body) between 1 and 2000),  -- REQ-CHAT-3, trimmed by the API
+  created_at      timestamptz not null default now(),
+  read            boolean not null default false                      -- REQ-CHAT-5
+);
+create index on messages (conversation_id, created_at);
+create index messages_unread on messages (conversation_id) where read = false;
 
 -- ------------------------------------------------------------------ audit (append only)
 -- REQ-AUDIT-3: the actor for actions the system takes on its own (matching, publishing). Inactive, with no

@@ -109,6 +109,7 @@ Order matters. Some steps only work in the right window.
 1. **Student #1.** Create account. Upload the weaker transcript and check the autofill. Set interests. Browse and change interests to show the picks change. Apply to the demo project. Send a self-proposal to the same supervisor. Rank preferences.
 2. **Student #2.** Sign up. Upload the stronger transcript. Apply to the same project. Rank.
 3. **Supervisor.** Decline Student #1's proposal with a reason. This works in the application window.
+   - **Optional, chat (REQ-CHAT).** Student #1 opens Messages, New message, picks the supervisor and asks a question. The supervisor sees the Messages badge and a notification, opens the conversation (the badge clears) and replies. In the seed, Prof. Chua (sup-1) already has an unread message from Chloe Lim.
 4. **Clock to the review window.** Supervisor opens the applicants, filters, uses the AI button, sorts, ranks Student #2 first.
 5. **Admin, review window.** Open Cycle settings. Try a start date for Round 3 that overlaps Round 2 (for example 13 Nov) and show the refusal. To extend Round 3's review window, move "Cycle closes" later first, then extend. Manual assign works here.
 6. **Clock to the approval window.** Supervisor declines a proposed match with a reason. Admin unassigns and assigns. Show the audit log.

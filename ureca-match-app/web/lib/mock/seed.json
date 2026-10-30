@@ -4720,7 +4720,7 @@
       ],
       "statement": "My interest in this topic started during an internship where I worked on preprocessing pipelines for imaging data. I would like to move from data engineering into modelling under supervision.",
       "status": "submitted",
-      "submitted_at": "2026-11-03T09:00:00Z",
+      "submitted_at": "2026-11-02T09:00:00Z",
       "decided_at": null,
       "decision_note": null,
       "document_ids": [
@@ -4836,6 +4836,16 @@
       "created_at": "2026-11-01T09:00:00Z",
       "read": true,
       "link": "/rounds"
+    },
+    {
+      "id": "ntf-7",
+      "user_id": "sup-1",
+      "event": "message_received",
+      "title": "New message from Chloe Lim",
+      "message": "I plan to start with OCT2017 and add the Duke SD-OCT set later. I trained a ResNet on chest X-rays in my CS4243 proje...",
+      "created_at": "2026-11-03T01:00:00Z",
+      "read": false,
+      "link": "/messages/cnv-1"
     }
   ],
   "audit": [
@@ -4886,6 +4896,48 @@
       ],
       "note": "Withdrew from programme",
       "affected_labels": []
+    }
+  ],
+  "conversations": [
+    {
+      "id": "cnv-1",
+      "student_id": "stu-9",
+      "supervisor_id": "sup-1",
+      "created_at": "2026-11-02T11:00:00Z",
+      "last_message_at": "2026-11-03T01:00:00Z",
+      "other_id": "",
+      "other_name": "",
+      "projects": [],
+      "unread": 0,
+      "last_message": null,
+      "can_send": true,
+      "blocked_reason": null
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg-1",
+      "conversation_id": "cnv-1",
+      "sender_id": "stu-9",
+      "body": "Hello Prof. Chua, I have just sent you a proposal on self-supervised pretraining for retinal OCT. Would you be open to a short chat about the scope before you decide?",
+      "created_at": "2026-11-02T11:00:00Z",
+      "read": true
+    },
+    {
+      "id": "msg-2",
+      "conversation_id": "cnv-1",
+      "sender_id": "sup-1",
+      "body": "Hi Chloe, thanks for the proposal. The idea is promising. Which public OCT datasets are you planning to use, and have you trained a model on medical images before?",
+      "created_at": "2026-11-02T18:00:00Z",
+      "read": true
+    },
+    {
+      "id": "msg-3",
+      "conversation_id": "cnv-1",
+      "sender_id": "stu-9",
+      "body": "I plan to start with OCT2017 and add the Duke SD-OCT set later. I trained a ResNet on chest X-rays in my CS4243 project, so I am comfortable with the pipeline.",
+      "created_at": "2026-11-03T01:00:00Z",
+      "read": false
     }
   ],
   "applicant_rankings": {

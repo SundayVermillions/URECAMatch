@@ -1199,6 +1199,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mine */
+        get: operations["mine_me_conversations_get"];
+        put?: never;
+        /**
+         * Start
+         * @description REQ-CHAT-2: either side can start it, and there is one per pair, so this returns the existing one if there is.
+         */
+        post: operations["start_me_conversations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/conversations/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contacts */
+        get: operations["contacts_me_conversations_contacts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thread */
+        get: operations["thread_me_conversations__conversation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/conversations/{conversation_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send */
+        post: operations["send_me_conversations__conversation_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/catalog/topics": {
         parameters: {
             query?: never;
@@ -1528,6 +1600,23 @@ export interface components {
             kind: "transcript" | "supporting";
         };
         /**
+         * ChatContact
+         * @description Someone the reader may message (REQ-CHAT-1), with the conversation if one exists already.
+         */
+        ChatContact: {
+            /** User Id */
+            user_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Projects
+             * @default []
+             */
+            projects: string[];
+            /** Conversation Id */
+            conversation_id?: string | null;
+        };
+        /**
          * CleanupWarning
          * @description The 409 `has_active_items` body: nothing was changed. Resend with confirm_cleanup=true to close these first.
          */
@@ -1566,6 +1655,67 @@ export interface components {
              * @default false
              */
             overridden: boolean;
+        };
+        /**
+         * Conversation
+         * @description One per student and supervisor pair (REQ-CHAT-2).
+         */
+        Conversation: {
+            /** Id */
+            id: string;
+            /** Student Id */
+            student_id: string;
+            /** Supervisor Id */
+            supervisor_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Message At */
+            last_message_at?: string | null;
+            /**
+             * Other Id
+             * @default
+             */
+            other_id: string;
+            /**
+             * Other Name
+             * @default
+             */
+            other_name: string;
+            /**
+             * Projects
+             * @default []
+             */
+            projects: string[];
+            /**
+             * Unread
+             * @default 0
+             */
+            unread: number;
+            last_message?: components["schemas"]["Message"] | null;
+            /**
+             * Can Send
+             * @default true
+             */
+            can_send: boolean;
+            /** Blocked Reason */
+            blocked_reason?: string | null;
+        };
+        /** ConversationStart */
+        ConversationStart: {
+            /** User Id */
+            user_id: string;
+        };
+        /** ConversationThread */
+        ConversationThread: {
+            conversation: components["schemas"]["Conversation"];
+            /**
+             * Messages
+             * @default []
+             */
+            messages: components["schemas"]["Message"][];
         };
         /** Course */
         Course: {
@@ -1926,6 +2076,37 @@ export interface components {
              * @default 0
              */
             unread_notifications: number;
+            /**
+             * Unread Messages
+             * @default 0
+             */
+            unread_messages: number;
+        };
+        /** Message */
+        Message: {
+            /** Id */
+            id: string;
+            /** Conversation Id */
+            conversation_id: string;
+            /** Sender Id */
+            sender_id: string;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Read
+             * @default false
+             */
+            read: boolean;
+        };
+        /** MessageCreate */
+        MessageCreate: {
+            /** Body */
+            body: string;
         };
         /** Notification */
         Notification: {
@@ -1955,7 +2136,7 @@ export interface components {
          * NotificationEvent
          * @enum {string}
          */
-        NotificationEvent: "cycle_changed" | "round_opened" | "results_published" | "offer_received" | "proposal_decided" | "matches_proposed" | "match_approved" | "match_rejected" | "account_changed";
+        NotificationEvent: "cycle_changed" | "round_opened" | "results_published" | "offer_received" | "proposal_decided" | "matches_proposed" | "match_approved" | "match_rejected" | "account_changed" | "message_received";
         /** Ok */
         Ok: {
             /**
@@ -4898,6 +5079,178 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupervisorDashboard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mine_me_conversations_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_me_conversations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationStart"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contacts_me_conversations_contacts_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatContact"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    thread_me_conversations__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationThread"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_me_conversations__conversation_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
                 };
             };
             /** @description Validation Error */

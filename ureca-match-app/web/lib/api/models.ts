@@ -64,6 +64,10 @@ export type Notification = S["Notification"];
 export type AdminDashboard = S["AdminDashboard"];
 export type SupervisorDashboard = S["SupervisorDashboard"];
 export type ClockState = S["ClockState"];
+export type Message = S["Message"];
+export type Conversation = S["Conversation"];
+export type ConversationThread = S["ConversationThread"];
+export type ChatContact = S["ChatContact"];
 
 export type ListingFilters = { q?: string; school?: string; tag?: string; supervisor?: string };
 export type ApplicantFilters = { school?: string; min_cgpa?: number; prerequisites_only?: boolean };

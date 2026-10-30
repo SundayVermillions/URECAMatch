@@ -133,6 +133,19 @@ classDiagram
         -link : String
     }
 
+    class Conversation:::crosscutting {
+        -conversationId : String
+        -createdAt : DateTime
+        -lastMessageAt : DateTime
+    }
+
+    class ChatMessage:::crosscutting {
+        -messageId : String
+        -body : String
+        -createdAt : DateTime
+        -isRead : Boolean
+    }
+
     class AuditLogEntry:::crosscutting {
         -entryId : String
         -operation : AuditOperation
@@ -169,6 +182,10 @@ classDiagram
     User "1" --> "0..*" AuditLogEntry : initiates
     User "1" --> "0..*" Notification : receives
     User "1" --> "0..*" VerificationCode : is issued
+    Student "1" --> "0..*" Conversation : takes part in
+    ProjectSupervisor "1" --> "0..*" Conversation : takes part in
+    Conversation "1" *-- "0..*" ChatMessage : holds
+    User "1" --> "0..*" ChatMessage : sends
 
     classDef accounts fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#0f172a
     classDef accountsAbstract fill:#dbeafe,stroke:#1e40af,stroke-width:4px,color:#0f172a

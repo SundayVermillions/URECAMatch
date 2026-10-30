@@ -13,18 +13,21 @@ import { Avatar, Toast } from "@/components/ui";
 
 type Item = { href: string; label: string; icon: React.ReactNode; badge?: number };
 
-const NAV: Record<Role, (unread: number, extra: Record<string, number>) => Item[]> = {
-  student: (unread) => [
+// REQ-CHAT-5: students and supervisors get Messages with its own unread badge; admins have no chat (REQ-CHAT-1).
+const NAV: Record<Role, (unread: number, extra: Record<string, number>, messages: number) => Item[]> = {
+  student: (unread, _x, messages) => [
     { href: "/browse", label: "Browse projects", icon: <I.Search /> },
     { href: "/my-applications", label: "My applications", icon: <I.Layers /> },
     { href: "/propose", label: "Propose a project", icon: <I.Bulb /> },
     { href: "/profile", label: "My profile", icon: <I.User /> },
+    { href: "/messages", label: "Messages", icon: <I.Chat />, badge: messages },
     { href: "/notifications", label: "Notifications", icon: <I.Bell />, badge: unread },
   ],
-  supervisor: (unread, x) => [
+  supervisor: (unread, x, messages) => [
     { href: "/projects", label: "My projects", icon: <I.Folder /> },
     { href: "/proposals", label: "Proposals", icon: <I.Bulb />, badge: x.proposals },
     { href: "/approvals", label: "Match approvals", icon: <I.Check />, badge: x.approvals },
+    { href: "/messages", label: "Messages", icon: <I.Chat />, badge: messages },
     { href: "/notifications", label: "Notifications", icon: <I.Bell />, badge: unread },
   ],
   admin: (unread) => [
@@ -55,7 +58,7 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
   }, [me, loading, role, router, path]);
 
   if (loading || !me || me.user.role !== role) return <div className="p-10 text-muted">Loading…</div>;
-  const items = NAV[role](me.unread_notifications, badges);
+  const items = NAV[role](me.unread_notifications, badges, me.unread_messages);
   const activeIndex = items.findIndex((it) => path === it.href || path.startsWith(it.href + "/"));
   const sub = role === "student" ? `${me.student?.school || "Student"} · Year ${me.student?.year_of_study ?? "?"}` : role === "supervisor" ? `Supervisor${me.supervisor?.faculty ? ` · ${me.supervisor.faculty}` : ""}` : "URECA Programme Admin";
 
