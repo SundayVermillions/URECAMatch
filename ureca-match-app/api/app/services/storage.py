@@ -29,6 +29,7 @@ class StorageService(Protocol):
 class MockStorageService:
     def __init__(self, base_url: str = "") -> None:
         self.base_url = base_url
+        self.files: dict[str, tuple[bytes, str]] = {}  # uploads, in memory like the rest of mock mode
 
     def put(
         self,
@@ -37,7 +38,9 @@ class MockStorageService:
         data: bytes,
         content_type: str = "application/pdf",
     ) -> str:
-        return f"{bucket}/{path.lstrip('/')}"
+        stored = f"{bucket}/{path.lstrip('/')}"
+        self.files[stored] = (data, content_type)
+        return stored
 
     def signed_url(self, bucket: str, path: str, minutes: int = 10) -> str:
         if bucket == "covers":

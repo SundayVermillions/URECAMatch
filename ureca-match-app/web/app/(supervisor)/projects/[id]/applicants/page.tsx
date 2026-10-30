@@ -2,6 +2,7 @@
 /** ReviewAndRankStudentApplications (4.16). REQ-VRANK-1..3. Screen: ApplicantAndRankingsPage.
  *  Left: applicants with search, filters and sort. Right: the ranking. Drawer: full application with PDF viewer.
  *  Filtering and sorting run here over the one list the API returns; filter state lives in the URL query string.
+ *  "Rank top N" replaces the ranking with the first N applicants of the list as filtered and sorted.
  *  Uses the app's shared look (cards, pills, buttons), like every other screen. */
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -11,7 +12,7 @@ import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
 import { DocumentViewer } from "@/components/supervisor/document-viewer";
 import { StudentSummary } from "@/components/supervisor/student-summary";
-import { Avatar, Button, Card, Drawer, Empty, FilterMultiSelect, FilterSelect, Pill, ScoreRing, Segmented, Skeleton, Tip, fmtDate, inputCls } from "@/components/ui";
+import { Avatar, Button, Card, Drawer, Empty, FilterMultiSelect, FilterSelect, Modal, Pill, ScoreRing, Segmented, Skeleton, Tip, fmtDate, inputCls } from "@/components/ui";
 import { ApiError, type Applicant, type ApplicantScore } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
@@ -35,6 +36,72 @@ function FilterChip({ children, onRemove }: { children: React.ReactNode; onRemov
 
 const Dot = () => <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />;
 
+/** A large four-point star with a small one beside it, the usual "AI" mark. */
+function Sparkle({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M10 4C10.4 8.6 13.4 11.6 18 12C13.4 12.4 10.4 15.4 10 20C9.6 15.4 6.6 12.4 2 12C6.6 11.6 9.6 8.6 10 4Z" />
+      <path d="M19.5 1.5C19.65 3.3 20.7 4.35 22.5 4.5C20.7 4.65 19.65 5.7 19.5 7.5C19.35 5.7 18.3 4.65 16.5 4.5C18.3 4.35 19.35 3.3 19.5 1.5Z" />
+    </svg>
+  );
+}
+
+/** How the AI match scores were worked out, in the style of Uri's "How it works" on Browse. REQ-VRANK-1.
+ *  Gemini has no fixed weights, so its factors carry no points; the local formula (api/app/services/ai_match.py) does. */
+const GEMINI_FACTORS = [
+  { c: "#22a06b", t: "Prerequisites", d: "Whether they have passed the project's prerequisite modules." },
+  { c: "#7c5cff", t: "Fit", d: "How their interests and modules overlap with the project." },
+  { c: "#f59e0b", t: "Statement", d: "The substance of their statement of interest." },
+  { c: "#3d7bff", t: "CGPA", d: "Their CGPA out of 5.00." },
+];
+const LOCAL_FACTORS = [
+  { c: "#22a06b", t: "Prerequisites, up to 40", d: "Share of the project's prerequisite modules they have passed." },
+  { c: "#7c5cff", t: "Interests, up to 40", d: "20 for each interest the project is tagged with, 10 for each named in its title or description." },
+  { c: "#3d7bff", t: "CGPA, up to 20", d: "CGPA out of 5.00, scaled to 20 points." },
+];
+
+function AiMatchInfo({ total, local }: { total: number; local: number }) {
+  const [open, setOpen] = useState(true);
+  const gemini = local < total;
+  const rows = gemini ? GEMINI_FACTORS : LOCAL_FACTORS;
+  return (
+    <Card padded={false} className="mb-4 p-4">
+      <div style={{ animation: "uri-rise .35s ease-out both" }}>
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#3b4578,#1c2566)] text-white"><Sparkle size={15} /></span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[14px] font-semibold">{!gemini ? "Scored locally" : local ? `Scored by Gemini, ${local} locally` : "Scored by Gemini"}</div>
+            <div className="mt-0.5 text-[12.5px] leading-[1.45] text-muted">
+              {gemini ? "Gemini read each application against the project and gave a 0 to 100 fit score with a reason."
+                : "Gemini was not used, so each applicant got a 0 to 100 score from a fixed formula."} Hover a score for the reason.
+            </div>
+          </div>
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
+            className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium transition-colors duration-150 ${open ? "bg-[#1c2566] text-white" : "bg-neutral-soft text-text hover:bg-[#e0e7ff]"}`}>
+            <I.Info size={14} /> How it works
+          </button>
+        </div>
+        {open && (
+          <>
+            <div className={`mt-4 grid grid-cols-1 gap-4 ${gemini ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+              {rows.map((r) => (
+                <div key={r.t} className="flex gap-2.5">
+                  <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: r.c }} />
+                  <div><div className="text-[13px] font-semibold">{r.t}</div><div className="mt-0.5 text-[12.5px] leading-[1.45] text-muted">{r.d}</div></div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 border-t border-border pt-3 text-[12px] text-muted">
+              {gemini && "Gemini weighs these together, with no fixed points. If it cannot be reached, a formula scores instead: prerequisites 40, interests 40, CGPA 20. "}
+              A guide only: read each application before ranking. It never changes your ranking or the matching.
+            </div>
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export default function Applicants() {
   const { id } = useParams<{ id: string }>();
   const { me } = useMe();
@@ -51,6 +118,8 @@ export default function Applicants() {
   const [ai, setAi] = useState<{ listing: string; scores: Map<string, ApplicantScore> } | null>(null);
   const [matching, setMatching] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [topN, setTopN] = useState(5);
+  const [confirmTop, setConfirmTop] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false); // the CGPA, school and year dropdowns, tucked away until wanted
   const canRank = me?.phase.window === "review" || me?.phase.window === "application";
 
@@ -121,6 +190,10 @@ export default function Applicants() {
   const add = (aid: string) => save([...ids, aid]);
   const remove = (aid: string) => save(ids.filter((x) => x !== aid));
   const move = (aid: string, dir: -1 | 1) => { const n = [...ids]; const i = n.indexOf(aid); const j = i + dir; if (j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; save(n); };
+  // REQ-VRANK-2: the ranking becomes the first N rows as shown. Replacing loses a manual order, so ask first.
+  const n = Math.min(Math.max(topN, 1), pool.length);
+  const topIds = pool.slice(0, n).map((a) => a.application_id);
+  const rankTop = () => { if (ids.length) setConfirmTop(true); else save(topIds); };
   const dropOn = (target: string) => {
     if (!dragging || dragging === target) return;
     const n = ids.filter((x) => x !== dragging);
@@ -170,7 +243,15 @@ export default function Applicants() {
               <span className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`}><I.ChevronDown size={14} /></span>
             </button>
             <FilterSelect size="sm" label="Sort" align="right" value={sortBy === "cgpa" ? undefined : SORTS[sortBy]} anyLabel={SORTS.cgpa} options={[SORTS.ai, SORTS.name]} onChange={chooseSort} />
-            <Button disabled={matching || !all.length} onClick={runAiMatch} className="shrink-0"><I.Star size={13} /> {matching ? "Scoring..." : scores ? "Rerun AI match" : "AI match"}</Button>
+            {/* Glassy navy pill: a top sheen over a dark gradient, with gradient text and a sparkle. */}
+            <button type="button" disabled={matching || !all.length} onClick={runAiMatch}
+              className="group relative isolate inline-flex h-9 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-[linear-gradient(180deg,#3b4578_0%,#1c2566_55%,#151b4d_100%)] pl-4 pr-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_22px_-12px_rgba(28,37,102,0.8)] ring-1 ring-white/10 transition-[box-shadow,filter] duration-200 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_12px_28px_-10px_rgba(80,100,240,0.7)] hover:brightness-110 disabled:opacity-60 disabled:hover:brightness-100">
+              <span aria-hidden className="absolute inset-x-0 top-0 -z-10 h-1/2 bg-gradient-to-b from-white/15 to-transparent" />
+              <span className="bg-gradient-to-b from-white to-[#c3cdf5] bg-clip-text text-[14px] font-semibold tracking-[-0.01em] text-transparent">
+                {matching ? "Scoring..." : scores ? "Rerun AI match" : "AI match"}
+              </span>
+              <span className={`text-white transition-transform duration-300 ${matching ? "animate-pulse" : "group-hover:rotate-12 group-hover:scale-110"}`}><Sparkle size={17} /></span>
+            </button>
           </div>
         </div>
         {/* Not a Reveal: its clipping would cut off the dropdown lists that open from these buttons. */}
@@ -194,10 +275,7 @@ export default function Applicants() {
             <button type="button" onClick={clearAll} className="ml-1 text-[12.5px] font-medium text-accent hover:text-accent-ink">Clear all</button>
           </div>
         )}
-        {scores && <div className="-mt-2 mb-4 text-[12px] text-muted">
-          {scoredLocally === scores.size ? "Scored locally from prerequisites, shared interests and CGPA."
-            : scoredLocally > 0 ? `Scored by Gemini (${scoredLocally} scored locally).` : "Scored by Gemini."} Hover a score for the reason. A guide only.
-        </div>}
+        {scores && <AiMatchInfo total={scores.size} local={scoredLocally} />}
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
         <section className="min-w-0">
@@ -214,15 +292,15 @@ export default function Applicants() {
                 {all.length > 0 && <Button variant="soft" onClick={clearAll}>Clear filters</Button>}
               </Empty>
             ) : (
-              <Card padded={false} className="overflow-hidden">
-                <ul className="divide-y divide-border">
+              <Card padded={false}>
+                <ul className="divide-y divide-border rounded-[inherit]">
                   {pool.map((a) => {
                     const s = scores?.get(a.application_id);
                     const added = ids.includes(a.application_id);
                     const gaps = a.meets_prerequisites ? [] : missing(a);
                     const cgpa = a.student.cgpa;
                     return (
-                      <li key={a.application_id} className="relative flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-accent-soft/30">
+                      <li key={a.application_id} className="relative flex items-center gap-4 px-5 py-3.5 transition-colors first:rounded-t-[inherit] last:rounded-b-[inherit] hover:bg-accent-soft/30">
                         <Avatar name={a.student.name} size={36} tone="auto" />
                         <div className="min-w-0 flex-1">
                           {/* The name button stretches over the whole row, so a click anywhere opens the application. */}
@@ -261,7 +339,21 @@ export default function Applicants() {
         </section>
 
         <aside className="card-surface p-6 lg:sticky lg:top-8">
-          <h2 className="text-[17px]">Your ranking</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-[17px]">Your ranking</h2>
+            <Tip align="right" text={`Replaces your ranking with the first ${n || "N"} applicants as listed.`}>
+              <span className="inline-flex h-8 shrink-0 items-center overflow-hidden rounded-pill bg-surface shadow-[inset_0_0_0_1px_var(--border-strong)] focus-within:shadow-[inset_0_0_0_1px_var(--accent-border)]">
+                <label className="pl-3 text-[12.5px] text-muted" htmlFor="rank-top-n">Top</label>
+                <input id="rank-top-n" type="number" min={1} max={pool.length || 1} value={topN} disabled={!canRank || !pool.length}
+                  onChange={(e) => setTopN(Number(e.target.value) || 1)}
+                  className="h-full w-10 bg-transparent px-1 text-center text-[13px] font-semibold tabular outline-none" />
+                <button type="button" onClick={rankTop} disabled={!canRank || !pool.length} aria-label={`Rank top ${n}`}
+                  className="h-full whitespace-nowrap bg-accent px-3 text-[12.5px] font-semibold text-white transition-[filter] duration-150 hover:brightness-110 disabled:opacity-50">
+                  Rank
+                </button>
+              </span>
+            </Tip>
+          </div>
           <ol className="mt-3 flex flex-col">
             {ranked.length === 0 && (
               <li className="rounded-[14px] border border-dashed border-border-strong px-5 py-8 text-center">
@@ -291,6 +383,11 @@ export default function Applicants() {
           {ranked.length > 0 && <div className="mt-3 border-t border-border pt-3.5 text-[12px] text-faint">Drag to reorder. Saved automatically.</div>}
         </aside>
       </div>
+
+      <Modal open={confirmTop} onClose={() => setConfirmTop(false)} title="Replace your ranking?"
+        footer={<><Button variant="secondary" onClick={() => setConfirmTop(false)}>Cancel</Button><Button onClick={() => { save(topIds); setConfirmTop(false); }}>Replace ranking</Button></>}>
+        Your ranking of {ids.length} will become the top {n} {n === 1 ? "applicant" : "applicants"} as listed now, sorted by {SORTS[sortBy]}{filtering ? ", with your filters" : ""}. Your current order will be lost.
+      </Modal>
 
       <Drawer open={!!detail} onClose={() => setDetail(null)} title="Application"
         footer={detail && (ids.includes(detail.application_id)
