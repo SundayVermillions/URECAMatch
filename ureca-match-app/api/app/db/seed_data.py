@@ -3,9 +3,9 @@
 Used by: the in-memory mock store (API_MODE=mock), `python -m app.db.export`
 which writes web/lib/mock/seed.json and supabase/seed.sql.
 
-Timeline (AY26/27 S1): cycle opens 18 Aug 2026, 7-day pre-application window,
-three rounds of 5-day application + 2-day review. DEMO_NOW (settings) sits in
-Round 2's application window so every screen has something to show.
+The templates use the original September test timeline. build() shifts the active
+cycle to the demo anchor: Round 2 opens 3 Nov 2026 at 17:00 SGT. Window lengths
+and round spacing stay the same; the closed historical cycle keeps its dates.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from __future__ import annotations
 import random
 from datetime import UTC, datetime, timedelta
 
+from app.demo import DEMO_NOW, DEMO_OFFSET
 from app.models import (
     AccountStatus,
     Application,
@@ -40,6 +41,7 @@ from app.models import (
 )
 from app.services.audit import SYSTEM
 from app.services.titles import split_title
+from app.services.windows import when
 
 rng = random.Random(2006)
 
@@ -880,12 +882,12 @@ def make_audit() -> list[AuditEntry]:
     ]
 
 
-def build() -> dict:
+def build(*, offset: timedelta = DEMO_OFFSET) -> dict:
     rng.seed(2006)  # restart the sequence so every build() gives identical data, whatever ran before
     users, students, supervisors = make_users()
     cycle = make_cycle()
     listings = make_listings()
-    return {
+    data = {
         "users": users,
         "students": students,
         "supervisors": supervisors,
@@ -898,3 +900,46 @@ def build() -> dict:
         "notifications": make_notifications(),
         "audit": make_audit(),
     }
+    if not offset:
+        return data  # Tests may explicitly request the original September scenario.
+
+    # REQ-CYCLE-1, REQ-ROUND-1: shift the complete active schedule, including offer deadlines.
+    for row in [cycle, *cycle.rounds]:
+        for field in type(row).model_fields:
+            value = getattr(row, field)
+            if isinstance(value, datetime):
+                setattr(row, field, value + offset)
+
+    events = [
+        *users,
+        *(doc for student in students for doc in student.documents),
+        *listings,
+        *data["applications"],
+        *data["matches"],
+        *data["proposals"],
+        *data["notifications"],
+        *data["audit"],
+    ]
+    for row in events:
+        for field in type(row).model_fields:
+            value = getattr(row, field)
+            if isinstance(value, datetime):
+                shifted = value + offset
+                # Preloaded activity has already happened when the demo opens; deadlines remain in the future.
+                setattr(row, field, shifted if field == "offer_expires_at" else min(shifted, DEMO_NOW))
+
+    second = cycle.rounds[1]
+    notices = {n.id: n for n in data["notifications"]}
+    notices["ntf-1"].message = f"Apply and rank your projects by {when(second.application_end)}."
+    notices["ntf-1"].created_at = second.application_start
+    notices["ntf-2"].title = "Round 2 application deadline"
+    notices["ntf-2"].message = (
+        f"Applications close {when(second.application_end)}. Set your preference order in My applications before then."
+    )
+    notices["ntf-3"].message = (
+        f"Deep Learning for Early Detection of Diabetic Retinopathy. Respond by {when(second.application_end)}."
+    )
+    notices["ntf-5"].title = f"Round 2 review opens {when(second.review_start)}"
+    notices["ntf-5"].message = f"Rankings are due {when(second.review_end)}. You can start ranking applicants now."
+    notices["ntf-5"].created_at = second.application_start
+    return data

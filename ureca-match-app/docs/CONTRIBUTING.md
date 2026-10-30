@@ -72,7 +72,7 @@ uv run fastapi dev app/main.py
 ```
 Open http://localhost:8000/docs. This is the auto-generated API reference; you can call any endpoint from that page. For a protected endpoint, click **Authorize** and put a demo user id (`stu-1`, `sup-1`, `adm-1`) in the `X-Demo-User` header field.
 
-Demo accounts: any seeded e-mail with password `password`. Verification code `000000`. The clock is fixed at 7 Sep 2026, inside Round 2's application window, so every screen has data.
+Demo accounts: any seeded e-mail with password `password`. Verification code `000000`. The clock is fixed at 3 Nov 2026, 17:00 SGT, when Round 2 applications open.
 
 ---
 
