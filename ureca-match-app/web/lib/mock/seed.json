@@ -2744,7 +2744,8 @@
       "document_ids": [
         "doc-stu-1-t",
         "doc-stu-1-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-2",
@@ -2760,7 +2761,8 @@
       "document_ids": [
         "doc-stu-1-t",
         "doc-stu-1-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-3",
@@ -2776,7 +2778,8 @@
       "document_ids": [
         "doc-stu-2-t",
         "doc-stu-2-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-4",
@@ -2792,7 +2795,8 @@
       "document_ids": [
         "doc-stu-2-t",
         "doc-stu-2-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-5",
@@ -2808,7 +2812,8 @@
       "document_ids": [
         "doc-stu-3-t",
         "doc-stu-3-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-6",
@@ -2824,7 +2829,8 @@
       "document_ids": [
         "doc-stu-3-t",
         "doc-stu-3-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-7",
@@ -2840,7 +2846,8 @@
       "document_ids": [
         "doc-stu-4-t",
         "doc-stu-4-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-8",
@@ -2856,7 +2863,8 @@
       "document_ids": [
         "doc-stu-4-t",
         "doc-stu-4-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-9",
@@ -2872,7 +2880,8 @@
       "document_ids": [
         "doc-stu-5-t",
         "doc-stu-5-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-10",
@@ -2888,7 +2897,8 @@
       "document_ids": [
         "doc-stu-5-t",
         "doc-stu-5-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-11",
@@ -2904,7 +2914,8 @@
       "document_ids": [
         "doc-stu-5-t",
         "doc-stu-5-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-12",
@@ -2920,7 +2931,8 @@
       "document_ids": [
         "doc-stu-5-t",
         "doc-stu-5-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-13",
@@ -2936,7 +2948,8 @@
       "document_ids": [
         "doc-stu-6-t",
         "doc-stu-6-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-14",
@@ -2952,7 +2965,8 @@
       "document_ids": [
         "doc-stu-6-t",
         "doc-stu-6-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-15",
@@ -2968,7 +2982,8 @@
       "document_ids": [
         "doc-stu-7-t",
         "doc-stu-7-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-16",
@@ -2984,7 +2999,8 @@
       "document_ids": [
         "doc-stu-7-t",
         "doc-stu-7-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-17",
@@ -3000,7 +3016,8 @@
       "document_ids": [
         "doc-stu-8-t",
         "doc-stu-8-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-18",
@@ -3016,7 +3033,8 @@
       "document_ids": [
         "doc-stu-8-t",
         "doc-stu-8-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-19",
@@ -3032,7 +3050,8 @@
       "document_ids": [
         "doc-stu-8-t",
         "doc-stu-8-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-20",
@@ -3048,7 +3067,8 @@
       "document_ids": [
         "doc-stu-8-t",
         "doc-stu-8-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-21",
@@ -3064,7 +3084,8 @@
       "document_ids": [
         "doc-stu-9-t",
         "doc-stu-9-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-22",
@@ -3080,7 +3101,8 @@
       "document_ids": [
         "doc-stu-9-t",
         "doc-stu-9-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-23",
@@ -3096,7 +3118,8 @@
       "document_ids": [
         "doc-stu-9-t",
         "doc-stu-9-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-24",
@@ -3112,7 +3135,8 @@
       "document_ids": [
         "doc-stu-9-t",
         "doc-stu-9-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-25",
@@ -3128,7 +3152,8 @@
       "document_ids": [
         "doc-stu-10-t",
         "doc-stu-10-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-26",
@@ -3144,7 +3169,8 @@
       "document_ids": [
         "doc-stu-10-t",
         "doc-stu-10-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-27",
@@ -3160,7 +3186,8 @@
       "document_ids": [
         "doc-stu-10-t",
         "doc-stu-10-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-28",
@@ -3176,7 +3203,8 @@
       "document_ids": [
         "doc-stu-11-t",
         "doc-stu-11-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-29",
@@ -3192,7 +3220,8 @@
       "document_ids": [
         "doc-stu-11-t",
         "doc-stu-11-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-30",
@@ -3208,7 +3237,8 @@
       "document_ids": [
         "doc-stu-12-t",
         "doc-stu-12-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-31",
@@ -3224,7 +3254,8 @@
       "document_ids": [
         "doc-stu-12-t",
         "doc-stu-12-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-32",
@@ -3240,7 +3271,8 @@
       "document_ids": [
         "doc-stu-12-t",
         "doc-stu-12-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-33",
@@ -3256,7 +3288,8 @@
       "document_ids": [
         "doc-stu-12-t",
         "doc-stu-12-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-34",
@@ -3272,7 +3305,8 @@
       "document_ids": [
         "doc-stu-13-t",
         "doc-stu-13-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-35",
@@ -3288,7 +3322,8 @@
       "document_ids": [
         "doc-stu-13-t",
         "doc-stu-13-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-36",
@@ -3304,7 +3339,8 @@
       "document_ids": [
         "doc-stu-14-t",
         "doc-stu-14-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-37",
@@ -3320,7 +3356,8 @@
       "document_ids": [
         "doc-stu-14-t",
         "doc-stu-14-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-38",
@@ -3336,7 +3373,8 @@
       "document_ids": [
         "doc-stu-14-t",
         "doc-stu-14-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-39",
@@ -3352,7 +3390,8 @@
       "document_ids": [
         "doc-stu-15-t",
         "doc-stu-15-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-40",
@@ -3368,7 +3407,8 @@
       "document_ids": [
         "doc-stu-15-t",
         "doc-stu-15-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-41",
@@ -3384,7 +3424,8 @@
       "document_ids": [
         "doc-stu-15-t",
         "doc-stu-15-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-42",
@@ -3400,7 +3441,8 @@
       "document_ids": [
         "doc-stu-15-t",
         "doc-stu-15-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-43",
@@ -3416,7 +3458,8 @@
       "document_ids": [
         "doc-stu-16-t",
         "doc-stu-16-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-44",
@@ -3432,7 +3475,8 @@
       "document_ids": [
         "doc-stu-16-t",
         "doc-stu-16-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-45",
@@ -3448,7 +3492,8 @@
       "document_ids": [
         "doc-stu-16-t",
         "doc-stu-16-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-46",
@@ -3464,7 +3509,8 @@
       "document_ids": [
         "doc-stu-17-t",
         "doc-stu-17-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-47",
@@ -3480,7 +3526,8 @@
       "document_ids": [
         "doc-stu-17-t",
         "doc-stu-17-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-48",
@@ -3496,7 +3543,8 @@
       "document_ids": [
         "doc-stu-17-t",
         "doc-stu-17-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-49",
@@ -3512,7 +3560,8 @@
       "document_ids": [
         "doc-stu-17-t",
         "doc-stu-17-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-50",
@@ -3528,7 +3577,8 @@
       "document_ids": [
         "doc-stu-18-t",
         "doc-stu-18-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-51",
@@ -3544,7 +3594,8 @@
       "document_ids": [
         "doc-stu-18-t",
         "doc-stu-18-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-52",
@@ -3560,7 +3611,8 @@
       "document_ids": [
         "doc-stu-19-t",
         "doc-stu-19-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-53",
@@ -3576,7 +3628,8 @@
       "document_ids": [
         "doc-stu-19-t",
         "doc-stu-19-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-54",
@@ -3592,7 +3645,8 @@
       "document_ids": [
         "doc-stu-19-t",
         "doc-stu-19-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-55",
@@ -3608,7 +3662,8 @@
       "document_ids": [
         "doc-stu-19-t",
         "doc-stu-19-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-56",
@@ -3624,7 +3679,8 @@
       "document_ids": [
         "doc-stu-20-t",
         "doc-stu-20-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-57",
@@ -3640,7 +3696,8 @@
       "document_ids": [
         "doc-stu-20-t",
         "doc-stu-20-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-58",
@@ -3656,7 +3713,8 @@
       "document_ids": [
         "doc-stu-20-t",
         "doc-stu-20-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-59",
@@ -3672,7 +3730,8 @@
       "document_ids": [
         "doc-stu-20-t",
         "doc-stu-20-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-60",
@@ -3688,7 +3747,8 @@
       "document_ids": [
         "doc-stu-21-t",
         "doc-stu-21-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-61",
@@ -3704,7 +3764,8 @@
       "document_ids": [
         "doc-stu-21-t",
         "doc-stu-21-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-62",
@@ -3720,7 +3781,8 @@
       "document_ids": [
         "doc-stu-21-t",
         "doc-stu-21-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-63",
@@ -3736,7 +3798,8 @@
       "document_ids": [
         "doc-stu-22-t",
         "doc-stu-22-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-64",
@@ -3752,7 +3815,8 @@
       "document_ids": [
         "doc-stu-22-t",
         "doc-stu-22-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-65",
@@ -3768,7 +3832,8 @@
       "document_ids": [
         "doc-stu-22-t",
         "doc-stu-22-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-66",
@@ -3784,7 +3849,8 @@
       "document_ids": [
         "doc-stu-22-t",
         "doc-stu-22-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-67",
@@ -3800,7 +3866,8 @@
       "document_ids": [
         "doc-stu-23-t",
         "doc-stu-23-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-68",
@@ -3816,7 +3883,8 @@
       "document_ids": [
         "doc-stu-23-t",
         "doc-stu-23-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-69",
@@ -3832,7 +3900,8 @@
       "document_ids": [
         "doc-stu-23-t",
         "doc-stu-23-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-70",
@@ -3848,7 +3917,8 @@
       "document_ids": [
         "doc-stu-23-t",
         "doc-stu-23-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-71",
@@ -3864,7 +3934,8 @@
       "document_ids": [
         "doc-stu-24-t",
         "doc-stu-24-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-72",
@@ -3880,7 +3951,8 @@
       "document_ids": [
         "doc-stu-24-t",
         "doc-stu-24-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-73",
@@ -3896,7 +3968,8 @@
       "document_ids": [
         "doc-stu-24-t",
         "doc-stu-24-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-74",
@@ -3912,7 +3985,8 @@
       "document_ids": [
         "doc-stu-24-t",
         "doc-stu-24-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-75",
@@ -3928,7 +4002,8 @@
       "document_ids": [
         "doc-stu-25-t",
         "doc-stu-25-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-76",
@@ -3944,7 +4019,8 @@
       "document_ids": [
         "doc-stu-25-t",
         "doc-stu-25-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-77",
@@ -3960,7 +4036,8 @@
       "document_ids": [
         "doc-stu-26-t",
         "doc-stu-26-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-78",
@@ -3976,7 +4053,8 @@
       "document_ids": [
         "doc-stu-26-t",
         "doc-stu-26-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-79",
@@ -3992,7 +4070,8 @@
       "document_ids": [
         "doc-stu-26-t",
         "doc-stu-26-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-80",
@@ -4008,7 +4087,8 @@
       "document_ids": [
         "doc-stu-26-t",
         "doc-stu-26-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-81",
@@ -4024,7 +4104,8 @@
       "document_ids": [
         "doc-stu-27-t",
         "doc-stu-27-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-82",
@@ -4040,7 +4121,8 @@
       "document_ids": [
         "doc-stu-27-t",
         "doc-stu-27-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-83",
@@ -4056,7 +4138,8 @@
       "document_ids": [
         "doc-stu-27-t",
         "doc-stu-27-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-84",
@@ -4072,7 +4155,8 @@
       "document_ids": [
         "doc-stu-27-t",
         "doc-stu-27-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-85",
@@ -4088,7 +4172,8 @@
       "document_ids": [
         "doc-stu-28-t",
         "doc-stu-28-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-86",
@@ -4104,7 +4189,8 @@
       "document_ids": [
         "doc-stu-28-t",
         "doc-stu-28-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-87",
@@ -4120,7 +4206,8 @@
       "document_ids": [
         "doc-stu-28-t",
         "doc-stu-28-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-88",
@@ -4136,7 +4223,8 @@
       "document_ids": [
         "doc-stu-28-t",
         "doc-stu-28-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-89",
@@ -4152,7 +4240,8 @@
       "document_ids": [
         "doc-stu-29-t",
         "doc-stu-29-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-90",
@@ -4168,7 +4257,8 @@
       "document_ids": [
         "doc-stu-29-t",
         "doc-stu-29-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-91",
@@ -4184,7 +4274,8 @@
       "document_ids": [
         "doc-stu-29-t",
         "doc-stu-29-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-92",
@@ -4200,7 +4291,8 @@
       "document_ids": [
         "doc-stu-29-t",
         "doc-stu-29-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-93",
@@ -4216,7 +4308,8 @@
       "document_ids": [
         "doc-stu-30-t",
         "doc-stu-30-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-94",
@@ -4232,7 +4325,8 @@
       "document_ids": [
         "doc-stu-30-t",
         "doc-stu-30-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-95",
@@ -4248,7 +4342,8 @@
       "document_ids": [
         "doc-stu-30-t",
         "doc-stu-30-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-96",
@@ -4264,7 +4359,8 @@
       "document_ids": [
         "doc-stu-30-t",
         "doc-stu-30-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-97",
@@ -4280,7 +4376,8 @@
       "document_ids": [
         "doc-stu-31-t",
         "doc-stu-31-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-98",
@@ -4296,7 +4393,8 @@
       "document_ids": [
         "doc-stu-31-t",
         "doc-stu-31-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-99",
@@ -4312,7 +4410,8 @@
       "document_ids": [
         "doc-stu-31-t",
         "doc-stu-31-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-100",
@@ -4328,7 +4427,8 @@
       "document_ids": [
         "doc-stu-31-t",
         "doc-stu-31-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-101",
@@ -4344,7 +4444,8 @@
       "document_ids": [
         "doc-stu-32-t",
         "doc-stu-32-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-102",
@@ -4360,7 +4461,8 @@
       "document_ids": [
         "doc-stu-32-t",
         "doc-stu-32-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-103",
@@ -4376,7 +4478,8 @@
       "document_ids": [
         "doc-stu-32-t",
         "doc-stu-32-cv"
-      ]
+      ],
+      "cover_url": null
     },
     {
       "id": "app-104",
@@ -4389,7 +4492,8 @@
       "submitted_at": "2026-10-25T18:00:00Z",
       "preference_rank": 1,
       "status": "matched",
-      "document_ids": []
+      "document_ids": [],
+      "cover_url": null
     },
     {
       "id": "app-105",
@@ -4402,7 +4506,8 @@
       "submitted_at": "2026-10-25T19:00:00Z",
       "preference_rank": 1,
       "status": "matched",
-      "document_ids": []
+      "document_ids": [],
+      "cover_url": null
     },
     {
       "id": "app-106",
@@ -4415,7 +4520,8 @@
       "submitted_at": "2026-10-25T20:00:00Z",
       "preference_rank": 1,
       "status": "matched",
-      "document_ids": []
+      "document_ids": [],
+      "cover_url": null
     },
     {
       "id": "app-107",
@@ -4428,7 +4534,8 @@
       "submitted_at": "2026-10-25T21:00:00Z",
       "preference_rank": 1,
       "status": "matched",
-      "document_ids": []
+      "document_ids": [],
+      "cover_url": null
     },
     {
       "id": "app-108",
@@ -4441,7 +4548,8 @@
       "submitted_at": "2026-10-25T22:00:00Z",
       "preference_rank": 1,
       "status": "matched",
-      "document_ids": []
+      "document_ids": [],
+      "cover_url": null
     },
     {
       "id": "app-109",
@@ -4454,7 +4562,8 @@
       "submitted_at": "2026-10-25T23:00:00Z",
       "preference_rank": 1,
       "status": "matched",
-      "document_ids": []
+      "document_ids": [],
+      "cover_url": null
     }
   ],
   "matches": [

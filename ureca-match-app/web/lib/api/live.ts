@@ -41,6 +41,7 @@ export class LiveClient implements ApiClient {
   deactivateUser = (id: string, confirmCleanup = false) => this.req<void>("POST", `/admin/users/${id}/deactivate` + this.q({ confirm_cleanup: confirmCleanup || undefined }));
 
   browse = (f: M.ListingFilters = {}) => this.req<M.Listing[]>("GET", "/listings" + this.q(f));
+  adminListings = () => this.req<M.Listing[]>("GET", "/admin/listings");
   listing = (id: string) => this.req<M.Listing>("GET", `/listings/${id}`);
   supervisors = () => this.req<M.SupervisorSummary[]>("GET", "/supervisors");
   topics = () => this.req<M.TopicGroup[]>("GET", "/catalog/topics");

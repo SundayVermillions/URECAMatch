@@ -1124,6 +1124,76 @@
         }
       }
     },
+    "/admin/listings": {
+      "get": {
+        "tags": [
+          "listings"
+        ],
+        "summary": "Admin Listings",
+        "description": "REQ-PROJ-4: the admin sees every project and where it stands, drafts and closed ones included. Read only. Students\nstill see published projects only (REQ-BROWSE-3). Published first, then drafts, then closed; by title within each.",
+        "operationId": "admin_listings_admin_listings_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Listing"
+                  },
+                  "title": "Response Admin Listings Admin Listings Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/recommendations": {
       "get": {
         "tags": [
@@ -2060,6 +2130,7 @@
           "proposals"
         ],
         "summary": "My Proposals",
+        "description": "Only this cycle's proposals: when the cycle ends, the list is empty and the next cycle starts clean.",
         "operationId": "my_proposals_me_proposals_get",
         "parameters": [
           {
@@ -2441,6 +2512,7 @@
           "applications"
         ],
         "summary": "Mine",
+        "description": "Only this cycle's applications: when it ends, the list is empty and the next cycle starts clean.",
         "operationId": "mine_me_applications_get",
         "parameters": [
           {
@@ -6017,6 +6089,17 @@
             "type": "array",
             "title": "Document Ids",
             "default": []
+          },
+          "cover_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Url"
           }
         },
         "type": "object",

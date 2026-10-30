@@ -25,6 +25,14 @@ export function touchSession() {
   if (s) setSession(s);
 }
 export function clearSession() {
-  try { sessionStorage.removeItem(KEY); } catch {}
+  try { sessionStorage.removeItem(KEY); sessionStorage.removeItem(FRESH); } catch {}
 }
 export const homeFor = (role: Role) => (role === "student" ? "/browse" : role === "supervisor" ? "/projects" : "/dashboard");
+
+/** Set by the sign-in page and read by the profile gate: a student who has just signed in lands on My profile without a
+ *  warning, while one who tried to open another page is told why they were sent back. It stays set until they reach
+ *  My profile, because the gate can run more than once on the way there. */
+const FRESH = "urecamatch.fresh-sign-in";
+export function markFreshSignIn() { try { sessionStorage.setItem(FRESH, "1"); } catch {} }
+export function isFreshSignIn(): boolean { try { return sessionStorage.getItem(FRESH) === "1"; } catch { return false; } }
+export function clearFreshSignIn() { try { sessionStorage.removeItem(FRESH); } catch {} }

@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { usePathname, useRouter } from "next/navigation";
 import { getClient } from "@/lib/api/client";
 import type { Me } from "@/lib/api/models";
-import { clearSession, getSession } from "@/lib/session";
+import { clearFreshSignIn, clearSession, getSession, isFreshSignIn } from "@/lib/session";
 
 type Ctx = { me: Me | null; loading: boolean; refresh: () => Promise<void>; signOut: () => void };
 const AppContext = createContext<Ctx>({ me: null, loading: true, refresh: async () => {}, signOut: () => {} });
@@ -72,8 +72,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const isProfilePath = pathname.startsWith("/profile");
 
     if (profileIncomplete && !isAuthPath && !isProfilePath) {
-      router.replace("/profile");
-    }
+      // REQ-PROF-1: just signed in, they land on My profile quietly. Any other attempt to open a page is explained there (?complete=1).
+      router.replace(isFreshSignIn() ? "/profile" : "/profile?complete=1");
+    } else if (isProfilePath) clearFreshSignIn(); // they have arrived: from now on, trying to leave is explained
   }, [loading, me, pathname, router]);
 
   const signOut = useCallback(() => {

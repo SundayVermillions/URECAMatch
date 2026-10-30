@@ -74,7 +74,8 @@ function fromProfile(p: StudentProfile | null) {
 function ProfileForm({ p }: { p: StudentProfile | null }) {
   const { me, refresh } = useMe();
   const call = useCall();
-  const mustComplete = useSearchParams().get("complete") === "1";
+  const mustComplete = useSearchParams().get("complete") === "1"; // set when they were sent here after trying to open another page
+  const [redirectNotice, setRedirectNotice] = useState(true);
 
   const [f, setF] = useState(() => fromProfile(p));
   const [editing, setEditing] = useState(false); // a complete profile is read first; Edit profile opens the fields
@@ -262,10 +263,8 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   }
 
   const complete = !!p?.profile_complete;
-  const inline = error && !error.field ? <Banner tone="bad">{error.message}</Banner>
-    // REQ-PROF-1: show the reason even when a redirect has no query parameter.
-    : !complete ? <Banner tone="warn" title="Please complete your profile first.">Complete and save your profile before opening other pages.</Banner>
-    : null;
+  // REQ-PROF-1: the "complete your profile first" notice comes from the sidebar (a toast) when they try to leave, not as a permanent banner.
+  const inline = error && !error.field ? <Banner tone="bad">{error.message}</Banner> : null;
   const locked = !transcriptDoc; // the transcript comes first: until it is uploaded nothing else can be filled in
   const editMode = !locked && (editing || !complete); // without a transcript there is nothing to edit yet: the profile reads as dashes
   const headline = [f.degree, f.school, f.year_of_study ? `Year ${f.year_of_study}` : null].filter(Boolean).join(" · ");
@@ -295,9 +294,13 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
       {/* One notice at a time, most important first. "Saved" and the transcript note go away by themselves. */}
       <Reveal show={!!inline}>{inline}</Reveal>
       <Toast show={saved} tone="good" title="Saved." onClose={() => setSaved(false)}>Your profile is up to date.</Toast>
-      <Toast show={!saved && prefill === "updated"} tone="good" title="Profile updated from your transcript." duration={7000} onClose={() => setPrefill(null)}>{changes}</Toast>
-      <Toast show={!saved && prefill === "filled"} tone="accent" title="Transcript uploaded." duration={9000} onClose={() => setPrefill(null)}>Review your details and save changes.</Toast>
-      <Toast show={!saved && prefill === "rejected"} tone="warn" title="That does not look like an NTU transcript." duration={9000} onClose={() => setPrefill(null)}>It needs your Cumulative GPA and the courses you passed. Nothing was uploaded.</Toast>
+      {/* Sent here from another page (a typed address): say why. The sidebar shows the same notice when they click a tab. */}
+      <Toast show={mustComplete && !complete && redirectNotice && !saved && !prefill} tone="warn" title="Please complete your profile first." onClose={() => setRedirectNotice(false)}>
+        Upload your transcript, check your details and save before opening other pages.
+      </Toast>
+      <Toast show={!saved && prefill === "updated"} tone="good" title="Profile updated from your transcript." onClose={() => setPrefill(null)}>{changes}</Toast>
+      <Toast show={!saved && prefill === "filled"} tone="accent" title="Transcript uploaded." onClose={() => setPrefill(null)}>Review your details and save changes.</Toast>
+      <Toast show={!saved && prefill === "rejected"} tone="warn" title="That does not look like an NTU transcript." onClose={() => setPrefill(null)}>It needs your Cumulative GPA and the courses you passed. Nothing was uploaded.</Toast>
 
       <div className="grid grid-cols-[minmax(0,1fr)_340px] items-stretch gap-5">
         <Card padded={false} className="h-full min-w-0">
@@ -454,14 +457,17 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
         {/* Documents sit beside the profile, so an upload shows the form filling in. */}
         <div className="flex min-w-0 flex-col gap-5">
         <Card className={`!p-6 ${locked ? "flex-1" : ""}`}>
-          <h2 className="text-[16px]">Documents</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-[16px]">Documents</h2>
+            {locked && <Pill tone="warn">Required</Pill>}
+          </div>
 
           {locked ? (
-            <div className="mt-4 rounded-[16px] border border-dashed border-[#b9c9e2] bg-accent-soft/40 px-5 py-8 text-center">
-              <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-white text-accent-ink shadow-[inset_0_0_0_1px_var(--accent-border)]"><I.Upload size={20} /></span>
-              <div className="mt-3 text-[15px] font-semibold">Upload your transcript</div>
-              <Button type="button" className="mt-4" disabled={busy} onClick={pickTranscript}>{busy ? "Uploading..." : "Upload transcript"}</Button>
-              <div className="mt-2 text-[12px] text-faint">PDF, up to 5 MB</div>
+            <div className="mt-4 flex flex-col items-center rounded-[16px] border border-dashed border-[#b9c9e2] bg-accent-soft/40 px-5 pb-6 pt-8 text-center">
+              <span className="grid h-14 w-14 place-items-center rounded-full bg-white text-accent-ink shadow-[0_6px_16px_-8px_rgba(0,113,227,0.5),inset_0_0_0_1px_var(--accent-border)]"><I.Upload size={22} /></span>
+              <div className="mt-4 font-display text-[16px] font-semibold tracking-[-0.01em]">Upload your transcript</div>
+              <Button type="button" size="lg" className="mt-5" disabled={busy} onClick={pickTranscript}>{busy ? "Uploading..." : "Upload transcript"}</Button>
+              <div className="mt-3 text-[12px] text-faint">PDF, up to 5 MB</div>
             </div>
           ) : (
             <>

@@ -6,7 +6,7 @@ import { PageTitle } from "@/components/shell/app-shell";
 import { CycleTimeline } from "@/components/student/cycle-timeline";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Banner, Button, Empty, Modal, Skeleton, Status, fmtDate, fmtDeadline } from "@/components/ui";
+import { Banner, Button, Empty, Modal, Pill, Skeleton, Status, fmtDate, fmtDeadline } from "@/components/ui";
 import { ApiError, type Match } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 import { useStanding } from "@/lib/use-standing";
@@ -31,6 +31,11 @@ export default function MyApplications() {
   const canEdit = me?.phase.window === "application";
   const active = (apps.data ?? []).filter((a) => a.status === "submitted");
   const past = (apps.data ?? []).filter((a) => a.status !== "submitted");
+  /** "Not accepted (R2)": the round the application was not accepted in, when it belongs to the current cycle. */
+  const notAccepted = (roundId: string) => {
+    const n = cycle.data?.rounds.find((r) => r.id === roundId)?.number;
+    return n ? `Not accepted (R${n})` : "Not accepted";
+  };
 
   async function move(id: string, dir: -1 | 1) {
     const ids = active.map((a) => a.id); const i = ids.indexOf(id); const j = i + dir;
@@ -81,7 +86,7 @@ export default function MyApplications() {
         <ListCard>
           {active.map((a, i) => (
             <ListRow key={a.id} rank={a.preference_rank ?? i + 1} first={i === 0}
-              lead={<Thumb url={cover(a.listing_id)} />}
+              lead={<Thumb url={a.cover_url ?? cover(a.listing_id)} />}
               title={a.listing_title} meta={`${a.supervisor_name} · applied ${fmtDate(a.submitted_at)}`}>
               <RoundButton disabled={!canEdit || i === 0} onClick={() => move(a.id, -1)} label="Move up"><I.ArrowUp /></RoundButton>
               <RoundButton disabled={!canEdit || i === active.length - 1} onClick={() => move(a.id, 1)} label="Move down"><I.ArrowDown /></RoundButton>
@@ -94,17 +99,18 @@ export default function MyApplications() {
 
       {past.length > 0 && (
         <div className="mt-8">
-          <button type="button" onClick={() => setHistory((v) => !v)} aria-expanded={history}
-            className="inline-flex items-center gap-2 h-9 pl-3.5 pr-3 rounded-pill bg-white/60 text-[13.5px] font-medium text-muted shadow-[inset_0_0_0_1px_rgba(15,40,90,0.07)] transition-colors hover:bg-white hover:text-text">
-            {history ? "Hide history" : "View history"}
-            <span className="inline-flex items-center h-5 px-2 rounded-pill bg-[#dfe8f5] text-[12px] font-semibold text-muted tabular">{past.length}</span>
-            <span className={`transition-transform duration-200 ${history ? "rotate-180" : ""}`}><I.ChevronDown size={13} /></span>
+          {/* The same fold-away as "Earlier rounds" on the supervisor's Match approvals */}
+          <button type="button" onClick={() => setHistory((v) => !v)} aria-expanded={history} className="inline-flex items-center gap-1.5 px-1 text-[14px] font-medium text-muted transition-colors hover:text-text">
+            <span className={`transition-transform ${history ? "" : "-rotate-90"}`}><I.ChevronDown size={15} /></span>
+            Application history <span className="tabular text-faint">{past.length}</span>
           </button>
           {history && (
-            <div className="step-in mt-4">
+            <div className="step-in mt-3">
               <ListCard>
                 {past.map((a) => (
-                  <ListRow key={a.id} muted lead={<Thumb url={cover(a.listing_id)} />} title={a.listing_title} meta={a.supervisor_name}><Status value={a.status} /></ListRow>
+                  <ListRow key={a.id} muted lead={<Thumb url={a.cover_url ?? cover(a.listing_id)} />} title={a.listing_title} meta={a.supervisor_name}>
+                    {a.status === "unmatched" ? <Pill tone="neutral">{notAccepted(a.round_id)}</Pill> : <Status value={a.status} />}
+                  </ListRow>
                 ))}
               </ListCard>
             </div>
@@ -135,7 +141,7 @@ export default function MyApplications() {
 
       <Modal open={confirm === "accept"} onClose={() => setConfirm(null)} title="Accept this offer?"
         footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Not yet</Button><Button onClick={() => respond(true)}>Accept</Button></>}>
-        You are registered to {m?.listing_title}. Your other open applications are withdrawn and you leave later rounds this cycle. This cannot be undone here.
+        You will be registered to {m?.listing_title}. Your other open applications will be withdrawn, and you will leave the later rounds of this cycle. You cannot undo this.
       </Modal>
       <Modal open={confirm === "decline"} onClose={() => setConfirm(null)} title="Decline this offer?"
         footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Keep offer</Button><Button variant="destructive" onClick={() => respond(false)}>Decline</Button></>}>
