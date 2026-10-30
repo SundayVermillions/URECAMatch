@@ -218,6 +218,20 @@ def _seed_sql(d: dict) -> str:
     )
     out.append(
         _rows(
+            "conversations",
+            ["id", "student_id", "supervisor_id", "created_at", "last_message_at"],
+            [c.model_dump() for c in d["conversations"]],
+        )
+    )
+    out.append(
+        _rows(
+            "messages",
+            ["id", "conversation_id", "sender_id", "body", "created_at", "read"],
+            [m.model_dump() for m in d["messages"]],
+        )
+    )
+    out.append(
+        _rows(
             "audit_log",
             ["id", "operation", "actor_id", "timestamp", "affected_records", "note"],
             [a.model_dump() for a in d["audit"]],

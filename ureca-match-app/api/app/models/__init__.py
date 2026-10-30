@@ -105,6 +105,7 @@ class NotificationEvent(str, Enum):
     match_approved = "match_approved"
     match_rejected = "match_rejected"
     account_changed = "account_changed"
+    message_received = "message_received"  # REQ-CHAT-6
 
 
 class AuditOperation(str, Enum):
@@ -189,6 +190,7 @@ class Me(BaseModel):
     supervisor: SupervisorProfile | None = None
     phase: Phase
     unread_notifications: int = 0
+    unread_messages: int = 0  # REQ-CHAT-5: the badge beside Messages; always 0 for admins
 
 
 class RegisterRequest(BaseModel):
@@ -616,7 +618,7 @@ class AuditEntry(BaseModel):
     affected_labels: list[str] = []  # readable names for affected_records, added when the log is read; not stored
 
 
-# ---------------------------------------------------------------- notifications and dashboards
+# ---------------------------------------------------------------- notifications
 
 
 class Notification(BaseModel):
@@ -628,6 +630,61 @@ class Notification(BaseModel):
     created_at: datetime
     read: bool = False
     link: str | None = None
+
+
+# ---------------------------------------------------------------- messages (REQ-CHAT-1..6, added after the SRS)
+
+
+class Message(BaseModel):
+    id: str
+    conversation_id: str
+    sender_id: str
+    body: str  # plain text, trimmed, 1 to 2000 characters (REQ-CHAT-3)
+    created_at: datetime
+    read: bool = False  # the recipient has opened the conversation since it arrived (REQ-CHAT-5)
+
+
+class Conversation(BaseModel):
+    """One per student and supervisor pair (REQ-CHAT-2)."""
+
+    id: str
+    student_id: str
+    supervisor_id: str
+    created_at: datetime
+    last_message_at: datetime | None = None
+    # Filled in for the reader, not stored.
+    other_id: str = ""
+    other_name: str = ""
+    projects: list[str] = []  # titles that link the pair: projects applied to and proposals sent (REQ-CHAT-2)
+    unread: int = 0  # messages from the other side the reader has not opened (REQ-CHAT-5)
+    last_message: Message | None = None
+    can_send: bool = True
+    blocked_reason: str | None = None  # why can_send is false, for the reader (REQ-CHAT-1)
+
+
+class ConversationThread(BaseModel):
+    conversation: Conversation
+    messages: list[Message] = []  # oldest first
+
+
+class ChatContact(BaseModel):
+    """Someone the reader may message (REQ-CHAT-1), with the conversation if one exists already."""
+
+    user_id: str
+    name: str
+    projects: list[str] = []
+    conversation_id: str | None = None
+
+
+class ConversationStart(BaseModel):
+    user_id: str  # the supervisor (for a student) or the student (for a supervisor)
+
+
+class MessageCreate(BaseModel):
+    body: str  # trimmed and checked in the router, so the error can say what is wrong (REQ-CHAT-3)
+
+
+# ---------------------------------------------------------------- dashboards
 
 
 class AdminDashboard(BaseModel):

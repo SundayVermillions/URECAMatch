@@ -85,3 +85,4 @@ def require_role(*roles: Role):
 StudentUser = Annotated[User, Depends(require_role(Role.student))]
 SupervisorUser = Annotated[User, Depends(require_role(Role.supervisor))]
 AdminUser = Annotated[User, Depends(require_role(Role.admin))]
+ChatUser = Annotated[User, Depends(require_role(Role.student, Role.supervisor))]  # REQ-CHAT-1: admins have no access

@@ -18,10 +18,12 @@ from app.db import seed_data
 from app.models import (
     Application,
     AuditEntry,
+    Conversation,
     Cycle,
     CycleStatus,
     Listing,
     Match,
+    Message,
     Notification,
     Proposal,
     Round,
@@ -45,6 +47,8 @@ class Store(Protocol):
     matches: list[Match]
     proposals: list[Proposal]
     notifications: list[Notification]
+    conversations: list[Conversation]
+    messages: list[Message]
     audit: list[AuditEntry]
     applicant_rankings: dict[str, list[str]]  # f"{listing_id}:{round_id}" -> ordered application ids
     verification_codes: dict[str, tuple[str, datetime]]  # email -> (code, expiry)
@@ -76,6 +80,19 @@ class Store(Protocol):
     def mark_notification_read(self, notification_id: str, user_id: str) -> bool: ...  # slice E: False if not theirs
     def unread_notification_count(self, user_id: str) -> int: ...  # slice E: the sidebar badge on GET /me
     def next_id(self, prefix: str) -> str: ...
+
+    # Chat (REQ-CHAT-1..6). Only services/chat.py adds messages.
+    def conversations_for(self, user_id: str) -> list[Conversation]: ...  # as the student or the supervisor, any order
+    def conversation(self, conversation_id: str) -> Conversation | None: ...
+    def open_conversation(  # REQ-CHAT-2: the pair's conversation, created if there is none yet
+        self, student_id: str, supervisor_id: str, new_id: str, now: datetime
+    ) -> Conversation: ...
+    def messages_in(self, conversation_id: str) -> list[Message]: ...  # oldest first
+    def add_message(self, message: Message) -> None: ...  # insert, and move the conversation's last_message_at
+    def mark_messages_read(self, conversation_id: str, reader_id: str) -> None: ...  # the other side's messages
+    def unread_message_counts(  # conversation id -> unread messages from the other side; only ids with some
+        self, user_id: str, conversation_id: str | None = None
+    ) -> dict[str, int]: ...
 
     # Slice D: cycles, rounds, matches. A read may return copies, so every change is saved explicitly.
     def save_cycle(self, cycle: Cycle) -> None: ...  # insert or update the cycle and its rounds
@@ -112,6 +129,8 @@ class MockStore:
             self.matches: list[Match] = data["matches"]
             self.proposals: list[Proposal] = data["proposals"]
             self.notifications: list[Notification] = data["notifications"]
+            self.conversations: list[Conversation] = data["conversations"]
+            self.messages: list[Message] = data["messages"]
             self.audit: list[AuditEntry] = data["audit"]
             self.applicant_rankings: dict[str, list[str]] = {
                 # Prof. Chua has started ranking lst-1 for Round 2
@@ -245,6 +264,42 @@ class MockStore:
 
     def unread_notification_count(self, user_id: str) -> int:
         return sum(1 for n in self.notifications if n.user_id == user_id and not n.read)
+
+    # --- Chat. In memory, the lists keep the order messages were sent in.
+    def conversations_for(self, user_id: str) -> list[Conversation]:
+        return [c for c in self.conversations if user_id in (c.student_id, c.supervisor_id)]
+
+    def conversation(self, conversation_id: str) -> Conversation | None:
+        return next((c for c in self.conversations if c.id == conversation_id), None)
+
+    def open_conversation(self, student_id: str, supervisor_id: str, new_id: str, now: datetime) -> Conversation:
+        found = next((c for c in self.conversations if c.student_id == student_id and c.supervisor_id == supervisor_id), None)
+        if found is None:
+            found = Conversation(id=new_id, student_id=student_id, supervisor_id=supervisor_id, created_at=now)
+            self.conversations.append(found)
+        return found
+
+    def messages_in(self, conversation_id: str) -> list[Message]:
+        return sorted((m for m in self.messages if m.conversation_id == conversation_id), key=lambda m: m.created_at)
+
+    def add_message(self, message: Message) -> None:
+        self.messages.append(message)
+        c = self.conversation(message.conversation_id)
+        if c is not None:
+            c.last_message_at = message.created_at
+
+    def mark_messages_read(self, conversation_id: str, reader_id: str) -> None:
+        for m in self.messages:
+            if m.conversation_id == conversation_id and m.sender_id != reader_id:
+                m.read = True
+
+    def unread_message_counts(self, user_id: str, conversation_id: str | None = None) -> dict[str, int]:
+        ids = {conversation_id} if conversation_id else {c.id for c in self.conversations_for(user_id)}
+        counts: dict[str, int] = {}
+        for m in self.messages:
+            if m.conversation_id in ids and m.sender_id != user_id and not m.read:
+                counts[m.conversation_id] = counts.get(m.conversation_id, 0) + 1
+        return counts
 
     # --- Slice D: cycles, rounds, matches. In memory, an object is already "saved" once it is in the list.
     def save_cycle(self, cycle: Cycle) -> None:
@@ -616,6 +671,84 @@ class SupabaseStore(MockStore):
         table = self.client.table("notifications")
         res = table.select("id", count=CountMethod.exact, head=True).eq("user_id", user_id).eq("read", False).execute()
         return res.count or 0
+
+    # --- Chat (tables conversations and messages). Columns match the Conversation model's stored fields and the
+    # Message model one to one. REQ-CHAT-1..6
+
+    _CONVERSATION_COLUMNS = {"id", "student_id", "supervisor_id", "created_at", "last_message_at"}
+
+    def conversations_for(self, user_id: str) -> list[Conversation]:
+        if not self.client:
+            return super().conversations_for(user_id)
+        rows = []
+        for column in ("student_id", "supervisor_id"):
+            rows += self.client.table("conversations").select("*").eq(column, user_id).execute().data or []
+        return [Conversation.model_validate(r) for r in rows]
+
+    def conversation(self, conversation_id: str) -> Conversation | None:
+        if not self.client:
+            return super().conversation(conversation_id)
+        res = self.client.table("conversations").select("*").eq("id", conversation_id).limit(1).execute()
+        return Conversation.model_validate(res.data[0]) if res.data else None
+
+    def _conversation_between(self, student_id: str, supervisor_id: str) -> Conversation | None:
+        table = self.client.table("conversations")
+        res = table.select("*").eq("student_id", student_id).eq("supervisor_id", supervisor_id).limit(1).execute()
+        return Conversation.model_validate(res.data[0]) if res.data else None
+
+    def open_conversation(self, student_id: str, supervisor_id: str, new_id: str, now: datetime) -> Conversation:
+        if not self.client:
+            return super().open_conversation(student_id, supervisor_id, new_id, now)
+        found = self._conversation_between(student_id, supervisor_id)
+        if found is not None:
+            return found
+        created = Conversation(id=new_id, student_id=student_id, supervisor_id=supervisor_id, created_at=now)
+        try:
+            self.client.table("conversations").insert(
+                created.model_dump(mode="json", include=self._CONVERSATION_COLUMNS)
+            ).execute()
+        except Exception:
+            # REQ-CHAT-2: another request opened it first. The unique (student_id, supervisor_id) keeps one; use that.
+            found = self._conversation_between(student_id, supervisor_id)
+            if found is None:
+                raise
+            return found
+        return created
+
+    def messages_in(self, conversation_id: str) -> list[Message]:
+        if not self.client:
+            return super().messages_in(conversation_id)
+        res = self.client.table("messages").select("*").eq("conversation_id", conversation_id).order("created_at").execute()
+        return [Message.model_validate(r) for r in res.data or []]
+
+    def add_message(self, message: Message) -> None:
+        if not self.client:
+            return super().add_message(message)
+        self.client.table("messages").insert(message.model_dump(mode="json")).execute()
+        self.client.table("conversations").update({"last_message_at": message.created_at.isoformat()}).eq(
+            "id", message.conversation_id
+        ).execute()
+
+    def mark_messages_read(self, conversation_id: str, reader_id: str) -> None:
+        if not self.client:
+            return super().mark_messages_read(conversation_id, reader_id)
+        table = self.client.table("messages")
+        table.update({"read": True}).eq("conversation_id", conversation_id).neq("sender_id", reader_id).eq(
+            "read", False
+        ).execute()
+
+    def unread_message_counts(self, user_id: str, conversation_id: str | None = None) -> dict[str, int]:
+        if not self.client:
+            return super().unread_message_counts(user_id, conversation_id)
+        ids = [conversation_id] if conversation_id else [c.id for c in self.conversations_for(user_id)]
+        if not ids:
+            return {}
+        q = self.client.table("messages").select("conversation_id").in_("conversation_id", ids)
+        rows = q.neq("sender_id", user_id).eq("read", False).execute().data or []
+        counts: dict[str, int] = {}
+        for r in rows:
+            counts[r["conversation_id"]] = counts.get(r["conversation_id"], 0) + 1
+        return counts
 
     # --- Whole-table reads. The routers still count and filter these lists; each access queries the database, so
     # a change to a returned object is lost unless it is saved (save_user, save_match, save_round, ...).

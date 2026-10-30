@@ -61,33 +61,42 @@ STUDENT_ONLY = {
     ("POST", "/me/match/accept"),
     ("POST", "/me/match/decline"),
 }
+CHAT = {  # REQ-CHAT-1: students and supervisors, never admins
+    ("GET", "/me/conversations"),
+    ("POST", "/me/conversations"),
+    ("GET", "/me/conversations/contacts"),
+    ("GET", "/me/conversations/{conversation_id}"),
+    ("POST", "/me/conversations/{conversation_id}/messages"),
+}
 DEMO_USER = {"student": "stu-1", "supervisor": "sup-1", "admin": "adm-1"}
 
 
-def allowed_role(method: str, path: str) -> str | None:
+def allowed_roles(method: str, path: str) -> set[str] | None:
     if (method, path) in PUBLIC | AUTH_ONLY:
         return None
     if path.startswith("/admin/"):
-        return "admin"
+        return {"admin"}
     if path.startswith("/supervisor/"):
-        return "supervisor"
+        return {"supervisor"}
     if (method, path) in STUDENT_ONLY:
-        return "student"
+        return {"student"}
+    if (method, path) in CHAT:
+        return {"student", "supervisor"}
     raise AssertionError(f"{method} {path} is not classified; add it to a set in {__file__}")
 
 
 MATRIX = [
     pytest.param(method, path, wrong, id=f"{method} {path} as {wrong}")
     for method, path in ENDPOINTS
-    if (role := allowed_role(method, path))
+    if (roles := allowed_roles(method, path))
     for wrong in DEMO_USER
-    if wrong != role
+    if wrong not in roles
 ]
 
 
 def test_NFR_5_3_2_every_endpoint_classified():
     for method, path in ENDPOINTS:
-        allowed_role(method, path)  # raises for a new endpoint nobody has classified
+        allowed_roles(method, path)  # raises for a new endpoint nobody has classified
 
 
 @pytest.mark.parametrize("method,path,wrong_role", MATRIX)

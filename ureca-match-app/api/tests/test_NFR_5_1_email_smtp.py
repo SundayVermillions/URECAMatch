@@ -256,7 +256,8 @@ def test_sample_script_sends_one_of_every_kind_over_smtp(smtp, capsys):
         "Your proposal was accepted",
     ):
         assert needed in subjects
-    assert "Sent 11 of 11" in capsys.readouterr().out
+    sent = len(send_samples.SAMPLES) + 1  # every sample, plus the sign-up code
+    assert f"Sent {sent} of {sent}" in capsys.readouterr().out
 
 
 def test_sample_script_covers_every_notification_event():

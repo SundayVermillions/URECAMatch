@@ -66,6 +66,12 @@ SAMPLES: list[tuple[NotificationEvent, str, str, str | None]] = [
         "/proposals",
     ),
     (NotificationEvent.account_changed, "Your account was updated", "Your account is now inactive.", None),
+    (
+        NotificationEvent.message_received,
+        "New message from Prof. Marcus Chua",
+        "Hi Chloe, thanks for the proposal. Which public OCT datasets are you planning to use?",
+        "/messages/cnv-1",
+    ),
 ]
 
 

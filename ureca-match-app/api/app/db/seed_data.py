@@ -20,6 +20,7 @@ from app.models import (
     ApplicationStatus,
     AuditEntry,
     AuditOperation,
+    Conversation,
     Cycle,
     CycleStatus,
     Document,
@@ -28,6 +29,7 @@ from app.models import (
     ListingStatus,
     Match,
     MatchStatus,
+    Message,
     Notification,
     NotificationEvent,
     Proposal,
@@ -842,6 +844,60 @@ def make_notifications() -> list[Notification]:
     ]
 
 
+def make_conversations(proposal: Proposal) -> tuple[list[Conversation], list[Message], Notification]:
+    """REQ-CHAT-1..6: Chloe Lim (stu-9) and Prof. Chua (sup-1), linked by her proposal. Her last message is unread, so
+    sup-1 opens the demo with a Messages badge and the notice it sent. Times follow the proposal, so they stay in order
+    whichever timeline build() uses."""
+    stu, sup, at = proposal.student_id, proposal.supervisor_id, proposal.submitted_at
+    texts = [
+        (
+            stu,
+            2,
+            True,
+            "Hello Prof. Chua, I have just sent you a proposal on self-supervised pretraining for retinal OCT. "
+            "Would you be open to a short chat about the scope before you decide?",
+        ),
+        (
+            sup,
+            9,
+            True,
+            "Hi Chloe, thanks for the proposal. The idea is promising. Which public OCT datasets are you "
+            "planning to use, and have you trained a model on medical images before?",
+        ),
+        (
+            stu,
+            16,
+            False,
+            "I plan to start with OCT2017 and add the Duke SD-OCT set later. I trained a ResNet on chest "
+            "X-rays in my CS4243 project, so I am comfortable with the pipeline.",
+        ),
+    ]
+    messages = [
+        Message(id=f"msg-{i}", conversation_id="cnv-1", sender_id=who, body=body, created_at=at + timedelta(hours=h), read=read)
+        for i, (who, h, read, body) in enumerate(texts, start=1)
+    ]
+    conversation = Conversation(
+        id="cnv-1", student_id=stu, supervisor_id=sup, created_at=messages[0].created_at, last_message_at=messages[-1].created_at
+    )
+    notice = Notification(
+        id="ntf-7",
+        user_id=sup,
+        event=NotificationEvent.message_received,
+        title=f"New message from {proposal.student_name}",
+        message=messages[-1].body[:117] + "...",
+        created_at=messages[-1].created_at,
+        link="/messages/cnv-1",
+    )
+    return [conversation], messages, notice
+
+
+def with_conversations(data: dict) -> dict:
+    proposal = next(p for p in data["proposals"] if p.id == "prp-2")
+    data["conversations"], data["messages"], notice = make_conversations(proposal)
+    data["notifications"].append(notice)
+    return data
+
+
 def make_audit() -> list[AuditEntry]:
     return [
         AuditEntry(
@@ -901,7 +957,7 @@ def build(*, offset: timedelta = DEMO_OFFSET) -> dict:
         "audit": make_audit(),
     }
     if not offset:
-        return data  # Tests may explicitly request the original September scenario.
+        return with_conversations(data)  # Tests may explicitly request the original September scenario.
 
     # REQ-CYCLE-1, REQ-ROUND-1: shift the complete active schedule, including offer deadlines.
     for row in [cycle, *cycle.rounds]:
@@ -933,13 +989,15 @@ def build(*, offset: timedelta = DEMO_OFFSET) -> dict:
     notices["ntf-1"].message = f"Apply and rank your projects by {when(second.application_end)}."
     notices["ntf-1"].created_at = second.application_start
     notices["ntf-2"].title = "Round 2 application deadline"
-    notices["ntf-2"].message = (
-        f"Applications close {when(second.application_end)}. Set your preference order in My applications before then."
-    )
-    notices["ntf-3"].message = (
-        f"Deep Learning for Early Detection of Diabetic Retinopathy. Respond by {when(second.application_end)}."
-    )
+    notices[
+        "ntf-2"
+    ].message = f"Applications close {when(second.application_end)}. Set your preference order in My applications before then."
+    notices[
+        "ntf-3"
+    ].message = f"Deep Learning for Early Detection of Diabetic Retinopathy. Respond by {when(second.application_end)}."
     notices["ntf-5"].title = f"Round 2 review opens {when(second.review_start)}"
     notices["ntf-5"].message = f"Rankings are due {when(second.review_end)}. You can start ranking applicants now."
     notices["ntf-5"].created_at = second.application_start
-    return data
+    # The chat seed needs room before the demo opens: Chloe sent her proposal the day before.
+    next(p for p in data["proposals"] if p.id == "prp-2").submitted_at = DEMO_NOW - timedelta(days=1)
+    return with_conversations(data)

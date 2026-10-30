@@ -25,8 +25,8 @@ from app.models import (
     User,
     VerifyRequest,
 )
+from app.services import chat, windows
 from app.services import email as mail
-from app.services import windows
 from app.services.titles import check_title, compose
 from app.settings import Settings
 
@@ -204,4 +204,5 @@ def me(user: CurrentUser, store: StoreDep, settings: SettingsDep) -> Me:
         supervisor=store.supervisor(user.id),
         phase=windows.phase(store.cycle, settings.now()),
         unread_notifications=unread,
+        unread_messages=chat.unread_total(store, user),  # REQ-CHAT-5
     )

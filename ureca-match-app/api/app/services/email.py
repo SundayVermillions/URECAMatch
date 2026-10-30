@@ -102,6 +102,15 @@ def _account_changed(n: Notification) -> Copy:
     )
 
 
+def _message_received(n: Notification) -> Copy:
+    return Copy(
+        lead="You have a new message on URECAMatch:",
+        next_step="Sign in to read it and reply.",
+        button="Open conversation",
+        link="/messages",
+    )
+
+
 # One template per NotificationEvent. The subject is always the notification title.
 TEMPLATES: dict[NotificationEvent, Template] = {
     NotificationEvent.cycle_changed: _cycle_changed,
@@ -113,6 +122,7 @@ TEMPLATES: dict[NotificationEvent, Template] = {
     NotificationEvent.match_rejected: _fallback,
     NotificationEvent.proposal_decided: _proposal_decided,
     NotificationEvent.account_changed: _account_changed,
+    NotificationEvent.message_received: _message_received,
 }
 
 BUTTON_STYLE = (

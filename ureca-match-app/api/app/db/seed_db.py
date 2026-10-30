@@ -56,6 +56,8 @@ def tables(data: dict) -> list[tuple[str, list[dict]]]:
         ("self_proposed_applications", _dump(data["proposals"], include=SupabaseStore._PROPOSAL_COLUMNS)),
         ("match_results", _dump(data["matches"], include=SupabaseStore._MATCH_COLUMNS)),
         ("notifications", _dump(data["notifications"], include=NOTIFICATION_COLUMNS)),
+        ("conversations", _dump(data["conversations"], include=SupabaseStore._CONVERSATION_COLUMNS)),
+        ("messages", _dump(data["messages"])),
         ("audit_log", _dump(data["audit"], include=SupabaseStore._AUDIT_COLUMNS)),
     ]
 

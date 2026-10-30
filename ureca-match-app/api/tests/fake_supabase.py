@@ -22,11 +22,12 @@ UNIQUE = {
     "match_results": [("round_id", "student_id")],
     "matching_rounds": [("cycle_id", "number")],
     "users": [("email",)],
+    "conversations": [("student_id", "supervisor_id")],  # REQ-CHAT-2: one per pair
 }
 
 
 # Column defaults the real tables fill in.
-DEFAULTS = {"verification_codes": {"used": False}}
+DEFAULTS = {"verification_codes": {"used": False}, "messages": {"read": False}}
 
 
 class FakeResponse:
@@ -137,6 +138,10 @@ class FakeQuery:
         self.filters.append((column, "neq", value))
         return self
 
+    def in_(self, column, values):
+        self.filters.append((column, "in", list(values)))
+        return self
+
     def is_(self, column, value):
         self.filters.append((column, "is", None if value == "null" else value))
         return self
@@ -163,6 +168,9 @@ class FakeQuery:
             have = row.get(column)
             if kind == "ilike":
                 if str(have).lower() != str(value).lower():  # patterns without % match the whole value
+                    return False
+            elif kind == "in":
+                if have not in value:
                     return False
             elif (kind in ("eq", "is") and have != value) or (kind == "neq" and have == value):
                 return False

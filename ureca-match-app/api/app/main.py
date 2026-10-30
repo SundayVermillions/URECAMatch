@@ -16,6 +16,7 @@ from app.routers import (
     applications,
     auth,
     catalog,
+    chat,
     cycles,
     debug,
     listings,
@@ -48,7 +49,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth, profile, users, listings, proposals, applications, rankings, cycles, matching, notifications, catalog, debug):
+for r in (
+    auth,
+    profile,
+    users,
+    listings,
+    proposals,
+    applications,
+    rankings,
+    cycles,
+    matching,
+    notifications,
+    chat,
+    catalog,
+    debug,
+):
     app.include_router(r.router)
 
 
