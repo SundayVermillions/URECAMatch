@@ -9,7 +9,7 @@ import { I } from "./icons";
 import { BrandMark } from "./brand-mark";
 import { GlassIndicator, LiquidGlassFilter } from "./liquid-glass";
 import type { Role } from "@/lib/api/models";
-import { Avatar } from "@/components/ui";
+import { Avatar, Toast } from "@/components/ui";
 
 type Item = { href: string; label: string; icon: React.ReactNode; badge?: number };
 
@@ -43,6 +43,8 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
   const path = usePathname();
   const router = useRouter();
   const [epoch, setEpoch] = useState(0);
+  const [profileNotice, setProfileNotice] = useState(0);
+  const profileIncomplete = me?.user.role === "student" && !!me.student && !me.student.profile_complete;
 
   useEffect(() => {
     if (loading) return;
@@ -73,7 +75,14 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
             {items.map((it, i) => {
               const active = i === activeIndex;
               return (
-                <Link key={it.href} href={it.href} className={`group flex items-center gap-3 h-10 px-2.5 rounded-[12px] font-display text-[14px] transition-colors ${active ? "text-text font-semibold" : "text-muted font-medium hover:bg-black/[0.03] hover:text-text"}`}>
+                <Link key={it.href} href={it.href} onNavigate={(event) => {
+                  // REQ-PROF-1: explain the gate without discarding an unfinished profile form.
+                  if (profileIncomplete && it.href !== "/profile") {
+                    event.preventDefault();
+                    setProfileNotice((notice) => notice + 1);
+                    if (path !== "/profile") router.replace("/profile?complete=1");
+                  }
+                }} className={`group flex items-center gap-3 h-10 px-2.5 rounded-[12px] font-display text-[14px] transition-colors ${active ? "text-text font-semibold" : "text-muted font-medium hover:bg-black/[0.03] hover:text-text"}`}>
                   <span className={`shrink-0 ${active ? "text-text" : "text-faint group-hover:text-muted"}`}>{it.icon}</span>
                   <span className="truncate">{it.label}</span>
                   {it.badge ? <span className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full bg-accent text-white text-[11px] font-semibold tabular">{it.badge}</span> : null}
@@ -93,6 +102,9 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
       </aside>
       </div>
       <main className="flex-1 min-w-0 overflow-y-auto">
+        <Toast key={profileNotice} show={profileNotice > 0 && profileIncomplete} tone="warn" title="Please complete your profile first." onClose={() => setProfileNotice(0)}>
+          Complete and save your profile before opening other pages.
+        </Toast>
         {DEBUG_CLOCK_ON && <DebugClock onChanged={() => setEpoch((n) => n + 1)} />}
         {/* The key remounts the page after the debug clock moves, so every screen re-fetches for the new "now", and when the route changes, so the entrance plays. */}
         <div key={`${epoch}:${path}`} className="page-in max-w-[1080px] pt-10 pb-16 pl-12 pr-10">{children}</div>
