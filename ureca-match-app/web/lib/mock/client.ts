@@ -276,7 +276,7 @@ export class MockClient implements ApiClient {
   }
   async listUsers(f: M.UserFilters = {}) {
     this.need("admin");
-    return this.db.users.filter((u) => (!f.role || u.role === f.role) && (!f.status || u.status === f.status)
+    return this.db.users.filter((u) => u.id !== "system" && (!f.role || u.role === f.role) && (!f.status || u.status === f.status)
       && (!f.q || (u.name + u.email).toLowerCase().includes(f.q.toLowerCase())))
       .map((u) => {
         const sup = this.db.supervisors.find((s) => s.user_id === u.id);
@@ -300,7 +300,7 @@ export class MockClient implements ApiClient {
   }
   async updateUser(id: string, b: M.UserUpdate, confirmCleanup = false) {
     const a = this.need("admin"); const u = this.db.users.find((u) => u.id === id);
-    if (!u) throw new M.ApiError(404, "not_found", "User was not found.");
+    if (!u || u.id === "system") throw new M.ApiError(404, "not_found", "User was not found.");
     const roleChanging = !!b.role && b.role !== u.role;
     // Inactive and Unverified both block sign-in, so both count as taking the account out of use.
     const deactivating = !!b.status && b.status !== "active" && b.status !== u.status;
@@ -326,7 +326,7 @@ export class MockClient implements ApiClient {
   }
   async deactivateUser(id: string, confirmCleanup = false) {
     const a = this.need("admin"); const u = this.db.users.find((u) => u.id === id);
-    if (!u) throw new M.ApiError(404, "not_found", "User was not found.");
+    if (!u || u.id === "system") throw new M.ApiError(404, "not_found", "User was not found.");
     this.guardAccountChange(u, false, true, false, confirmCleanup, a, "deactivated");
     const wasActive = u.status !== "inactive";
     u.status = "inactive"; this.audit(a, "user_deactivated", [u.id]);
