@@ -171,7 +171,7 @@ export function ListingForm({ existing }: { existing?: Listing }) {
         <Input value={skills} onChange={(e) => setSkills(e.target.value)} maxLength={1000} placeholder="e.g. PyTorch, model evaluation, scientific writing" invalid={!!err("skills")} />
       </Field>
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Hours per week" error={err("hours_per_week")} hint="A typical week, 1 to 40.">
+        <Field label="Hours per week" error={err("hours_per_week")}>
           <Input type="number" min={1} max={40} value={hours} onChange={(e) => setHours(e.target.value)} placeholder="e.g. 8" invalid={!!err("hours_per_week")} />
         </Field>
         <Field label="Mode">
