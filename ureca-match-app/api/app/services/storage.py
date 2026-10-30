@@ -26,6 +26,10 @@ class StorageService(Protocol):
         """Generates a temporary read URL for a stored file."""
         ...
 
+    def read(self, bucket: str, path: str) -> bytes | None:
+        """The stored bytes, or None when there is no such file (a seeded document has none)."""
+        ...
+
 
 class MockStorageService:
     def __init__(self, base_url: str = "") -> None:
@@ -51,6 +55,11 @@ class MockStorageService:
         if bucket == "covers":
             return "/sample-cover.png"
         return "/sample-transcript.pdf"
+
+    def read(self, bucket: str, path: str) -> bytes | None:
+        key = path if path.startswith(f"{bucket}/") else f"{bucket}/{path.lstrip('/')}"
+        found = self._files.get(key)
+        return found[0] if found else None
 
 
 class SupabaseStorageService:
@@ -81,6 +90,13 @@ class SupabaseStorageService:
             clean_path = clean_path[len(bucket) + 1 :]
         res = self.client.storage.from_(bucket).create_signed_url(clean_path, minutes * 60)
         return res.get("signedURL") or res.get("signedUrl") or ""
+
+    def read(self, bucket: str, path: str) -> bytes | None:
+        clean_path = path[len(bucket) + 1 :] if path.startswith(f"{bucket}/") else path
+        try:
+            return self.client.storage.from_(bucket).download(clean_path)
+        except Exception:  # no such file
+            return None
 
 
 _storage: StorageService | None = None
