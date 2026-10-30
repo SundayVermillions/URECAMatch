@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { Banner, Button, Field, Input, Reveal } from "@/components/ui";
-import { API_MODE, getClient } from "@/lib/api/client";
+import { getClient } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/models";
 
 function VerifyForm() {
@@ -56,8 +56,7 @@ function VerifyForm() {
       </div>
       {error && !error.field && <Banner tone="bad">{error.message}</Banner>}
       <Reveal show={!!resentMsg}><Banner tone="good">{resentMsg}</Banner></Reveal>
-      {/* REQ-REG-2: the fixed verification code is only available in mock mode. */}
-      <Field label="Verification code" error={error?.field === "code" ? error.message : null} hint={API_MODE === "mock" ? "Demo code: 000000" : "Use the code sent to your e-mail."}>
+      <Field label="Verification code" error={error?.field === "code" ? error.message : null} hint="Use the code sent to your e-mail.">
         <Input
           id="code"
           inputMode="numeric"
