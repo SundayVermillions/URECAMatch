@@ -57,8 +57,14 @@ export default function MyApplications() {
   }
   const m = offer.data;
   const offerRound = m ? cycle.data?.rounds.find((r) => r.id === m.round_id)?.number : undefined;
-  // A declined proposal is replaced once the student sends a newer one to the same supervisor.
-  const proposalList = (proposals.data ?? []).filter((p) => p.status !== "declined" || !(proposals.data ?? []).some((q) => q.id !== p.id && q.supervisor_id === p.supervisor_id && q.submitted_at > p.submitted_at));
+  // A declined proposal is replaced once the student sends a newer one to the same supervisor. The clock can stand still in a demo,
+  // so two proposals may share a time: the later id is the newer one.
+  const sentAt = (p: { submitted_at: string; id: string }) => [Date.parse(p.submitted_at), Number(p.id.replace(/\D/g, ""))];
+  const newer = (q: { submitted_at: string; id: string }, p: { submitted_at: string; id: string }) => {
+    const [qt, qn] = sentAt(q), [pt, pn] = sentAt(p);
+    return qt > pt || (qt === pt && qn > pn);
+  };
+  const proposalList = (proposals.data ?? []).filter((p) => p.status !== "declined" || !(proposals.data ?? []).some((q) => q.supervisor_id === p.supervisor_id && newer(q, p)));
   // REQ-OUTCOME-3: an offer can be answered until its deadline while the cycle is open. The server may not have timed a
   // lapsed offer out yet, so the card compares the deadline with the server's clock (phase.now), not the browser's.
   const lapsed = m?.status === "published" && !!me && !!m.offer_expires_at && Date.parse(me.phase.now) > Date.parse(m.offer_expires_at);
