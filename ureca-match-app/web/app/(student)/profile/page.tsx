@@ -263,7 +263,8 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
 
   const complete = !!p?.profile_complete;
   const inline = error && !error.field ? <Banner tone="bad">{error.message}</Banner>
-    : mustComplete && !complete ? <Banner tone="accent" title="One step before you apply.">Upload your transcript, then check your academic details.</Banner>
+    // REQ-PROF-1: show the reason even when a redirect has no query parameter.
+    : !complete ? <Banner tone="warn" title="Please complete your profile first.">Complete and save your profile before opening other pages.</Banner>
     : null;
   const locked = !transcriptDoc; // the transcript comes first: until it is uploaded nothing else can be filled in
   const editMode = !locked && (editing || !complete); // without a transcript there is nothing to edit yet: the profile reads as dashes
