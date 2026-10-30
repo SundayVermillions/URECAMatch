@@ -6,7 +6,7 @@ import { CoursePicker, searchTopics } from "@/components/pickers";
 import { PageTitle } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { Avatar, Banner, Button, Card, Field, Input, Pill, Reveal, Select, Toast, fmtDate, inputCls } from "@/components/ui";
+import { Avatar, Banner, Button, Card, Field, Input, Modal, Pill, Reveal, Select, Toast, fmtDate, inputCls } from "@/components/ui";
 import { ApiError, type StudentProfile, type TranscriptParse } from "@/lib/api/models";
 import { useCall } from "@/lib/use-api";
 
@@ -83,10 +83,13 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
+  const [pendingRemovals, setPendingRemovals] = useState<string[]>([]);
+  const [preview, setPreview] = useState<{ id: string; name: string; url: string | null; loading: boolean; error: string | null } | null>(null);
+  const previewRequest = useRef(0);
   const [prefill, setPrefill] = useState<"filled" | "updated" | "rejected" | null>(null);
   const [changes, setChanges] = useState(""); // what an automatic update changed, in words
   const [baseline, setBaseline] = useState(() => JSON.stringify(f)); // the form as last saved, to tell "unsaved changes" from "up to date"
-  const dirty = JSON.stringify(f) !== baseline;
+  const dirty = JSON.stringify(f) !== baseline || pendingRemovals.length > 0;
 
   const file = useRef<HTMLInputElement>(null);
   const transcriptFile = useRef<HTMLInputElement>(null);
@@ -186,32 +189,39 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   }
 
   async function viewDoc(docId: string) {
+    // REQ-PROF-3: open the viewer in-page; delayed signed URLs must not depend on browser popups.
+    const request = ++previewRequest.current;
+    const name = allDocs.find((d) => d.id === docId)?.file_name ?? "Document";
+    setPreview({ id: docId, name, url: null, loading: true, error: null });
     setActiveDocId(docId);
-    setError(null);
     try {
       const res = await call((api) => api.documentUrl(docId));
-      if (res?.url) {
-        window.open(res.url, "_blank", "noopener,noreferrer");
+      if (request === previewRequest.current) {
+        setPreview({ id: docId, name, url: res.url ?? null, loading: false,
+          error: res.url ? null : "This file is unavailable. Upload it again to view it." });
       }
     } catch (err) {
-      setError(err as ApiError);
+      if (request === previewRequest.current) {
+        setPreview({ id: docId, name, url: null, loading: false,
+          error: err instanceof ApiError ? err.message : "The document could not be opened. Please try again." });
+      }
     } finally {
-      setActiveDocId(null);
+      if (request === previewRequest.current) setActiveDocId(null);
     }
   }
 
-  async function removeDoc(docId: string) {
-    if (!confirm("Remove this document?")) return;
-    setActiveDocId(docId);
+  function closePreview() {
+    previewRequest.current += 1;
+    setPreview(null);
+    setActiveDocId(null);
+  }
+
+  function removeDoc(docId: string) {
+    // REQ-PROF-3: cancelling or leaving the form must not delete a stored document.
+    setPendingRemovals((ids) => ids.includes(docId) ? ids : [...ids, docId]);
+    setEditing(true);
+    setSaved(false);
     setError(null);
-    try {
-      await call((api) => api.deleteDocument(docId));
-      await refresh();
-    } catch (err) {
-      setError(err as ApiError);
-    } finally {
-      setActiveDocId(null);
-    }
   }
 
   async function save(e: React.FormEvent) {
@@ -220,6 +230,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     setError(null);
     setSaved(false);
     setPrefill(null);
+    let removedAny = false;
     try {
       await call((api) =>
         api.updateProfile({
@@ -231,11 +242,19 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
           research_interests: f.research_interests,
         })
       );
-      await refresh();
       setBaseline(JSON.stringify(f));
+      for (const docId of pendingRemovals) {
+        await call((api) => api.deleteDocument(docId));
+        removedAny = true;
+        // Keep any failed removals pending so a retry does not delete a file twice.
+        setPendingRemovals((ids) => ids.filter((id) => id !== docId));
+      }
+      await refresh();
       setSaved(true);
       setEditing(false); // back to reading it
     } catch (err) {
+      // A later removal may fail after an earlier one succeeded. Show the saved state before retrying.
+      if (removedAny) await refresh();
       setError(err as ApiError);
     } finally {
       setBusy(false);
@@ -254,6 +273,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   function cancelEdit() {
     const next = fromProfile(p);
     setF(next); setBaseline(JSON.stringify(next));
+    setPendingRemovals([]);
     setError(null); setPrefill(null); setSaved(false); setEditing(false);
   }
   function pickTranscript() {
@@ -292,7 +312,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                 {editMode && (
                   <>
                     {dirty && <span className="mr-1 inline-flex items-center gap-2 text-[13px] text-muted"><span aria-hidden className="h-2 w-2 rounded-full bg-warn" />Unsaved changes</span>}
-                    {complete && <Button type="button" variant="secondary" onClick={cancelEdit}>Cancel</Button>}
+                    {(complete || pendingRemovals.length > 0) && <Button type="button" variant="secondary" disabled={busy} onClick={cancelEdit}>Cancel</Button>}
                     <Button type="submit" disabled={busy}>{busy ? "Saving..." : "Save changes"}</Button>
                   </>
                 )}
@@ -305,7 +325,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
             </div>
           </div>
 
-          <fieldset className="m-0 min-w-0 divide-y divide-border border-0 border-t border-border p-0 px-8">
+          <fieldset disabled={busy} className="m-0 min-w-0 divide-y divide-border border-0 border-t border-border p-0 px-8">
             <Group title="Academic details">
               {editMode ? (
                 <>
@@ -452,8 +472,10 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                   </DocRow>
                 )}
                 {supportingDocs.map((d) => (
-                  <DocRow key={d.id} name={d.file_name} meta={`Supporting · ${fmtDate(d.uploaded_at)}`} busy={activeDocId === d.id} onView={() => viewDoc(d.id)}>
-                    <IconAction label={`Delete ${d.file_name}`} danger disabled={activeDocId === d.id} onClick={() => removeDoc(d.id)}><I.Trash size={16} /></IconAction>
+                  <DocRow key={d.id} name={d.file_name} meta={pendingRemovals.includes(d.id) ? "Will be removed when you save" : `Supporting · ${fmtDate(d.uploaded_at)}`} busy={activeDocId === d.id} onView={() => viewDoc(d.id)}>
+                    {pendingRemovals.includes(d.id)
+                      ? <Button type="button" variant="text" size="sm" disabled={busy} onClick={() => setPendingRemovals((ids) => ids.filter((id) => id !== d.id))}>Undo</Button>
+                      : <IconAction label={`Delete ${d.file_name}`} danger disabled={busy || activeDocId === d.id} onClick={() => removeDoc(d.id)}><I.Trash size={16} /></IconAction>}
                   </DocRow>
                 ))}
               </ul>
@@ -463,12 +485,13 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
                       <I.Upload size={14} /> Add a document
                     </Button>
                   ) : (
-                    <span className="text-[12.5px] text-muted">Limit reached. Delete one to add another.</span>
+                    <span className="text-[12.5px] text-muted">{pendingRemovals.length ? "Save your removals before adding another document." : "Limit reached. Remove a document and save to add another."}</span>
                   )}
                   <span className="text-[12.5px] text-muted tabular">{supportingCount} of 5</span>
                 </div>
             </>
           )}
+          {pendingRemovals.length > 0 && <p className="mt-3 text-[12.5px] text-muted">Save changes to confirm document removals, or Cancel to keep the files.</p>}
           {err("file") && <div className="mt-3 text-[12.5px] font-medium text-bad-ink">{err("file")}</div>}
         </Card>
 
@@ -483,6 +506,12 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
         </Card>
         </div>
       </div>
+      <Modal open={preview !== null} onClose={closePreview} title={preview?.name ?? "Document"}
+        footer={<>{preview?.error && <Button type="button" variant="secondary" onClick={() => viewDoc(preview.id)}>Try again</Button>}<Button type="button" onClick={closePreview}>Close</Button></>}>
+        {preview?.loading && <p role="status">Opening document...</p>}
+        {preview?.error && <p role="alert" className="text-bad-ink">{preview.error}</p>}
+        {preview?.url && <iframe src={preview.url} title={preview.name} className="h-[65vh] min-h-[280px] w-full border-0" />}
+      </Modal>
     </form>
   );
 }

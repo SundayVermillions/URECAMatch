@@ -23,7 +23,7 @@ from app.models import (
     UserUpdate,
 )
 from app.services.account_cleanup import clean_up, find_active_items, is_last_admin, summarise
-from app.services.audit import audit
+from app.services.audit import SYSTEM, audit
 from app.services.notify import notify
 from app.services.titles import check_title, compose, split_title
 
@@ -61,6 +61,8 @@ def list_users(
 ) -> list[UserListItem]:
     out = []
     for u in store.users:
+        if u.id == SYSTEM.id:  # REQ-USER-1: the audit actor is not a manageable sign-in account.
+            continue
         if role and u.role != role:
             continue
         if status and u.status != status:
@@ -119,7 +121,7 @@ def update_user(
     confirm_cleanup: ConfirmCleanup = False,
 ) -> User:
     u = store.user(user_id)
-    if u is None:
+    if u is None or u.id == SYSTEM.id:  # REQ-USER-2: preserve the reserved audit actor.
         raise not_found("User")
     role_changing = body.role is not None and body.role != u.role
     # Inactive and Unverified both block sign-in (deps.current_user), so both count as taking the account out of use.
@@ -176,7 +178,7 @@ def deactivate(
     user_id: str, admin: AdminUser, store: StoreDep, settings: SettingsDep, confirm_cleanup: ConfirmCleanup = False
 ) -> Ok:
     u = store.user(user_id)
-    if u is None:
+    if u is None or u.id == SYSTEM.id:  # REQ-USER-3: preserve the reserved audit actor.
         raise not_found("User")
     if _guard_account_change(store, u, False, True, False, confirm_cleanup):  # REQ-USER-3
         clean_up(store, admin, u, settings.now(), "deactivated")
