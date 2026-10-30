@@ -217,7 +217,7 @@ export default function Propose() {
           {[
             "Until they answer, you can still withdraw it from My applications.",
             "If they accept, you are registered to this project straight away. It cannot be changed or withdrawn after that.",
-            "You then leave the matching pool. Every other application and proposal you have is withdrawn.",
+            "You leave the matching pool only after the supervisor accepts this proposal. Your other active applications and pending proposals are then withdrawn.",
           ].map((t) => (
             <li key={t} className="flex gap-2.5 items-start"><span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-accent shrink-0" />{t}</li>
           ))}
