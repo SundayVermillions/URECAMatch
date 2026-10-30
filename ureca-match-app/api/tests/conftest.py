@@ -22,6 +22,12 @@ APPROVAL_CLOSED = datetime(2026, 9, 14, 9, tzinfo=UTC)  # Round 2's results are 
 
 
 @pytest.fixture(autouse=True)
+def _normal_seed(monkeypatch):
+    """A local .env may set DEMO_FRESH=true for the demo; tests run on the normal seed whatever it says."""
+    monkeypatch.setattr(get_settings(), "demo_fresh", False)
+
+
+@pytest.fixture(autouse=True)
 def fresh_store(monkeypatch):
     monkeypatch.setenv("API_MODE", "mock")
     # Existing requirement tests intentionally exercise the original, fixed September scenario.
