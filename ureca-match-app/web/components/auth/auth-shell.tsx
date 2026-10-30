@@ -43,7 +43,6 @@ const tone: Tone = {
 
 type Dims = { vw: number; vh: number; desktop: boolean };
 
-const STEPS = ["Browse", "Rank", "Match"];
 const LEFT = 0.56; // share of the sheet given to the brand half; the form half is the rest
 
 function readSeen() {
@@ -136,7 +135,7 @@ function Lens({ tone }: { tone: Tone }) {
 /**
  * Auth screens. Desktop: a full-screen globe-in-a-lens intro, then the globe moves left
  * while one glass sheet fades in around it and the form slides onto the right half.
- * Plays once per session, skippable, and is skipped for reduced motion. Below 1024px: just the form.
+ * Plays once per session and is skipped for reduced motion. Below 1024px: just the form.
  */
 export function AuthShell({ children }: { children: React.ReactNode }) {
   const [dims, setDims] = useState<Dims | null>(null);
@@ -268,27 +267,6 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             Nurturing the next generation of{" "}
             <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(90deg, ${tone.head[0]}, ${tone.head[1]})` }}>researchers.</span>
           </div>
-          {/* The three stages, as a small timeline */}
-          <ol className="relative flex flex-col gap-4 pb-2 pr-2">
-            <div aria-hidden className="absolute left-[13px] top-3 bottom-3 w-px" style={{ background: `linear-gradient(180deg, ${tone.rim[3]}, transparent)` }} />
-            {STEPS.map((s, i) => (
-              <motion.li
-                key={s}
-                className="relative flex items-center gap-3"
-                initial={instant ? false : { opacity: 0, y: 10 }}
-                animate={split ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-                transition={{ duration: dur(0.8), delay: split ? dur(1 + i * 0.12) : 0, ease: EASE }}
-              >
-                <span
-                  className="size-[27px] rounded-full grid place-items-center text-[11px] font-semibold tabular"
-                  style={{ color: tone.head[0], background: `rgba(${tone.tint},${0.14 + i * 0.1})`, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.85)" }}
-                >
-                  0{i + 1}
-                </span>
-                <span className="text-[14px] font-medium text-text/80">{s}</span>
-              </motion.li>
-            ))}
-          </ol>
         </div>
       </motion.div>
 
@@ -308,16 +286,6 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </motion.div>
-
-      {!split && (
-        <button
-          type="button"
-          onClick={() => setSplit(true)}
-          className="absolute z-40 bottom-6 right-8 text-[12px] font-medium text-muted hover:text-text transition-colors"
-        >
-          Skip intro
-        </button>
-      )}
     </div>
   );
 }

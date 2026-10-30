@@ -4,7 +4,8 @@
  *  checklist used before Continue enables, and the last step shows everything before the confirm dialog. The steps only guide the
  *  student; every rule is enforced again by POST /proposals. */
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 import { PageTitle } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
@@ -28,17 +29,31 @@ const STEPS = [
 /** Which step holds a field the server complained about, so the student lands where the message is. */
 const stepOf = (field?: string | null) => (field === "supervisor_id" ? 0 : field === "title" || field === "description" || field === "research_interests" ? 1 : field === "statement" ? 2 : 3);
 
+/** `/propose?from=<id>` reopens a declined proposal with its text filled in, so the student can answer the supervisor's reason and send it again. */
 export default function Propose() {
+  return <Suspense fallback={null}><ProposeLoader /></Suspense>;
+}
+
+function ProposeLoader() {
+  const from = useSearchParams().get("from");
+  const mine = useApi((api) => api.myProposals(), []);
+  if (!from) return <ProposeForm initial={null} />;
+  if (!mine.data && !mine.error) return <Loading />; // wait for the list, or the form would start empty and keep its initial values
+  return <ProposeForm initial={mine.data?.find((p) => p.id === from && p.status === "declined") ?? null} />;
+}
+
+function ProposeForm({ initial }: { initial: Proposal | null }) {
   const { me } = useMe();
   const call = useCall();
   const sups = useApi((api) => api.supervisors(), []);
   const docs = me?.student?.documents ?? [];
-  const [supervisor, setSupervisor] = useState<SupervisorSummary | null>(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [interests, setInterests] = useState<string[]>(me?.student?.research_interests ?? []);
-  const [statement, setStatement] = useState("");
-  const [attached, setAttached] = useState<string[] | null>(null); // null = default: attach the transcript(s)
+  const [picked, setSupervisor] = useState<SupervisorSummary | null>(null);
+  const supervisor = picked ?? sups.data?.find((s) => s.id === initial?.supervisor_id) ?? null;
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [interests, setInterests] = useState<string[]>(initial?.research_interests ?? me?.student?.research_interests ?? []);
+  const [statement, setStatement] = useState(initial?.statement ?? "");
+  const [attached, setAttached] = useState<string[] | null>(initial ? initial.document_ids.filter((d) => docs.some((x) => x.id === d)) : null); // null = default: attach the transcript(s)
   const docIds = attached ?? docs.filter((d) => /transcript/i.test(d.file_name)).map((d) => d.id);
   const [error, setError] = useState<ApiError | null>(null);
   const [done, setDone] = useState<Proposal | null>(null);
@@ -83,6 +98,7 @@ export default function Propose() {
       {standing.viewOnly
         ? <div className="mb-5"><Banner tone={standing.placedIn ? "good" : "warn"} title={standing.placedIn ? "You have a project." : "You cannot propose this cycle."}>{standing.reason}</Banner></div>
         : closed && <div className="mb-5"><Banner tone="warn" title="Proposals are closed.">{me?.phase.label}. You can send a proposal during an application window.</Banner></div>}
+      {initial && <div className="mb-5"><Banner tone="warn" title="Revising a declined proposal.">{initial.decision_note ? `${initial.supervisor_name} said: ${initial.decision_note}` : "Update it and send it again."}</Banner></div>}
       {error && !error.field && <div className="mb-5"><Banner tone="bad">{error.message}</Banner></div>}
 
       <div className="grid grid-cols-[220px_minmax(0,1fr)] gap-8 items-start">
