@@ -139,7 +139,7 @@ Submitting an application does not notify anyone or write to the audit log. Step
 - **Generated role-matrix test.** `api/tests/test_NFR_5_3_roles.py` reads every path and method from `shared/openapi.json` and calls each restricted endpoint as each wrong role, expecting 403 (`test_NFR_5_3_2_role_matrix`). `test_NFR_5_3_2_every_endpoint_classified` fails when someone adds an endpoint without classifying it, so new endpoints cannot skip the check.
 - **Object-level rules.** Beyond roles, handlers check ownership: a student may only attach their own documents (`apply()`); a supervisor may only decide their own matches (`_decide()`), edit their own listings and see their own proposals; documents are visible only to the owner, admins, or a supervisor the student applied to (`_may_view()` in `rankings.py`); notifications are marked read only by their owner. Tests include `test_REQ_APPRV_supervisor_cannot_decide_another_supervisors_match`, `test_REQ_PROJ_2_cannot_edit_another_supervisors_listing`, `test_REQ_VRANK_3_other_student_cannot_view` and `test_REQ_NOTIF_2_supabase_mark_read_scoped_to_owner`.
 - **Secrets stay server-side.** `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `CRON_SECRET` and `RESEND_API_KEY` are read only by `Settings` in the API. The web build only sees `NEXT_PUBLIC_API_MODE`, `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_DEBUG_CLOCK`. Row-level security is enabled on every public table with no policies, so the anon key reads nothing.
-- **Cron endpoint.** `/internal/tick` accepts `GET` (Vercel Cron) and `POST` (the admin Matching Rounds screen). Outside mock mode it requires `Authorization: Bearer <CRON_SECRET>` or an admin session; other roles get `403`, no valid token gets `401` (`test_REQ_OUTCOME_tick_cron.py`).
+- **Cron endpoint.** `/internal/tick` accepts `GET` (Vercel Cron) and `POST` (the admin Application Cycle screen). Outside mock mode it requires `Authorization: Bearer <CRON_SECRET>` or an admin session; other roles get `403`, no valid token gets `401` (`test_REQ_OUTCOME_tick_cron.py`).
 
 ### 5.3 Global control flow
 
@@ -150,7 +150,7 @@ Time-based changes happen the next time the schedule runs after they fall due. `
 Three things run the schedule:
 
 - `api/vercel.json` registers a Vercel Cron job for `/internal/tick` at `5 9 * * *` (09:05 UTC, 5:05 pm in Singapore), called with `GET` and `Authorization: Bearer <CRON_SECRET>`. Every window the admin screens create opens and closes at 5 pm in Singapore, so each step runs five minutes after it falls due, which lets a request sent just before a deadline finish first. On Vercel's Hobby plan a daily job may start at any time within its hour.
-- The admin Matching Rounds screen (`web/app/(admin)/rounds/page.tsx`) calls it with `POST` and the admin's session.
+- The admin Application Cycle screen (`web/app/(admin)/rounds/page.tsx`) calls it with `POST` and the admin's session.
 - In mock mode, `main.py` registers `keep_schedule` as an app-wide dependency, so `advance()` also runs before every request. In Supabase mode this is off unless `SCHEDULER_ON_REQUEST` is set, and the cron drives the schedule.
 
 Answering an offer does not wait for the schedule: the accept and decline handlers check the deadline themselves. Most window logic does not depend on the schedule at all, because guards compute the phase from dates on every request through `windows.phase()`.

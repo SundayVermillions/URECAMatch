@@ -31,7 +31,7 @@ const NAV: Record<Role, (unread: number, extra: Record<string, number>) => Item[
     { href: "/dashboard", label: "Dashboard", icon: <I.Chart /> },
     { href: "/users", label: "Manage users", icon: <I.Users /> },
     { href: "/listings", label: "Project Status", icon: <I.Folder /> },
-    { href: "/rounds", label: "Matching rounds", icon: <I.Calendar /> },
+    { href: "/rounds", label: "Application Cycle", icon: <I.Calendar /> },
     { href: "/audit", label: "Audit Log", icon: <I.Shield /> },
     { href: "/notifications", label: "Notifications", icon: <I.Bell />, badge: unread },
   ],

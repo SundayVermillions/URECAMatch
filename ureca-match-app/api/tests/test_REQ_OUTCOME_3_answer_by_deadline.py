@@ -85,21 +85,3 @@ def test_REQ_OUTCOME_3_a_last_round_offer_cannot_be_answered_after_the_cycle_clo
     assert offer.status == MatchStatus.published  # the schedule leaves a closed cycle alone
     r = client_for(offer.student_id).post("/me/match/accept")
     assert r.status_code == 409 and r.json()["code"] == "offer_expired"
-
-
-def test_REQ_OUTCOME_3_an_offer_cannot_be_answered_once_an_admin_closes_the_cycle(
-    round_2_offers, client_for, as_admin, fresh_store
-):
-    first, second = round_2_offers[:2]
-    assert as_admin.post(f"/admin/cycles/{fresh_store.cycle.id}/close").status_code == 200
-    for offer, answer in ((first, "accept"), (second, "decline")):
-        r = client_for(offer.student_id).post(f"/me/match/{answer}")
-        assert r.status_code == 409 and r.json()["code"] == "cycle_closed"
-    assert first.status == second.status == MatchStatus.published
-
-
-def test_REQ_OUTCOME_3_reopening_the_cycle_lets_students_answer_again(round_2_offers, client_for, as_admin, fresh_store):
-    cycle_id = fresh_store.cycle.id
-    assert as_admin.post(f"/admin/cycles/{cycle_id}/close").status_code == 200
-    assert as_admin.post(f"/admin/cycles/{cycle_id}/reopen").status_code == 200
-    assert client_for(round_2_offers[0].student_id).post("/me/match/accept").status_code == 200

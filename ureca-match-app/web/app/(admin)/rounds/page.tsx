@@ -21,8 +21,6 @@ export default function Rounds() {
   const [viewId, setViewId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const [reopening, setReopening] = useState(false);
   const [creating, setCreating] = useState(false);
   const [summary, setSummary] = useState<RoundSummary | null>(null);
 
@@ -32,6 +30,11 @@ export default function Rounds() {
   const now = me?.phase;
   // "now" comes from the API phase (deterministic in mock mode), never from the browser clock
   const current = rounds.find((r) => r.id === selected) ?? (viewedIsActive ? rounds.find((r) => r.id === now?.round_id) : undefined) ?? rounds[0];
+  const over = now?.window === "closed"; // the active cycle has closed, so the next one can be created (REQ-CYCLE-1)
+  const newCycleLock = active && !over ? "An existing application cycle is still active" : null;
+  // An ended cycle stays the active one until the next is created, but is shown as closed, like the ones in the history
+  const isClosed = (c: Cycle) => c.status === "closed" || (over && c.id === active?.id);
+  const viewedClosed = !!viewed && isClosed(viewed);
   const reload = () => { data.reload(); refresh(); };
 
   // Every round of the active cycle has a summary: before matching, its pool and the slots matching can fill.
@@ -44,7 +47,7 @@ export default function Rounds() {
   const stats = summary && summary.round.id === current?.id ? summary : null; // never another round's numbers while loading
 
   const statusOf = (r: Round) => {
-    if (!viewedIsActive) return r.published_at ? "published" : r.executed_at ? "awaiting_publication" : "completed";
+    if (viewedClosed) return r.published_at ? "published" : r.executed_at ? "awaiting_publication" : "completed";
     if (r.published_at) return "published";
     if (r.executed_at) return now?.round_id === r.id && now.window === "approval" ? "approval_window" : "awaiting_publication";
     if (now?.round_id === r.id) return now.window === "application" ? "application_window" : now.window === "review" ? "review_window" : "awaiting_publication";
@@ -53,25 +56,23 @@ export default function Rounds() {
 
   return (
     <>
-      <PageHeader title="Matching rounds" description={viewed ? `${viewed.academic_year} · ${rounds.length} rounds · opens ${fmtDate(viewed.opening_date)} · closes ${fmtDate(viewed.closing_date)}${viewedIsActive ? "" : " · closed"}` : "No application cycle yet"}
+      <PageHeader title="Application Cycle"description={viewed ? `${viewed.academic_year} · ${rounds.length} rounds · opens ${fmtDate(viewed.opening_date)} · closes ${fmtDate(viewed.closing_date)}${viewedClosed ? " · closed" : ""}` : "No application cycle yet"}
         right={!creating ? (
           <div className="flex items-center gap-2">
             {all.length > 1 && (
               <Select value={viewed?.id ?? ""} onChange={(e) => { setViewId(e.target.value); setSelected(null); }} className="max-w-[240px]">
-                {all.map((c) => <option key={c.id} value={c.id}>{c.academic_year}{c.status === "closed" ? " · closed" : " · active"}</option>)}
+                {all.map((c) => <option key={c.id} value={c.id}>{c.academic_year}{isClosed(c) ? " · closed" : " · active"}</option>)}
               </Select>
             )}
-            {viewedIsActive && <Button variant="secondary" onClick={() => setClosing(true)}>Close cycle</Button>}
-            {viewedIsActive && <Button variant="secondary" onClick={() => setSettings(true)}><I.Gear /> Cycle settings</Button>}
-            {viewed && !viewedIsActive && <Button variant="secondary" disabled={!!active} title={active ? `Close the ${active.academic_year} cycle first` : undefined} onClick={() => setReopening(true)}>Reopen cycle</Button>}
-            {!active && <Button onClick={() => setCreating(true)}>New cycle</Button>}
+            {viewedIsActive && !over && <Button variant="secondary" onClick={() => setSettings(true)}><I.Gear /> Cycle settings</Button>}
+            <Locked reason={newCycleLock}><Button disabled={!!newCycleLock} onClick={() => setCreating(true)}>New cycle</Button></Locked>
           </div>
         ) : undefined} />
       {data.loading && !data.data ? <Loading /> : creating || !viewed ? (
         <CreateCycle onCreated={() => { setCreating(false); setViewId(null); reload(); }} onCancel={all.length > 0 ? () => setCreating(false) : undefined} />
       ) : (
         <>
-          {!viewedIsActive && <div className="mb-4"><Banner tone="accent">This cycle is closed. {active ? `Close the ${active.academic_year} cycle to reopen it.` : "Reopen it to make it the active cycle."}</Banner></div>}
+          {viewedClosed && <div className="mb-4"><Banner tone="accent">This cycle is closed and can no longer be changed.</Banner></div>}
           <div className="grid grid-cols-3 gap-3.5 mb-4">
             {rounds.map((r) => {
               const st = statusOf(r);
@@ -82,7 +83,7 @@ export default function Rounds() {
                 </button>
               );
             })}
-            {rounds.length === 0 && <div className="col-span-3 bg-surface rounded-card p-6 text-center text-[13px] text-muted border border-border">No rounds configured yet.{viewedIsActive ? " Use Cycle settings to add rounds." : ""}</div>}
+            {rounds.length === 0 && <div className="col-span-3 bg-surface rounded-card p-6 text-center text-[13px] text-muted border border-border">No rounds configured yet.{viewedIsActive && !over ? " Use Cycle settings to add rounds." : ""}</div>}
           </div>
 
           {viewedIsActive && current && (
@@ -133,8 +134,6 @@ export default function Rounds() {
       )}
 
       {settings && <CycleSettings onClose={() => setSettings(false)} onSaved={() => { setSettings(false); reload(); }} />}
-      <CloseCycleModal open={closing} cycleId={viewed?.id} onClose={() => setClosing(false)} onClosed={() => { setClosing(false); reload(); }} />
-      <ReopenCycleModal open={reopening} cycleId={viewed?.id} cycleName={viewed?.academic_year} onClose={() => setReopening(false)} onReopened={() => { setReopening(false); setViewId(viewed?.id ?? null); reload(); }} />
     </>
   );
 }
@@ -207,7 +206,7 @@ function CreateCycle({ onCreated, onCancel }: { onCreated: () => void; onCancel?
       <div className="flex flex-col gap-4 max-w-[560px]">
         <div>
           <h2>Create an application cycle</h2>
-          <p className="text-[13px] text-muted mt-1">No cycle is active. Set the term and dates to open a new one; add rounds afterwards in Cycle settings.</p>
+          <p className="text-[13px] text-muted mt-1">No cycle is open. Set the term and dates to open a new one; add rounds afterwards in Cycle settings.</p>
         </div>
         {error && <Banner tone="bad">{error.message}</Banner>}
         <Field label="Academic year"><Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="AY26/27 Semester 1" /></Field>
@@ -222,44 +221,6 @@ function CreateCycle({ onCreated, onCancel }: { onCreated: () => void; onCancel?
         </div>
       </div>
     </Card>
-  );
-}
-
-function ReopenCycleModal({ open, cycleId, cycleName, onClose, onReopened }: { open: boolean; cycleId?: string; cycleName?: string; onClose: () => void; onReopened: () => void }) {
-  const call = useCall();
-  const [error, setError] = useState<ApiError | null>(null);
-  const [busy, setBusy] = useState(false);
-  async function confirm() {
-    if (!cycleId) return; setError(null); setBusy(true);
-    try { await call((api) => api.reopenCycle(cycleId)); onReopened(); }
-    catch (e) { setError(e as ApiError); } finally { setBusy(false); }
-  }
-  return (
-    <Modal open={open} onClose={onClose} title="Reopen this cycle?" footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button disabled={busy} onClick={confirm}>{busy ? "Reopening…" : "Reopen cycle"}</Button></>}>
-      <div className="flex flex-col gap-3 text-text">
-        {error && <Banner tone="bad">{error.message}</Banner>}
-        <p className="text-[13px] text-muted">Reopening makes {cycleName ?? "this cycle"} the active cycle again and notifies students and supervisors. Only one cycle can be active at a time.</p>
-      </div>
-    </Modal>
-  );
-}
-
-function CloseCycleModal({ open, cycleId, onClose, onClosed }: { open: boolean; cycleId?: string; onClose: () => void; onClosed: () => void }) {
-  const call = useCall();
-  const [error, setError] = useState<ApiError | null>(null);
-  const [busy, setBusy] = useState(false);
-  async function confirm() {
-    if (!cycleId) return; setError(null); setBusy(true);
-    try { await call((api) => api.closeCycle(cycleId)); onClosed(); }
-    catch (e) { setError(e as ApiError); } finally { setBusy(false); }
-  }
-  return (
-    <Modal open={open} onClose={onClose} title="Close this cycle?" footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button variant="destructive" disabled={busy} onClick={confirm}>{busy ? "Closing…" : "Close cycle"}</Button></>}>
-      <div className="flex flex-col gap-3 text-text">
-        {error && <Banner tone="bad">{error.message}</Banner>}
-        <p className="text-[13px] text-muted">Closing pauses the cycle and notifies students and supervisors. It stays in the history and you can reopen it later or create the next cycle.</p>
-      </div>
-    </Modal>
   );
 }
 

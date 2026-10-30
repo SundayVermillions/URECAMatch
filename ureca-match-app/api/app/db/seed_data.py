@@ -268,7 +268,7 @@ def make_cycle() -> Cycle:
 
 
 def make_past_cycle() -> Cycle:
-    """A completed prior cycle, kept so admins can browse history and reopen one if needed."""
+    """A completed prior cycle, kept so admins can browse history."""
     cid = "cyc-2526s2"
     rounds: list[Round] = []
     cursor = dt(5, 1) + timedelta(days=7)  # opens 5 Jan 2026, one pre-application week

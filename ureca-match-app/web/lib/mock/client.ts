@@ -493,6 +493,8 @@ export class MockClient implements ApiClient {
   async myListings() { const u = this.need("supervisor"); return this.db.listings.filter((l) => l.supervisor_id === u.id).map((l) => this.decorate(l, u)); }
   /** True once the cycle closing date has passed (REQ-PROJ-1, REQ-PROJ-2), as in routers/listings.py. */
   private cycleClosed() { const c = this.activeCycle(); return !c || this.now.getTime() > Date.parse(c.closing_date); }
+  /** Mirror of listing_lifecycle.close_published (REQ-PROJ-4): close every published project. Drafts stay drafts. */
+  private closePublished() { for (const l of this.db.listings) if (l.status === "published") l.status = "closed"; }
   private checkListingText(title?: string | null, description?: string | null) {
     if (title != null && title.trim().length < 5) throw new M.ApiError(422, "title_too_short", "Give the project a title of at least 5 characters.", "title");
     if (description != null && description.trim().length < 20) throw new M.ApiError(422, "description_too_short", "Describe the project in at least 20 characters.", "description");
@@ -823,33 +825,19 @@ export class MockClient implements ApiClient {
   async listCycles() { this.need("admin"); return [...this.db.cycles].sort((x, y) => Date.parse(y.opening_date) - Date.parse(x.opening_date)); }
   async getCycle(id: string) { this.need("admin"); const c = this.cycleById(id); if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found."); return c; }
   async createCycle(b: M.CycleCreate) {
-    const a = this.need("admin");
-    if (this.activeCycle()) throw new M.ApiError(409, "cycle_active", "Close the current cycle before creating a new one.");
+    const a = this.need("admin"), old = this.activeCycle();
+    if (old && !this.cycleClosed()) throw new M.ApiError(409, "cycle_active", "An existing application cycle is still active."); // use case 1-1: one cycle at a time
     if (Date.parse(b.closing_date) <= Date.parse(b.opening_date)) throw new M.ApiError(422, "bad_dates", "Closing date must be after the opening date.", "closing_date");
     if (Date.parse(b.closing_date) <= this.now.getTime()) throw new M.ApiError(422, "date_in_past", "This closing date has already passed. Pick a later one.", "closing_date"); // use case 1-1 E3
     const clash = this.db.cycles.find((c) => Date.parse(c.opening_date) <= Date.parse(b.closing_date) && Date.parse(b.opening_date) <= Date.parse(c.closing_date));
     if (clash) throw new M.ApiError(409, "cycle_overlap", `These dates overlap the ${clash.academic_year} cycle. Cycles cannot overlap.`);
+    if (old) { // it has closed, so it moves to the history (REQ-CYCLE-4)
+      old.status = "closed";
+      this.closePublished(); // REQ-PROJ-4: in case the schedule has not run since it closed
+      this.audit(a, "cycle_updated", [old.id], "closed");
+    }
     const c: M.Cycle = { id: this.id("cyc"), academic_year: b.academic_year, opening_date: b.opening_date, closing_date: b.closing_date, pre_application_days: b.pre_application_days ?? 7, status: "draft", rounds: [], rollover_unmatched: true };
     this.db.cycles.push(c); this.audit(a, "cycle_updated", [c.id], "created"); return c;
-  }
-  async closeCycle(id: string) {
-    const a = this.need("admin"); const c = this.cycleById(id);
-    if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
-    if (c.status === "closed") throw new M.ApiError(409, "already_closed", "This cycle is already closed.");
-    c.status = "closed";
-    for (const l of this.db.listings) if (l.status === "published") l.status = "closed"; // REQ-PROJ-4: projects live only while a cycle is open
-    this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle closed", `The ${c.academic_year} cycle is now closed.`);
-    this.audit(a, "cycle_updated", [c.id], "closed"); return c;
-  }
-  async reopenCycle(id: string) {
-    const a = this.need("admin"); const c = this.cycleById(id);
-    if (!c) throw new M.ApiError(404, "not_found", "Cycle was not found.");
-    if (c.status !== "closed") throw new M.ApiError(409, "not_closed", "This cycle is already open.");
-    const active = this.activeCycle();
-    if (active) throw new M.ApiError(409, "cycle_active", `Close the ${active.academic_year} cycle before reopening another.`);
-    c.status = "in_progress";
-    this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle reopened", `The ${c.academic_year} cycle has reopened.`);
-    this.audit(a, "cycle_updated", [c.id], "reopened"); return c;
   }
   async updateCycle(id: string, b: M.CycleUpdate) {
     const a = this.need("admin"); const c = this.cycleById(id);
@@ -1206,6 +1194,8 @@ export class MockClient implements ApiClient {
    *  publish once approval closes, keep statuses current, then time out lapsed offers. Safe to call again.
    *  Like the API, it does nothing once the cycle has closed (windows.cycle_closed). */
   private advance() {
+    const c = this.activeCycle();
+    if (c && this.now.getTime() > Date.parse(c.closing_date)) this.closePublished(); // REQ-PROJ-4: the closing date passed, so its projects close
     if (this.cycleClosed()) return;
     const t = this.now.getTime();
     for (const r of [...(this.activeCycle()?.rounds ?? [])].sort((x, y) => x.number - y.number)) {

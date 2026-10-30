@@ -132,9 +132,9 @@ def offer_deadline(cycle: Cycle, r: Round, now: datetime) -> datetime | None:
 
 
 def cycle_closed(cycle: Cycle | None, now: datetime) -> bool:
-    """Whether nothing may be scheduled for this cycle any more: it has no cycle, an admin closed it, or its closing
-    date has passed. A cycle can be past its closing date while its status still says in progress (the seeded one
-    is), and the schedule must not run for it then."""
+    """Whether nothing may be scheduled for this cycle any more: it has no cycle, it moved to the history when the next
+    cycle was created, or its closing date has passed. A cycle stays in progress past its closing date until the next
+    cycle is created, and the schedule must not run for it then."""
     return cycle is None or cycle.status == CycleStatus.closed or now > cycle.closing_date
 
 
