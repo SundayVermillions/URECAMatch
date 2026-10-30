@@ -24,7 +24,7 @@ export default function Audit() {
     .sort((a, b) => (newest ? -1 : 1) * (Date.parse(a.timestamp) - Date.parse(b.timestamp)));
   return (
     <>
-      <PageTitle title="Audit and overrides" />
+      <PageTitle title="Audit Log" />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative w-64"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"><I.Search size={16} /></span><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search names and notes" aria-label="Search the audit log" className="w-full pl-9" /></div>
         <FilterSelect label="Operation" value={op ? LABEL[op] : undefined} options={Object.values(LABEL)} anyLabel="All" align="left"

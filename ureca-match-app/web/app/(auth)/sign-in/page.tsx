@@ -6,7 +6,7 @@ import { Banner, Button, Field, Input } from "@/components/ui";
 import { useMe } from "@/components/shell/app-provider";
 import { API_MODE, getClient } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/models";
-import { homeFor, setSession } from "@/lib/session";
+import { homeFor, markFreshSignIn, setSession } from "@/lib/session";
 
 const DEMO = [
   { id: "stu-1", label: "Student · Wei Ling Tan" },
@@ -45,6 +45,7 @@ function SignInForm() {
     try {
       const s = await (await getClient()).signIn({ email, password });
       setSession({ userId: s.user.id, role: s.user.role, name: s.user.name, token: s.access_token });
+      markFreshSignIn();
       await refresh();
       router.replace(homeFor(s.user.role));
     } catch (err) {
@@ -56,6 +57,7 @@ function SignInForm() {
 
   async function demo(id: string) {
     setSession({ userId: id, role: id.startsWith("stu") ? "student" : id.startsWith("sup") ? "supervisor" : "admin", name: "" });
+    markFreshSignIn();
     await refresh();
     router.replace(homeFor(id.startsWith("stu") ? "student" : id.startsWith("sup") ? "supervisor" : "admin"));
   }

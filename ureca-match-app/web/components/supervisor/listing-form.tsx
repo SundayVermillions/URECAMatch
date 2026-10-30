@@ -154,9 +154,8 @@ export function ListingForm({ existing }: { existing?: Listing }) {
   const capacityField = (
     <div>
       <div className="mb-1.5 text-[13px] font-medium">Capacity</div>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center">
         <Stepper value={slots} onChange={setSlots} min={minSlots} max={20} format={(v) => `${v} ${v === 1 ? "slot" : "slots"}`} />
-        {existing && existing.filled_slots > 0 && <span className="text-[13px] text-muted">{committed} matched or offered, so at least {minSlots}</span>}
       </div>
       <div className="mt-1.5 text-[12px] text-faint">How many students you can take on this project.</div>
       {err("available_slots") && <div className="mt-2"><Banner tone="bad">{err("available_slots")}</Banner></div>}

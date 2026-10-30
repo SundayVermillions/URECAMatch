@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, File, Query, UploadFile
 
-from app.deps import CurrentUser, SettingsDep, StoreDep, StudentUser, SupervisorUser
+from app.deps import AdminUser, CurrentUser, SettingsDep, StoreDep, StudentUser, SupervisorUser
 from app.errors import conflict, forbidden, invalid, not_found
 from app.models import (
     AccountStatus,
@@ -108,6 +108,16 @@ def browse(
             continue
         out.append(_decorate(lst, user, submitted, held))
     return out
+
+
+@router.get("/admin/listings", response_model=list[Listing])
+def admin_listings(user: AdminUser, store: StoreDep, settings: SettingsDep) -> list[Listing]:
+    """REQ-PROJ-4: the admin sees every project and where it stands, drafts and closed ones included. Read only. Students
+    still see published projects only (REQ-BROWSE-3). Published first, then drafts, then closed; by title within each."""
+    submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
+    order = {ListingStatus.published: 0, ListingStatus.draft: 1, ListingStatus.closed: 2}
+    rows = [_decorate(lst, user, submitted, held) for lst in store.all_listings()]
+    return sorted(rows, key=lambda lst: (order[lst.status], lst.title.lower()))
 
 
 @router.get("/me/recommendations", response_model=list[Recommendation])

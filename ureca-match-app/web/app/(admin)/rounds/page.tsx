@@ -118,7 +118,7 @@ export default function Rounds() {
                   ) : (
                     <div className="flex items-center gap-3.5 bg-accent-soft border border-accent-border rounded-row px-4 py-3.5">
                       <div className="flex-1">
-                        <div className="font-display text-[14px] font-bold">{stats.declined ? `${stats.declined} declined by supervisors` : "No supervisor has declined a match"}</div>
+                        {stats.declined > 0 && <div className="font-display text-[14px] font-bold">{stats.declined} declined by supervisors</div>}
                         <div className="text-[12.5px] text-muted mt-0.5">Approval window until {fmtDeadline(current.approval_end)}. Results publish automatically when it closes. Declined students are unmatched for this round; reassign one only in exceptional cases.</div>
                       </div>
                       <Link href={`/rounds/${current.id}/matches`}><Button>Review matches</Button></Link>

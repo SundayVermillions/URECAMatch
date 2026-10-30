@@ -21,6 +21,7 @@ export interface ApiClient {
   deactivateUser(id: string, confirmCleanup?: boolean): Promise<void>;
   // slice B
   browse(f?: M.ListingFilters): Promise<M.Listing[]>;
+  adminListings(): Promise<M.Listing[]>; // admin only: every project, any status, read only
   listing(id: string): Promise<M.Listing>;
   supervisors(): Promise<M.SupervisorSummary[]>;
   topics(): Promise<M.TopicGroup[]>;

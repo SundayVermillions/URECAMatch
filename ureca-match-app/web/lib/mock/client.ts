@@ -434,6 +434,11 @@ export class MockClient implements ApiClient {
       && (!f.supervisor || lc(l.supervisor_name).includes(lc(f.supervisor))))
       .map((l) => this.decorate(l, u));
   }
+  /** Mirror of routers/listings.py admin_listings(): every project with its status, published first, then drafts, then closed. */
+  async adminListings() {
+    const u = this.need("admin"); const order: Record<string, number> = { published: 0, draft: 1, closed: 2 };
+    return this.db.listings.map((l) => this.decorate(l, u)).sort((a, b) => order[a.status] - order[b.status] || a.title.localeCompare(b.title));
+  }
   async listing(id: string) {
     const u = this.user(); const l = this.listingOr404(id);
     if (l.status !== "published" && u.id !== l.supervisor_id && u.role !== "admin") throw new M.ApiError(404, "not_found", "Project was not found.");
@@ -704,7 +709,7 @@ export class MockClient implements ApiClient {
   }
 
   // ---- slice C
-  async myApplications() { const u = this.need("student"); return this.db.applications.filter((a) => a.student_id === u.id).sort((a, b) => (a.preference_rank ?? 99) - (b.preference_rank ?? 99)); }
+  async myApplications() { const u = this.need("student"); return this.db.applications.filter((a) => a.student_id === u.id).map((a) => ({ ...a, cover_url: this.db.listings.find((l) => l.id === a.listing_id)?.cover_url ?? null })).sort((a, b) => (a.preference_rank ?? 99) - (b.preference_rank ?? 99)); }
   async apply(b: M.ApplicationCreate) {
     const u = this.need("student"); this.requireApplicationWindow(); const l = this.listingOr404(b.listing_id);
     const sp = this.student(u.id);

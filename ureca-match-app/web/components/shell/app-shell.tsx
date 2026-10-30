@@ -30,8 +30,9 @@ const NAV: Record<Role, (unread: number, extra: Record<string, number>) => Item[
   admin: (unread) => [
     { href: "/dashboard", label: "Dashboard", icon: <I.Chart /> },
     { href: "/users", label: "Manage users", icon: <I.Users /> },
+    { href: "/listings", label: "Project Status", icon: <I.Folder /> },
     { href: "/rounds", label: "Matching rounds", icon: <I.Calendar /> },
-    { href: "/audit", label: "Audit & overrides", icon: <I.Shield /> },
+    { href: "/audit", label: "Audit Log", icon: <I.Shield /> },
     { href: "/notifications", label: "Notifications", icon: <I.Bell />, badge: unread },
   ],
 };
@@ -50,7 +51,7 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
     if (loading) return;
     if (!me) { router.replace("/sign-in"); return; }
     if (me.user.role !== role) router.replace(me.user.role === "student" ? "/browse" : me.user.role === "supervisor" ? "/projects" : "/dashboard");
-    else if (role === "student" && me.student && !me.student.profile_complete && path !== "/profile") router.replace("/profile?complete=1"); // REQ-PROF-1
+    // The incomplete-profile redirect lives in AppProvider, so there is one place that decides where they land.
   }, [me, loading, role, router, path]);
 
   if (loading || !me || me.user.role !== role) return <div className="p-10 text-muted">Loading…</div>;
@@ -103,7 +104,7 @@ export function AppShell({ role: wanted, children, badges = {} }: { role?: Role;
       </div>
       <main className="flex-1 min-w-0 overflow-y-auto">
         <Toast key={profileNotice} show={profileNotice > 0 && profileIncomplete} tone="warn" title="Please complete your profile first." onClose={() => setProfileNotice(0)}>
-          Complete and save your profile before opening other pages.
+          Upload your transcript, check your details and save before opening other pages.
         </Toast>
         {DEBUG_CLOCK_ON && <DebugClock onChanged={() => setEpoch((n) => n + 1)} />}
         {/* The key remounts the page after the debug clock moves, so every screen re-fetches for the new "now", and when the route changes, so the entrance plays. */}
