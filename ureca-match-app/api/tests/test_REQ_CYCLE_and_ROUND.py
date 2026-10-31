@@ -432,7 +432,7 @@ def test_REQ_ROUND_1_schedule_saves_cycle_dates_and_rounds_together(as_admin, as
     saved = fresh_store.cycle.rounds[2]
     assert saved.review_end.isoformat().startswith("2026-09-28T08:59:59") and saved.approval_end.day == 1
     notes = _cycle_notes(as_student)  # one notice with the dates as saved
-    assert len(notes) == 1 and notes[0]["message"].startswith("The cycle now closes on 9 Oct, 5:00 pm SGT. Round 3:")
+    assert len(notes) == 1 and notes[0]["message"].startswith("The cycle now closes on 9 Oct, 5:00 pm SGT. Round 3 now runs")
 
 
 def test_REQ_ROUND_3_refused_schedule_changes_nothing(as_admin, as_student, fresh_store):
@@ -458,18 +458,38 @@ def test_REQ_CYCLE_2_schedule_announces_the_dates_it_saves(as_admin, as_student,
     }
     assert as_admin.put(f"/admin/cycles/{CYCLE_ID}/schedule", json=body).status_code == 200
     assert fresh_store.cycle.rounds[0].application_start == start
-    assert f"Round 1: applications {when(start)} to" in _cycle_notes(as_student)[0]["message"]
+    assert f"Round 1 now runs {when(start)} to" in _cycle_notes(as_student)[0]["message"]
 
 
 def test_REQ_ROUND_2_changing_a_round_notifies_students_and_supervisors(as_admin, as_student, as_supervisor):
     body = {"rounds": [{"number": 1, **SPEC}, {"number": 2, **SPEC}, {"number": 3, "application_days": 3, "review_days": 2}]}
     assert as_admin.put(f"/admin/cycles/{CYCLE_ID}/rounds", json=body).status_code == 200
-    expected = (
-        "Round 3: applications 16 Sep, 5:00 pm SGT to 19 Sep, 5:00 pm SGT; rankings due 21 Sep, 5:00 pm SGT; "
-        "results out 23 Sep, 5:00 pm SGT."
-    )
-    for client in (as_student, as_supervisor):
-        assert [n["message"] for n in _cycle_notes(client)] == [expected]  # Rounds 1 and 2 did not move
+    expected = "Round 3 now runs 16 Sep, 5:00 pm SGT to 23 Sep, 5:00 pm SGT."  # one short sentence per moved round
+    for client, link in ((as_student, "/my-applications"), (as_supervisor, "/projects")):
+        notes = _cycle_notes(client)
+        assert [n["message"] for n in notes] == [expected]  # Rounds 1 and 2 did not move
+        assert notes[0]["link"] == link
+
+
+def test_REQ_ROUND_1_first_rounds_announce_the_cycle_once(as_admin, as_student, as_supervisor, fresh_store):
+    fresh_store.cycles = []
+    body = {
+        "academic_year": "AY27/28 Semester 1",
+        "opening_date": "2027-08-01T09:00:00Z",
+        "closing_date": "2027-11-01T09:00:00Z",
+        "pre_application_days": 7,
+    }
+    cycle_id = as_admin.post("/admin/cycles", json=body).json()["id"]
+    rounds = {"rounds": [{"number": n, **SPEC} for n in (1, 2)]}
+    assert as_admin.put(f"/admin/cycles/{cycle_id}/rounds", json=rounds).status_code == 200
+    for client, link in ((as_student, "/my-applications"), (as_supervisor, "/projects")):
+        notes = [n for n in client.get("/me/notifications").json() if n["title"] == "Application cycle scheduled"]
+        assert [(n["message"], n["link"]) for n in notes] == [("Round 1 applications open 8 Aug, 5:00 pm SGT.", link)]
+        assert _cycle_notes(client) == []  # not also told the dates "changed"
+    # A later change to those rounds is a change, not a new schedule.
+    later = {"rounds": [{"number": 1, **SPEC}, {"number": 2, **SPEC, "start_date": "2027-08-25T09:00:00Z"}]}
+    assert as_admin.put(f"/admin/cycles/{cycle_id}/rounds", json=later).status_code == 200
+    assert [n["message"] for n in _cycle_notes(as_student)] == ["Round 2 now runs 25 Aug, 5:00 pm SGT to 3 Sep, 5:00 pm SGT."]
 
 
 def test_REQ_ROUND_1_default_start_in_the_past_rejected(as_admin, fresh_store):

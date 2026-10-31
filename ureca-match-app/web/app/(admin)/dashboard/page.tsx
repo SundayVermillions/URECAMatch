@@ -8,7 +8,7 @@ import { I } from "@/components/shell/icons";
 import { timeLeft } from "@/components/shell/time-left";
 import { CycleTrack } from "@/components/admin/cycle-track";
 import { DemandBars, KpiTile, Rings, SegmentBar, type DemandRow } from "@/components/admin/charts";
-import { Button, Card, Skeleton, fmtDateTime, fmtDeadline } from "@/components/ui";
+import { Button, Card, Skeleton, fmtDate, fmtDateTime, fmtDeadline } from "@/components/ui";
 import type { AuditEntry, Cycle, Listing, Phase, Round, RoundSummary } from "@/lib/api/models";
 import { useApi } from "@/lib/use-api";
 
@@ -21,6 +21,8 @@ function heroFor(phase: Phase, round: Round | undefined, cycle: Cycle | null): H
   const matches = round ? { href: `/rounds/${round.id}/matches`, label: "Review matches" } : undefined;
   switch (phase.window) {
     case "before_cycle":
+      if (cycle) // created but not open yet: phase.label already says when it opens
+        return { dot: "bg-accent", eyebrow: "Upcoming cycle", title: `${cycle.academic_year} opens ${fmtDate(cycle.opening_date, { day: "numeric", month: "short", timeZone: "Asia/Singapore" })}`, body: `${phase.label}. Students can browse projects until then.`, action: { href: "/rounds", label: "View rounds" } };
       return { dot: "bg-warn", eyebrow: "No cycle", title: "No cycle is open", body: "Create the cycle and its rounds before students can apply.", action: { href: "/rounds", label: "Set up the cycle" } };
     case "pre_application": // no round is current yet, so phase.round_number is null: this is the wait for Round 1
       return { dot: "bg-accent", eyebrow: "Before Round 1", title: "Round 1 has not started", body: `${phase.label}.`, action: { href: "/rounds", label: "View rounds" } };

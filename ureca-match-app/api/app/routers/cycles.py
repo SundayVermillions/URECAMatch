@@ -178,6 +178,7 @@ def _save(
             update={"opening_date": opening, "closing_date": closing, "pre_application_days": pre_days, "rounds": rounds}
         )
         moved = moved_offer_deadlines(store, planned, now)  # REQ-OUTCOME-3
+        first = not c.rounds and bool(rounds)  # the rounds are set for the first time
         news = _news(c, planned)
         c.opening_date, c.closing_date, c.pre_application_days, c.rounds = opening, closing, pre_days, rounds
         c.rollover_unmatched = rollover  # REQ-EXEC-3
@@ -186,9 +187,10 @@ def _save(
             m.offer_expires_at = deadline
             store.save_match(m)  # in Supabase mode the store hands out copies, so each change is saved
         audit(store, admin, AuditOperation.cycle_updated, [c.id], now, note)
-    if news:  # REQ-CYCLE-3, use case 1-2: students and supervisors hear about every moved date
-        affected = [u.id for u in store.users if u.role in (Role.student, Role.supervisor)]
-        notify(store, affected, NotificationEvent.cycle_changed, "Application cycle dates changed", " ".join(news), now)
+    if first:  # use case 1-2: a new schedule is announced once, by when Round 1 opens
+        _announce(store, "Application cycle scheduled", f"Round 1 applications open {when(rounds[0].application_start)}.", now)
+    elif news:  # REQ-CYCLE-3, use case 1-2: students and supervisors hear about every moved date
+        _announce(store, "Application cycle dates changed", " ".join(news), now)
     for m, deadline in moved:
         notify(
             store,
@@ -339,17 +341,25 @@ def _unchanged(spec: RoundSpec, r: Round) -> bool:
     return same_start and (spec.application_days, spec.review_days, spec.approval_days) == _lengths(r)
 
 
+CYCLE_LINKS = {Role.student: "/my-applications", Role.supervisor: "/projects"}  # where each role acts on the dates
+
+
+def _announce(store, title: str, message: str, now: datetime) -> None:
+    """Tell students and supervisors about the schedule (REQ-CYCLE-3), each linked to their own page."""
+    users = store.users  # one read: in Supabase mode each access queries the table
+    for role, link in CYCLE_LINKS.items():
+        notify(store, [u.id for u in users if u.role == role], NotificationEvent.cycle_changed, title, message, now, link)
+
+
 def _news(old: Cycle, new: Cycle) -> list[str]:
-    """What students and supervisors are told about a schedule change (REQ-CYCLE-3, use case 1-2)."""
+    """What students and supervisors are told about a schedule change (REQ-CYCLE-3, use case 1-2): one short
+    sentence per change. The Rounds page has every window."""
     news = [f"The cycle now closes on {when(new.closing_date)}."] if new.closing_date != old.closing_date else []
     before = {r.number: r for r in old.rounds}
     for r in new.rounds:
         o = before.get(r.number)
         if o is None or _dates(o) != _dates(r):
-            news.append(
-                f"Round {r.number}: applications {when(r.application_start)} to {when(r.application_end)}; "
-                f"rankings due {when(r.review_end)}; results out {when(r.approval_end)}."
-            )
+            news.append(f"Round {r.number} now runs {when(r.application_start)} to {when(r.approval_end)}.")
     news += [f"Round {n} has been removed." for n in sorted(set(before) - {r.number for r in new.rounds})]
     return news
 
