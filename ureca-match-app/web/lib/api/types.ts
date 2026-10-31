@@ -940,6 +940,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Assignments
+         * @description Every active student and where they stand in the active cycle, and the round a new assignment would join.
+         *     Each table is read once: in Supabase mode every read is a query.
+         */
+        get: operations["assignments_admin_assignments_get"];
+        put?: never;
+        /**
+         * Assign Student
+         * @description REQ-ASSIGN-1..3 from the Assignments page. The API picks the round (_assignment_round), so the page cannot put
+         *     a student in the wrong one; the checks are manual_assign's.
+         */
+        post: operations["assign_student_admin_assignments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/audit": {
         parameters: {
             query?: never;
@@ -1434,6 +1460,23 @@ export interface components {
          * @enum {string}
          */
         ApplicationStatus: "submitted" | "withdrawn" | "matched" | "unmatched";
+        /**
+         * AssignmentStatus
+         * @description Where a student stands in the active cycle, on the Assignments page (REQ-ASSIGN-1..3).
+         * @enum {string}
+         */
+        AssignmentStatus: "accepted" | "offered" | "matched" | "unassigned";
+        /**
+         * AssignmentsView
+         * @description The Assignments page (REQ-ASSIGN-1..3, use case 1-6): every active student, and where a new assignment goes.
+         */
+        AssignmentsView: {
+            round?: components["schemas"]["Round"] | null;
+            /** Offer Deadline */
+            offer_deadline?: string | null;
+            /** Students */
+            students: components["schemas"]["StudentAssignment"][];
+        };
         /** AuditEntry */
         AuditEntry: {
             /** Id */
@@ -2228,6 +2271,23 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** StudentAssignment */
+        StudentAssignment: {
+            user: components["schemas"]["User"];
+            /** School */
+            school?: string | null;
+            status: components["schemas"]["AssignmentStatus"];
+            match?: components["schemas"]["Match"] | null;
+            /** Round Number */
+            round_number?: number | null;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Eligible
+             * @default true
+             */
+            eligible: boolean;
         };
         /** StudentProfile */
         StudentProfile: {
@@ -4400,6 +4460,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assignments_admin_assignments_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_student_admin_assignments_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualAssignRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Match"];
                 };
             };
             /** @description Validation Error */
