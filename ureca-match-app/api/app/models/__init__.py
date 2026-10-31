@@ -95,6 +95,15 @@ class MatchStatus(str, Enum):
     timed_out = "timed_out"  # decline due to timeout (REQ-OUTCOME-3)
 
 
+class AssignmentStatus(str, Enum):
+    """Where a student stands in the active cycle, on the Assignments page (REQ-ASSIGN-1..3)."""
+
+    accepted = "accepted"  # registered on a project (REQ-OUTCOME-1)
+    offered = "offered"  # holding an offer they have not answered yet (REQ-PUB-1)
+    matched = "matched"  # placed in a round whose results are not out yet
+    unassigned = "unassigned"
+
+
 class NotificationEvent(str, Enum):
     cycle_changed = "cycle_changed"
     round_opened = "round_opened"
@@ -599,6 +608,24 @@ class ManualAssignRequest(BaseModel):
     student_id: str
     listing_id: str
     justification: str = Field(min_length=10)
+
+
+class StudentAssignment(BaseModel):
+    user: User
+    school: str | None = None
+    status: AssignmentStatus
+    match: Match | None = None  # the match that places the student; None when unassigned
+    round_number: int | None = None  # the round that match belongs to
+    reason: str | None = None  # why an unassigned student has no project, e.g. "Declined an offer"
+    eligible: bool = True  # false once they declined or let an offer lapse, so matching skips them (REQ-OUTCOME-2, 4)
+
+
+class AssignmentsView(BaseModel):
+    """The Assignments page (REQ-ASSIGN-1..3, use case 1-6): every active student, and where a new assignment goes."""
+
+    round: Round | None = None  # the round a new assignment joins; None when no cycle is open or it has no rounds
+    offer_deadline: datetime | None = None  # set once that round's results are out: the offer goes at once, answer by this
+    students: list[StudentAssignment]
 
 
 class MatchDecision(BaseModel):

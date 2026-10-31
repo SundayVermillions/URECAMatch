@@ -3455,6 +3455,7 @@
           "admin: cycle"
         ],
         "summary": "Create Cycle",
+        "description": "REQ-CYCLE-1, use case 1-1. One cycle at a time: the next one can be created once the current one has closed,\nand creating it moves that one to the history. A cycle cannot be closed early; to end it sooner, an admin moves\nits closing date (REQ-CYCLE-2).",
         "operationId": "create_cycle_admin_cycles_post",
         "parameters": [
           {
@@ -3657,156 +3658,6 @@
             }
           }
         },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Cycle"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/cycles/{cycle_id}/close": {
-      "post": {
-        "tags": [
-          "admin: cycle"
-        ],
-        "summary": "Close Cycle",
-        "description": "Close a cycle. It stays in the history and can be reopened later (REQ-CYCLE-1).",
-        "operationId": "close_cycle_admin_cycles__cycle_id__close_post",
-        "parameters": [
-          {
-            "name": "cycle_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cycle Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "x-demo-user",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Cycle"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/cycles/{cycle_id}/reopen": {
-      "post": {
-        "tags": [
-          "admin: cycle"
-        ],
-        "summary": "Reopen Cycle",
-        "description": "Reopen a closed cycle. Only one cycle may be active at a time (REQ-CYCLE-1).",
-        "operationId": "reopen_cycle_admin_cycles__cycle_id__reopen_post",
-        "parameters": [
-          {
-            "name": "cycle_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cycle Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "x-demo-user",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -4081,7 +3932,7 @@
           "matching"
         ],
         "summary": "Unmatched Students",
-        "description": "REQ-REV-1 \"Unmatched\": students who applied in this round and hold no match, so an admin can assign them\n(REQ-ASSIGN-1). The same set as the summary's unmatched count.",
+        "description": "REQ-REV-1 \"Unmatched\": students who applied in this round and hold no match, so an admin can assign them\n(REQ-ASSIGN-1). The same set as the summary's unmatched count. Profiles and accounts are read once, not per student.",
         "operationId": "unmatched_students_admin_rounds__round_id__unmatched_get",
         "parameters": [
           {
@@ -4501,13 +4352,232 @@
         }
       }
     },
+    "/admin/assignments": {
+      "get": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Assignments",
+        "description": "Every active student and where they stand in the active cycle, and the round a new assignment would join.\nEach table is read once: in Supabase mode every read is a query.",
+        "operationId": "assignments_admin_assignments_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Assign Student",
+        "description": "REQ-ASSIGN-1..3 from the Assignments page. The API picks the round (_assignment_round), so the page cannot put\na student in the wrong one; the checks are _assign's.",
+        "operationId": "assign_student_admin_assignments_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualAssignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Match"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/listings/{listing_id}/assignments": {
+      "get": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Listing Assignments",
+        "description": "The students one project holds in the active cycle (matched, offered or accepted), for the admin's project page.\nReads that project's matches and only their students, not the whole roster as GET /admin/assignments does.",
+        "operationId": "listing_assignments_admin_listings__listing_id__assignments_get",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Listing Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentAssignment"
+                  },
+                  "title": "Response Listing Assignments Admin Listings  Listing Id  Assignments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/audit": {
       "get": {
         "tags": [
           "matching"
         ],
         "summary": "Audit Log",
-        "description": "REQ-AUDIT-1, newest first. Entries are never changed (REQ-AUDIT-2); readable names for the records they\naffect are added to the copies sent out.",
+        "description": "REQ-AUDIT-1: newest first (order=asc for oldest first), a page at a time: up to `limit` entries after the entry\n`cursor`, the id of the last one the page already shows. `q` searches the names, notes and who did it. Entries are\nnever changed (REQ-AUDIT-2); readable names for the records they affect are added to the copies sent out, from one\nread of each table they come from, however long the log is.",
         "operationId": "audit_log_admin_audit_get",
         "parameters": [
           {
@@ -4524,6 +4594,70 @@
                 }
               ],
               "title": "Operation"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "desc",
+                "asc"
+              ],
+              "type": "string",
+              "default": "desc",
+              "title": "Order"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 500,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           },
           {
@@ -6152,6 +6286,56 @@
           "unmatched"
         ],
         "title": "ApplicationStatus"
+      },
+      "AssignmentStatus": {
+        "type": "string",
+        "enum": [
+          "accepted",
+          "offered",
+          "matched",
+          "unassigned"
+        ],
+        "title": "AssignmentStatus",
+        "description": "Where a student stands in the active cycle, on the Assignments page (REQ-ASSIGN-1..3)."
+      },
+      "AssignmentsView": {
+        "properties": {
+          "round": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Round"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offer_deadline": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offer Deadline"
+          },
+          "students": {
+            "items": {
+              "$ref": "#/components/schemas/StudentAssignment"
+            },
+            "type": "array",
+            "title": "Students"
+          }
+        },
+        "type": "object",
+        "required": [
+          "students"
+        ],
+        "title": "AssignmentsView",
+        "description": "The Assignments page (REQ-ASSIGN-1..3, use case 1-6): every active student, and where a new assignment goes."
       },
       "AuditEntry": {
         "properties": {
@@ -8181,6 +8365,70 @@
           "password"
         ],
         "title": "SignInRequest"
+      },
+      "StudentAssignment": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "school": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AssignmentStatus"
+          },
+          "match": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Match"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "round_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Number"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "eligible": {
+            "type": "boolean",
+            "title": "Eligible",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "user",
+          "status"
+        ],
+        "title": "StudentAssignment"
       },
       "StudentProfile": {
         "properties": {

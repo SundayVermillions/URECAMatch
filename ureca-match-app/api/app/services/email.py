@@ -146,8 +146,11 @@ def send_for(store: Store, notifications: list[Notification]) -> int:
     if settings.email_mode == "off" or not notifications:
         return 0
     messages = []
+    ids = {n.user_id for n in notifications}
+    # A fan-out (a date change tells every student and supervisor) reads the users once, not once per recipient.
+    users = {u.id: u for u in store.users if u.id in ids} if len(ids) > 1 else {uid: store.user(uid) for uid in ids}
     for n in notifications:
-        user = store.user(n.user_id)
+        user = users.get(n.user_id)
         if user is None:
             continue
         if user.status == AccountStatus.inactive and n.event != NotificationEvent.account_changed:

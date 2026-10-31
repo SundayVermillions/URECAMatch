@@ -4,6 +4,8 @@ It is chosen by round, not by the order the store returns rows in: in Supabase m
 come back in id order, so "the last row" could be any of the student's matches.
 """
 
+from datetime import timedelta
+
 import pytest
 
 from app.models import Match, MatchStatus
@@ -51,7 +53,7 @@ def test_REQ_OUTCOME_1_results_from_an_earlier_cycle_are_not_shown(fresh_store, 
     assert _shown(client_for) is None
 
 
-def test_REQ_OUTCOME_1_the_result_stays_visible_after_an_admin_closes_the_cycle(fresh_store, client_for, as_admin):
+def test_REQ_OUTCOME_1_the_result_stays_visible_after_the_cycle_closes(fresh_store, client_for, at):
     fresh_store.matches.append(_match(fresh_store, "rnd-2", MatchStatus.accepted))
-    assert as_admin.post(f"/admin/cycles/{fresh_store.cycle.id}/close").status_code == 200
+    at(fresh_store.cycle.closing_date + timedelta(days=1))
     assert _shown(client_for) == ("rnd-2", "accepted")

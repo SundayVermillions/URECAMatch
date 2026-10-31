@@ -63,7 +63,7 @@ export default function Users() {
 
   return (
     <>
-      <PageTitle title="Manage users" right={<Button onClick={() => setCreating(true)}><I.Plus /> New user</Button>} />
+      <PageTitle title="User Management" right={<Button onClick={() => setCreating(true)}><I.Plus /> New user</Button>} />
       {error && !error.field && <div className="mb-4"><Banner tone="bad">{error.message}</Banner></div>}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Segmented value={role ?? "all"} onChange={(v) => { setRole(v === "all" ? undefined : v); setLimit(PAGE); }} options={[

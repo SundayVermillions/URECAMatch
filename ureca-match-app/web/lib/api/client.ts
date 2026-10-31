@@ -57,18 +57,18 @@ export interface ApiClient {
   listCycles(): Promise<M.Cycle[]>;
   getCycle(id: string): Promise<M.Cycle>;
   createCycle(body: M.CycleCreate): Promise<M.Cycle>;
-  closeCycle(id: string): Promise<M.Cycle>;
-  reopenCycle(id: string): Promise<M.Cycle>;
   updateCycle(id: string, body: M.CycleUpdate): Promise<M.Cycle>;
   setRounds(cycleId: string, body: M.RoundsUpdate): Promise<M.Cycle>;
   saveSchedule(cycleId: string, body: M.ScheduleUpdate): Promise<M.Cycle>; // Cycle settings: dates and rounds in one save
   summary(roundId: string): Promise<M.RoundSummary>;
   matches(roundId: string, status?: M.MatchStatus): Promise<M.Match[]>;
   reassign(matchId: string, body: M.ReassignRequest): Promise<M.Match>;
-  manualAssign(roundId: string, body: M.ManualAssignRequest): Promise<M.Match>;
+  assignments(): Promise<M.AssignmentsView>;
+  listingAssignments(listingId: string): Promise<M.StudentAssignment[]>;
+  assignStudent(body: M.ManualAssignRequest): Promise<M.Match>;
   unassign(matchId: string, note: string): Promise<void>;
   unmatched(roundId: string): Promise<M.UserListItem[]>;
-  auditLog(): Promise<M.AuditEntry[]>;
+  auditLog(query?: M.AuditQuery): Promise<M.AuditEntry[]>;
   supervisorMatches(): Promise<M.Match[]>;
   declineMatch(id: string, note?: string): Promise<M.Match>; // REQ-APPRV-4: during the approval window only
   matchStudent(matchId: string): Promise<M.Applicant>;

@@ -11,9 +11,9 @@ from __future__ import annotations
 import logging
 import threading
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Query
 
 from app.deps import AdminUser, SettingsDep, StoreDep, StudentUser, SupervisorUser, current_user
 from app.errors import conflict, forbidden, invalid, not_found
@@ -22,6 +22,8 @@ from app.models import (
     Applicant,
     ApplicantStudent,
     ApplicationStatus,
+    AssignmentStatus,
+    AssignmentsView,
     AuditEntry,
     AuditOperation,
     Cycle,
@@ -36,6 +38,7 @@ from app.models import (
     Role,
     RoundStatus,
     RoundSummary,
+    StudentAssignment,
     UserListItem,
 )
 from app.services import listing_lifecycle, placement, windows
@@ -57,31 +60,41 @@ _schedule_lock = threading.RLock()
 Outbox = list[tuple[list[str], NotificationEvent, str, str, str]]
 
 
-def _round(store, round_id: str):
-    r = next((r for r in (store.cycle.rounds if store.cycle else []) if r.id == round_id), None)
+# In Supabase mode every read of the store is a query, and store.cycle is two (cycles and rounds). So each handler reads
+# the cycle, the matches and the profiles it needs once and passes them down; the helpers below never read them again.
+
+
+def _round(cycle, round_id: str):
+    r = next((r for r in (cycle.rounds if cycle else []) if r.id == round_id), None)
     if r is None:
         raise not_found("Round")
     return r
 
 
-def _open_slots(store, lst) -> int:
-    """Slots nobody holds: accepted students are counted in filled_slots, pending matches and open offers hold one each."""
-    held = sum(1 for m in store.matches if m.listing_id == lst.id and m.status in placement.OPEN)
-    return max(lst.available_slots - lst.filled_slots - held, 0)
+def _open_slots(store, lst, held: dict[str, int] | None = None) -> int:
+    """Slots nobody holds: accepted students are counted in filled_slots, and this cycle's pending matches and open
+    offers hold one each. Pass `held` (placement.held_by_listing) when counting many projects, to read the store once."""
+    held = placement.held_by_listing(store.cycle, store.matches) if held is None else held
+    return max(lst.available_slots - lst.filled_slots - held.get(lst.id, 0), 0)
 
 
-def _ruled_out(store, before=None) -> set[str]:
+def _ruled_out(cycle, matches: list[Match], before=None) -> set[str]:
     """Students this cycle's matching must skip: anyone with a match in the cycle that is not a supervisor rejection,
     i.e. placed, holding an offer, or declined or timed out (REQ-OUTCOME-2, 4). With `before` (a round), only
     matches from earlier rounds count, for that round's summary."""
-    rounds = {x.id for x in (store.cycle.rounds if store.cycle else []) if before is None or x.number < before.number}
-    return {m.student_id for m in store.matches if m.round_id in rounds and m.status != MatchStatus.rejected}
+    rounds = {x.id for x in (cycle.rounds if cycle else []) if before is None or x.number < before.number}
+    return {m.student_id for m in matches if m.round_id in rounds and m.status != MatchStatus.rejected}
+
+
+def _ineligible(store) -> set[str]:
+    """Students who declined or missed an offer this cycle (REQ-OUTCOME-2, 4), from one read of the profiles."""
+    return {p.user_id for p in store.students if not p.eligible_for_matching}
 
 
 # ------------------------------------------------------------------ matching (run by the scheduler)
 
 
-def _run_matching(store, r, now, outbox: Outbox) -> None:
+def _run_matching(store, cycle, r, now, outbox: Outbox) -> None:
     """REQ-EXEC-1..4: run the stable-matching algorithm for round `r` once its review window has closed. The matches
     start the approval window: each is offered when it ends unless the supervisor declines it (REQ-APPRV-4).
     The round is claimed first with one atomic update, so when several servers reach this point only the one that
@@ -92,7 +105,7 @@ def _run_matching(store, r, now, outbox: Outbox) -> None:
         return  # another server is running it, or has
     committed: list[bool] = []
     try:
-        _match_round(store, r, now, outbox, committed)
+        _match_round(store, cycle, r, now, outbox, committed)
     except Exception:
         if not committed:
             store.release_round(r, "executed_at")
@@ -101,37 +114,39 @@ def _run_matching(store, r, now, outbox: Outbox) -> None:
     store.save_round(r)
 
 
-def _match_round(store, r, now, outbox: Outbox, committed: list[bool]) -> None:
-    _expire_offers(store, now)  # a lapsed offer frees its slot for this run
+def _match_round(store, cycle, r, now, outbox: Outbox, committed: list[bool]) -> None:
+    matches = store.matches
+    _expire_offers(store, now, cycle, matches)  # a lapsed offer frees its slot for this run
     apps = [a for a in store.applications_for(round_id=r.id) if a.status == ApplicationStatus.submitted]
-    ruled_out = _ruled_out(store)
+    ruled_out, ineligible = _ruled_out(cycle, matches), _ineligible(store)
     students: dict[str, list[tuple[int, str]]] = {}
     for a in apps:
         if a.student_id in ruled_out:
             continue  # already placed, holding an offer, or declined / timed out this cycle
-        sp = store.student(a.student_id)
-        if sp and not sp.eligible_for_matching:
+        if a.student_id in ineligible:
             continue  # excluded: declined or timed out earlier (REQ-OUTCOME-2, 4)
         students.setdefault(a.student_id, []).append((a.preference_rank or 99, a.listing_id))
     s_prefs = [StudentPrefs(sid, [lid for _, lid in sorted(v)]) for sid, v in students.items()]
     l_prefs = []
     app_by_id = {a.id: a for a in apps}
-    for lst in store.all_listings():
-        if lst.status != ListingStatus.published:
-            continue
+    held = placement.held_by_listing(cycle, matches)
+    published = {lst.id: lst for lst in store.all_listings() if lst.status == ListingStatus.published}
+    for lst in published.values():
         ranked_students = [app_by_id[aid].student_id for aid in store.ranking(lst.id, r.id) if aid in app_by_id]
-        l_prefs.append(ListingPrefs(lst.id, _open_slots(store, lst), ranked_students))
+        l_prefs.append(ListingPrefs(lst.id, _open_slots(store, lst, held), ranked_students))
     result = match(s_prefs, l_prefs)
+    users = store.users
+    names = {u.id: u.name for u in users}
     new = []
     for sid, lid in result.pairs.items():
-        lst = store.listing(lid)
+        lst = published[lid]
         pref = next((a.preference_rank for a in apps if a.student_id == sid and a.listing_id == lid), None)
         new.append(
             Match(
                 id=store.next_id("mt"),
                 round_id=r.id,
                 student_id=sid,
-                student_name=store.user(sid).name,
+                student_name=names[sid],
                 listing_id=lid,
                 listing_title=lst.title,
                 supervisor_id=lst.supervisor_id,
@@ -157,7 +172,7 @@ def _match_round(store, r, now, outbox: Outbox, committed: list[bool]) -> None:
         )
     outbox.append(
         (
-            _active_admins(store),
+            _active_admins(users),
             NotificationEvent.matches_proposed,
             f"Round {r.number} matching ran",
             f"{len(new)} students matched. Supervisors can decline until {when(r.approval_end)}, then results publish.",
@@ -166,8 +181,8 @@ def _match_round(store, r, now, outbox: Outbox, committed: list[bool]) -> None:
     )
 
 
-def _active_admins(store) -> list[str]:
-    return [u.id for u in store.users if u.role == Role.admin and u.status == AccountStatus.active]
+def _active_admins(users: list) -> list[str]:
+    return [u.id for u in users if u.role == Role.admin and u.status == AccountStatus.active]
 
 
 # ------------------------------------------------------------------ admin
@@ -175,14 +190,16 @@ def _active_admins(store) -> list[str]:
 
 @router.get("/admin/rounds/{round_id}/summary", response_model=RoundSummary)
 def summary(round_id: str, admin: AdminUser, store: StoreDep) -> RoundSummary:
-    r = _round(store, round_id)
-    ms = [m for m in store.matches if m.round_id == round_id]
-    applied, placed, excluded = _round_sets(store, r, ms)
+    cycle, matches = store.cycle, store.matches
+    r = _round(cycle, round_id)
+    ms = [m for m in matches if m.round_id == round_id]
+    applied, placed, excluded = _round_sets(store, r, cycle, matches, _ineligible(store))
     prefs = [m.preference_rank for m in ms if m.preference_rank]
+    held = placement.held_by_listing(cycle, matches)
     return RoundSummary(
         round=r,
         eligible=len(applied - excluded),  # before matching runs, the students it will consider
-        open_slots=sum(_open_slots(store, lst) for lst in store.all_listings() if lst.status == ListingStatus.published),
+        open_slots=sum(_open_slots(store, lst, held) for lst in store.all_listings() if lst.status == ListingStatus.published),
         matched=len(placed),  # a student a supervisor declined is not matched until they are placed again
         unmatched=len(applied - placed - excluded),
         excluded=len(excluded),
@@ -191,33 +208,37 @@ def summary(round_id: str, admin: AdminUser, store: StoreDep) -> RoundSummary:
     )
 
 
-def _round_sets(store, r, ms) -> tuple[set[str], set[str], set[str]]:
+def _round_sets(store, r, cycle, matches: list[Match], ineligible: set[str]) -> tuple[set[str], set[str], set[str]]:
     """Students who applied in the round, those it placed (any match but a rejection), and those excluded because an
-    earlier round placed them or they declined or timed out. Applications already decided by publish still count."""
+    earlier round placed them or they declined or timed out. Applications already decided by publish still count.
+    `cycle`, `matches` and `ineligible` (_ineligible) are the caller's single reads."""
     applied = {
         a.student_id
         for a in store.applications_for(round_id=r.id)
         if a.status in (ApplicationStatus.submitted, ApplicationStatus.matched, ApplicationStatus.unmatched)
     }
-    placed = {m.student_id for m in ms if m.status != MatchStatus.rejected}
-    earlier = _ruled_out(store, before=r)
-    excluded = {
-        sid for sid in applied - placed if sid in earlier or ((sp := store.student(sid)) and not sp.eligible_for_matching)
-    }
+    placed = {m.student_id for m in matches if m.round_id == r.id and m.status != MatchStatus.rejected}
+    earlier = _ruled_out(cycle, matches, before=r)
+    excluded = {sid for sid in applied - placed if sid in earlier or sid in ineligible}
     return applied, placed, excluded
 
 
 @router.get("/admin/rounds/{round_id}/unmatched", response_model=list[UserListItem])
 def unmatched_students(round_id: str, admin: AdminUser, store: StoreDep) -> list[UserListItem]:
     """REQ-REV-1 "Unmatched": students who applied in this round and hold no match, so an admin can assign them
-    (REQ-ASSIGN-1). The same set as the summary's unmatched count."""
-    r = _round(store, round_id)
-    applied, placed, excluded = _round_sets(store, r, [m for m in store.matches if m.round_id == round_id])
-    out = []
-    for sid in applied - placed - excluded:
-        if (u := store.user(sid)) is not None:
-            sp = store.student(sid)
-            out.append(UserListItem(user=u, school=sp.school if sp else None))
+    (REQ-ASSIGN-1). The same set as the summary's unmatched count. Profiles and accounts are read once, not per student."""
+    cycle, matches = store.cycle, store.matches
+    r = _round(cycle, round_id)
+    profiles = {p.user_id: p for p in store.students}
+    ineligible = {sid for sid, p in profiles.items() if not p.eligible_for_matching}
+    applied, placed, excluded = _round_sets(store, r, cycle, matches, ineligible)
+    wanted = applied - placed - excluded
+    users = {u.id: u for u in store.users if u.id in wanted} if wanted else {}
+    out = [
+        UserListItem(user=u, school=profiles[sid].school if sid in profiles else None)
+        for sid in wanted
+        if (u := users.get(sid)) is not None
+    ]
     return sorted(out, key=lambda x: x.user.name)
 
 
@@ -228,35 +249,38 @@ def matches(round_id: str, admin: AdminUser, store: StoreDep, status: MatchStatu
 
 @router.post("/admin/matches/{match_id}/reassign", response_model=Match)
 def reassign(match_id: str, body: ReassignRequest, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Match:
-    m = next((m for m in store.matches if m.id == match_id), None)
-    if m is None:
-        raise not_found("Match")
     with _schedule_lock:  # the round must not publish between these checks and the change
+        cycle, matches, now = store.cycle, store.matches, settings.now()  # read once, under the lock
+        m = next((m for m in matches if m.id == match_id), None)
+        if m is None:
+            raise not_found("Match")
         if m.status in (MatchStatus.published, MatchStatus.accepted, MatchStatus.declined, MatchStatus.timed_out):
             raise conflict("already_published", "Published matches cannot be reassigned.")
-        r, now = _round(store, m.round_id), settings.now()
-        _expire_offers(store, now)  # a lapsed offer must not hold the slot
-        lst = _assignable_listing(store, body.listing_id)
+        r = _round(cycle, m.round_id)
+        _expire_offers(store, now, cycle, matches)  # a lapsed offer must not hold the slot
+        lst = _assignable_listing(store, body.listing_id, placement.held_by_listing(cycle, matches))
         if lst.id == m.listing_id:
             raise invalid("same_project", "The student is already matched to this project. Choose a different one.", "listing_id")
-        deadline = _late_offer_deadline(store, r, now)
+        deadline = _late_offer_deadline(cycle, r, now)
+        was = m.listing_title
         m.original_listing_id = m.original_listing_id or m.listing_id
         m.listing_id, m.listing_title = lst.id, lst.title
         m.supervisor_id, m.supervisor_name = lst.supervisor_id, lst.supervisor_name
         m.preference_rank = _preference(store, m.student_id, m.round_id, lst.id)  # for the new project, not the old one
         m.status, m.justification = MatchStatus.reassigned, body.justification  # REQ-ASSIGN-1, 2
         store.save_match(m)
-        audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
+        note = f"Moved from {was} to {lst.title}: {body.justification}"  # use case 1-4 AF-S3: both allocations are logged
+        audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, note)
         _offer_now(store, m, deadline, now)
     return m
 
 
-def _late_offer_deadline(store, r, now):
+def _late_offer_deadline(cycle, r, now):
     """For an admin assignment in a round that is already published: there is no later publish step, so the match
     becomes an offer straight away. Returns its deadline, or None if the round is not published yet."""
     if r.published_at is None:
         return None
-    deadline = windows.offer_deadline(store.cycle, r, now)  # REQ-OUTCOME-3
+    deadline = windows.offer_deadline(cycle, r, now)  # REQ-OUTCOME-3
     if deadline is None:
         raise conflict("cycle_closed", "The cycle has closed, so no new offers can be made.")
     return deadline
@@ -278,10 +302,13 @@ def _offer_now(store, m: Match, deadline, now) -> None:
     )
 
 
-def _expire_offers(store, now) -> None:
-    """REQ-OUTCOME-3, 4: offers past their deadline time out. Run by the cron and before anything that counts slots."""
-    for m in store.matches:
-        if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at:
+def _expire_offers(store, now, cycle, matches: list[Match]) -> None:
+    """REQ-OUTCOME-3, 4: offers past their deadline time out. Run by the cron and before anything that counts slots.
+    Only the active cycle's: an earlier cycle's offers were closed out when this one was created (cycle_end), and must
+    not mark a student ineligible for this cycle. `matches` is the caller's read; it is updated in place."""
+    rounds = {r.id for r in cycle.rounds} if cycle else set()
+    for m in matches:
+        if m.round_id in rounds and m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at:
             m.status = MatchStatus.timed_out
             store.save_match(m)
             _mark_ineligible(store, m.student_id, now, "did not answer a match offer in time")
@@ -309,53 +336,61 @@ def _preference(store, student_id: str, round_id: str, listing_id: str) -> int |
     return own.preference_rank if own else None
 
 
-def _assignable_listing(store, listing_id: str):
-    """A published project with a slot nobody holds (use case 1-4: reassignment must never over-allocate)."""
+def _assignable_listing(store, listing_id: str, held: dict[str, int]):
+    """A published project with a slot nobody holds (use case 1-4: reassignment must never over-allocate). `held` is
+    placement.held_by_listing from the caller's reads."""
     lst = store.listing(listing_id)
     if lst is None or lst.status != ListingStatus.published:
         raise invalid("listing_unavailable", "Choose a published project.", "listing_id")
-    if _open_slots(store, lst) == 0:
+    if _open_slots(store, lst, held) == 0:
         raise invalid("no_slot", "That project has no open slot.", "listing_id")
     return lst
 
 
 @router.post("/admin/rounds/{round_id}/assign", response_model=Match, status_code=201)
 def manual_assign(round_id: str, body: ManualAssignRequest, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Match:
-    r, now = _round(store, round_id), settings.now()
+    return _assign(store, admin, settings.now(), body, round_id)
+
+
+def _assign(store, admin, now, body: ManualAssignRequest, round_id: str | None) -> Match:
+    """REQ-ASSIGN-1..3: put a student on a project in round `round_id`, or, from the Assignments page (None), in the
+    round the API picks (_assignment_round). The cycle and the matches are read once, under the lock."""
     with _schedule_lock:  # the round must not publish between these checks and the change
-        _expire_offers(store, now)  # a lapsed offer must not hold the slot or count as the student's project
+        cycle, matches = store.cycle, store.matches
+        if round_id is not None:
+            r = _round(cycle, round_id)
+        elif windows.cycle_closed(cycle, now):
+            raise conflict("cycle_closed", "No application cycle is open, so students cannot be assigned.")
+        elif (r := _assignment_round(cycle, now)) is None:
+            raise conflict("no_rounds", "Set up the cycle's rounds before assigning students.")
+        _expire_offers(store, now, cycle, matches)  # a lapsed offer must not hold the slot or count as the student's project
         student = store.user(body.student_id)
         if student is None or student.role != Role.student:
             raise invalid("unknown_student", "Choose a student account.", "student_id")
-        if any(
-            m.student_id == body.student_id
-            and m.status not in (MatchStatus.rejected, MatchStatus.declined, MatchStatus.timed_out)
-            for m in store.matches
-        ):  # REQ-ASSIGN-3
+        if placement.holds_project(cycle, matches, body.student_id):
+            # REQ-ASSIGN-3, in this cycle only: a project from an earlier cycle does not stop a new one
             raise conflict("already_assigned", "This student already has a project. Unassign it first.")
-        lst = _assignable_listing(store, body.listing_id)
-        deadline = _late_offer_deadline(store, r, now)
-        placement = {
+        lst = _assignable_listing(store, body.listing_id, placement.held_by_listing(cycle, matches))
+        deadline = _late_offer_deadline(cycle, r, now)
+        fields = {
             "listing_id": lst.id,
             "listing_title": lst.title,
             "supervisor_id": lst.supervisor_id,
             "supervisor_name": lst.supervisor_name,
             "status": MatchStatus.reassigned,
             "justification": body.justification,
-            "preference_rank": _preference(store, body.student_id, round_id, lst.id),
+            "preference_rank": _preference(store, body.student_id, r.id, lst.id),
         }
         # match_results keeps one row per student per round, so an earlier rejected or declined row is reused.
-        m = next((m for m in store.matches if m.round_id == round_id and m.student_id == body.student_id), None)
+        m = next((m for m in matches if m.round_id == r.id and m.student_id == body.student_id), None)
         if m is not None:
             m.original_listing_id = m.original_listing_id or m.listing_id
-            for k, v in placement.items():
+            for k, v in fields.items():
                 setattr(m, k, v)
             m.supervisor_decided_at = m.published_at = m.offer_expires_at = m.student_responded_at = None
             store.save_match(m)
         else:
-            m = Match(
-                id=store.next_id("mt"), round_id=round_id, student_id=body.student_id, student_name=student.name, **placement
-            )
+            m = Match(id=store.next_id("mt"), round_id=r.id, student_id=body.student_id, student_name=student.name, **fields)
             store.add_matches(m)
         audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
         _offer_now(store, m, deadline, now)
@@ -391,7 +426,7 @@ def unassign(match_id: str, body: MatchDecision, admin: AdminUser, store: StoreD
                 a.status = ApplicationStatus.unmatched
             store.save_applications(*won)
         store.remove_match(m)
-        if was == MatchStatus.accepted and m.student_id not in _ruled_out(store):  # back in the pool
+        if was == MatchStatus.accepted and m.student_id not in _ruled_out(store.cycle, store.matches):  # back in the pool
             sp = store.student(m.student_id)
             if sp and not sp.eligible_for_matching:
                 sp.eligible_for_matching = True
@@ -420,10 +455,124 @@ def unassign(match_id: str, body: MatchDecision, admin: AdminUser, store: StoreD
     return Ok()
 
 
+# ------------------------------------------------------------------ assignments page (REQ-ASSIGN-1..3, use case 1-6)
+
+
+def _assignment_round(cycle, now):
+    """The round a new assignment joins: the one whose window is open, or the latest that has started (before Round 1,
+    the first). The student hears with that round's results, or at once if they are out. None once the cycle has
+    closed, or if it has no rounds. Takes the cycle already read, since in Supabase mode every read is a query."""
+    return None if windows.cycle_closed(cycle, now) else windows.current_round(cycle, now)
+
+
+def _standing(
+    ms: list[Match], applied: set[int], unrun: set[int], profile, now
+) -> tuple[AssignmentStatus, Match | None, str | None]:
+    """Where one student stands, from their matches (newest round first) and the rounds they applied in: the match
+    that places them, or why they have none. An offer past its deadline counts as lapsed even if the scheduler has not
+    timed it out yet (in Supabase mode it runs on the daily cron)."""
+    lapsed = {m.id for m in ms if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at}
+    for status, held in (
+        (AssignmentStatus.accepted, (MatchStatus.accepted,)),
+        (AssignmentStatus.offered, (MatchStatus.published,)),
+        (AssignmentStatus.matched, tuple(s for s in placement.OPEN if s != MatchStatus.published)),
+    ):
+        if m := next((m for m in ms if m.status in held and m.id not in lapsed), None):
+            return status, m, None
+    if lapsed or any(m.status == MatchStatus.timed_out for m in ms):
+        reason = "Did not answer an offer in time"
+    elif any(m.status == MatchStatus.declined for m in ms):
+        reason = "Declined an offer"
+    elif waiting := sorted(applied & unrun):
+        reason = f"Waiting for Round {waiting[0]} matching"
+    elif any(m.status == MatchStatus.rejected for m in ms):
+        reason = "Rejected by the supervisor"
+    elif applied:
+        reason = "Not matched"
+    elif profile is not None and not profile.profile_complete:
+        reason = "Profile not complete"
+    else:
+        reason = "Has not applied"
+    return AssignmentStatus.unassigned, None, reason
+
+
+@router.get("/admin/assignments", response_model=AssignmentsView)
+def assignments(admin: AdminUser, store: StoreDep, settings: SettingsDep) -> AssignmentsView:
+    """Every active student and where they stand in the active cycle, and the round a new assignment would join.
+    Each table is read once: in Supabase mode every read is a query."""
+    now, cycle = settings.now(), store.cycle
+    rounds = {r.id: r.number for r in cycle.rounds} if cycle else {}
+    unrun = {r.number for r in cycle.rounds if r.executed_at is None} if cycle else set()
+    by_student: dict[str, list[Match]] = {}
+    for m in sorted((m for m in store.matches if m.round_id in rounds), key=lambda m: rounds[m.round_id], reverse=True):
+        by_student.setdefault(m.student_id, []).append(m)
+    applied: dict[str, set[int]] = {}
+    for a in store.applications:
+        if a.round_id in rounds and a.status != ApplicationStatus.withdrawn:
+            applied.setdefault(a.student_id, set()).add(rounds[a.round_id])
+    profiles = {p.user_id: p for p in store.students}
+    students = []
+    for u in store.users:
+        if u.role != Role.student or u.status != AccountStatus.active:
+            continue
+        p = profiles.get(u.id)
+        status, m, reason = _standing(by_student.get(u.id, []), applied.get(u.id, set()), unrun, p, now)
+        students.append(
+            StudentAssignment(
+                user=u,
+                school=p.school if p else None,
+                status=status,
+                match=m,
+                round_number=rounds[m.round_id] if m else None,
+                reason=reason,
+                eligible=p.eligible_for_matching if p else True,
+            )
+        )
+    r = _assignment_round(cycle, now)
+    deadline = windows.offer_deadline(cycle, r, now) if r is not None and r.published_at is not None else None
+    return AssignmentsView(round=r, offer_deadline=deadline, students=sorted(students, key=lambda s: s.user.name))
+
+
+@router.get("/admin/listings/{listing_id}/assignments", response_model=list[StudentAssignment])
+def listing_assignments(listing_id: str, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> list[StudentAssignment]:
+    """The students one project holds in the active cycle (matched, offered or accepted), for the admin's project page.
+    Reads that project's matches and only their students, not the whole roster as GET /admin/assignments does."""
+    if store.listing(listing_id) is None:
+        raise not_found("Project")
+    now, cycle = settings.now(), store.cycle
+    rounds = {r.id: r.number for r in cycle.rounds} if cycle else {}
+    out = []
+    for m in store.matches:
+        if m.listing_id != listing_id or m.round_id not in rounds:
+            continue
+        status, held, _ = _standing([m], set(), set(), None, now)
+        if held is None or (u := store.user(m.student_id)) is None:
+            continue  # rejected, declined, timed out or lapsed: the match no longer holds the project
+        sp = store.student(m.student_id)
+        out.append(
+            StudentAssignment(
+                user=u,
+                school=sp.school if sp else None,
+                status=status,
+                match=m,
+                round_number=rounds[m.round_id],
+                eligible=sp.eligible_for_matching if sp else True,
+            )
+        )
+    return sorted(out, key=lambda s: s.user.name)
+
+
+@router.post("/admin/assignments", response_model=Match, status_code=201)
+def assign_student(body: ManualAssignRequest, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Match:
+    """REQ-ASSIGN-1..3 from the Assignments page. The API picks the round (_assignment_round), so the page cannot put
+    a student in the wrong one; the checks are _assign's."""
+    return _assign(store, admin, settings.now(), body, None)
+
+
 # ------------------------------------------------------------------ publishing (run by the scheduler)
 
 
-def _publish(store, r, now, outbox: Outbox) -> None:
+def _publish(store, cycle, r, now, outbox: Outbox) -> None:
     """REQ-PUB-1..3: when the approval window closes, every match nobody declined becomes an offer (REQ-APPRV-4).
     Runs once per round, and only after matching has run. The writes that can fail come first, while nothing in
     memory has changed, so if one fails the next request starts again cleanly: the rollover copies (which skip copies
@@ -431,14 +580,14 @@ def _publish(store, r, now, outbox: Outbox) -> None:
     first with one atomic update, and the claim is given back if the step fails before the offers are saved."""
     if r.executed_at is None or r.published_at is not None or now <= r.approval_end:  # REQ-PUB-1, REQ-PUB-3
         return
-    expires = windows.offer_deadline(store.cycle, r, now) if store.cycle else None  # REQ-OUTCOME-3
+    expires = windows.offer_deadline(cycle, r, now) if cycle else None  # REQ-OUTCOME-3
     if expires is None:
         return  # the cycle has closed: an offer would already be expired, so none is made and nothing is published
     if not store.claim_round(r, "published_at", now):
         return  # another server is publishing it, or has
     committed: list[bool] = []
     try:
-        _publish_round(store, r, now, expires, outbox, committed)
+        _publish_round(store, cycle, r, now, expires, outbox, committed)
     except Exception:
         if not committed:
             store.release_round(r, "published_at")
@@ -447,9 +596,10 @@ def _publish(store, r, now, outbox: Outbox) -> None:
     store.save_round(r)
 
 
-def _publish_round(store, r, now, expires, outbox: Outbox, committed: list[bool]) -> None:
-    ms = [m for m in store.matches if m.round_id == r.id]
-    nxt = next((x for x in store.cycle.rounds if x.number == r.number + 1), None)
+def _publish_round(store, cycle, r, now, expires, outbox: Outbox, committed: list[bool]) -> None:
+    matches = store.matches
+    ms = [m for m in matches if m.round_id == r.id]
+    nxt = next((x for x in cycle.rounds if x.number == r.number + 1), None)
     offers = [m for m in ms if m.status in (MatchStatus.proposed, MatchStatus.approved, MatchStatus.reassigned)]
     offered = {m.student_id: m.listing_id for m in offers}  # accepted by default; student id -> listing id
     # Every application still under review in this round gets its outcome, offer or not, so none carries
@@ -458,9 +608,9 @@ def _publish_round(store, r, now, expires, outbox: Outbox, committed: list[bool]
     unmatched = sorted({a.student_id for a in apps if a.student_id not in offered})
     # REQ-PUB-2 "all affected users": students who applied and got no offer, and supervisors with matches.
     # Only students who may still take part are told they can apply again (REQ-OUTCOME-2, 4).
-    ruled_out = _ruled_out(store)
-    can_retry = [s for s in unmatched if s not in ruled_out and ((sp := store.student(s)) is None or sp.eligible_for_matching)]
-    carried = _roll_over(store, apps, can_retry, nxt, now) if nxt and store.cycle.rollover_unmatched else set()
+    ruled_out, ineligible = _ruled_out(cycle, matches), _ineligible(store)
+    can_retry = [s for s in unmatched if s not in ruled_out and s not in ineligible]
+    carried = _roll_over(store, apps, can_retry, nxt, now) if nxt and cycle.rollover_unmatched else set()
     for a in apps:
         a.status = ApplicationStatus.matched if offered.get(a.student_id) == a.listing_id else ApplicationStatus.unmatched
     # One operation: an application is only "matched" if its match row is saved with it (REQ-PUB-1).
@@ -523,7 +673,7 @@ def _publish_round(store, r, now, expires, outbox: Outbox, committed: list[bool]
     )
     outbox.append(
         (
-            _active_admins(store),
+            _active_admins(store.users),
             NotificationEvent.results_published,
             f"Round {r.number} results published",
             f"{sent}{unplaced} Students have until {when(expires)} to respond.",
@@ -543,10 +693,11 @@ def _roll_over(store, apps, students: list[str], nxt, now) -> set[str]:
         if a.status == ApplicationStatus.submitted
     }
     copies = []
+    listings = {lst.id: lst for lst in store.all_listings()} if students else {}  # one read, not one per application
     for sid in students:
         rank = sum(1 for s, _ in already if s == sid)
         for a in sorted((a for a in apps if a.student_id == sid), key=lambda a: a.preference_rank or 99):
-            lst = store.listing(a.listing_id)
+            lst = listings.get(a.listing_id)
             full = lst is not None and lst.filled_slots >= lst.available_slots
             if lst is None or lst.status != ListingStatus.published or full or (sid, a.listing_id) in already:
                 continue
@@ -567,29 +718,53 @@ def _roll_over(store, apps, students: list[str], nxt, now) -> set[str]:
 
 
 @router.get("/admin/audit", response_model=list[AuditEntry])
-def audit_log(admin: AdminUser, store: StoreDep, operation: AuditOperation | None = None) -> list[AuditEntry]:
-    """REQ-AUDIT-1, newest first. Entries are never changed (REQ-AUDIT-2); readable names for the records they
-    affect are added to the copies sent out."""
+def audit_log(
+    admin: AdminUser,
+    store: StoreDep,
+    operation: AuditOperation | None = None,
+    q: str | None = None,
+    order: Literal["desc", "asc"] = "desc",
+    limit: Annotated[int | None, Query(ge=1, le=500)] = None,
+    cursor: str | None = None,
+) -> list[AuditEntry]:
+    """REQ-AUDIT-1: newest first (order=asc for oldest first), a page at a time: up to `limit` entries after the entry
+    `cursor`, the id of the last one the page already shows. `q` searches the names, notes and who did it. Entries are
+    never changed (REQ-AUDIT-2); readable names for the records they affect are added to the copies sent out, from one
+    read of each table they come from, however long the log is."""
     entries = sorted(
-        (e for e in store.audit if operation is None or e.operation == operation), key=lambda e: e.timestamp, reverse=True
+        (e for e in store.audit if operation is None or e.operation == operation),
+        key=lambda e: (e.timestamp, e.id),
+        reverse=order == "desc",
     )
-    return [e.model_copy(update={"affected_labels": [_describe(store, rid) for rid in e.affected_records]}) for e in entries]
+    describe = _describer(store)
+
+    def labelled(e: AuditEntry) -> AuditEntry:
+        return e.model_copy(update={"affected_labels": [describe(rid) for rid in e.affected_records]})
+
+    needle = (q or "").strip().lower()
+    rows = [x for x in map(labelled, entries) if needle in _audit_text(x)] if needle else entries
+    if cursor is not None:
+        at = next((i for i, e in enumerate(rows) if e.id == cursor), None)
+        rows = rows[at + 1 :] if at is not None else []
+    page = rows[:limit] if limit else rows
+    return page if needle else [labelled(e) for e in page]  # only the page is labelled when nothing is searched
 
 
-def _describe(store, record_id: str) -> str:
-    """What an admin reads for a record id: "student → project" for a match, a round, a cycle, a person or a project."""
-    if (m := next((m for m in store.matches if m.id == record_id), None)) is not None:
-        return f"{m.student_name} → {m.listing_title}"
-    for c in store.cycles:
-        if c.id == record_id:
-            return c.academic_year
-        if (r := next((r for r in c.rounds if r.id == record_id), None)) is not None:
-            return f"Round {r.number}, {c.academic_year}"
-    if (u := store.user(record_id)) is not None:
-        return u.name
-    if (lst := store.listing(record_id)) is not None:
-        return lst.title
-    return record_id  # removed since (an unassigned match): the note says what it was
+def _describer(store):
+    """What an admin reads for a record id: "student → project" for a match, a round, a cycle, a person or a project,
+    in that order of precedence. Each table is read once, here, not once per record."""
+    cycles = store.cycles
+    names = {lst.id: lst.title for lst in store.all_listings()}
+    names |= {u.id: u.name for u in store.users}
+    names |= {r.id: f"Round {r.number}, {c.academic_year}" for c in cycles for r in c.rounds}
+    names |= {c.id: c.academic_year for c in cycles}
+    names |= {m.id: f"{m.student_name} → {m.listing_title}" for m in store.matches}
+    return lambda record_id: names.get(record_id, record_id)  # an unassigned match is gone; its note says what it was
+
+
+def _audit_text(e: AuditEntry) -> str:
+    """What the Audit Log search looks in: the names of the records, the note and who did it."""
+    return " ".join([" ".join(e.affected_labels or e.affected_records), e.note or "", e.actor_name]).lower()
 
 
 # ------------------------------------------------------------------ supervisor
@@ -644,7 +819,7 @@ def decline_match(match_id: str, body: MatchDecision, user: SupervisorUser, stor
         raise not_found("Match")
     if m.supervisor_id != user.id:
         raise forbidden()
-    r = _round(store, m.round_id)
+    r = _round(store.cycle, m.round_id)
     if r.executed_at is None:  # REQ-APPRV-1
         raise conflict("not_executed", "Matching has not run for this round yet.")
     now = settings.now()
@@ -766,17 +941,22 @@ def _status_for(r, now) -> RoundStatus | None:
     return None
 
 
-def _due(store, now) -> bool:
+def _due(store, cycle, now) -> bool:
     """Whether advance() has anything to change: a review or approval window has closed, a round's status is out of
-    date, or an offer has lapsed. Checked without the lock, so a request with nothing to do never waits on it."""
-    for r in store.cycle.rounds if store.cycle else []:
+    date, or an offer has lapsed. Checked without the lock, so a request with nothing to do never waits on it.
+    `cycle` is advance()'s read; the matches are only read if no round needs anything."""
+    for r in cycle.rounds if cycle else []:
         if r.published_at is not None:
             continue
         if now > r.review_end and (r.executed_at is None or now > r.approval_end):
             return True  # matching or publishing is due
         if (status := _status_for(r, now)) is not None and status != r.status:
             return True
-    return any(m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at for m in store.matches)
+    rounds = {r.id for r in cycle.rounds} if cycle else set()  # as _expire_offers: this cycle's offers only
+    return any(
+        m.round_id in rounds and m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at
+        for m in store.matches
+    )
 
 
 def advance(store, now) -> None:
@@ -786,22 +966,24 @@ def advance(store, now) -> None:
     Notifications go out after the lock is released, even if a later step fails, since the earlier steps are done."""
     outbox: Outbox = []
     try:
-        if store.cycle is not None and now > store.cycle.closing_date:
+        cycle = store.cycle  # read once for the checks below: each read is two queries in Supabase mode
+        if cycle is not None and now > cycle.closing_date:
             listing_lifecycle.close_published(store)  # REQ-PROJ-4: the closing date passed, so its projects close
-        if windows.cycle_closed(store.cycle, now):
+        if windows.cycle_closed(cycle, now):
             return  # nothing is matched, published or expired for a cycle that has closed
-        if not _due(store, now):
+        if not _due(store, cycle, now):
             return
         with _schedule_lock:
-            for r in sorted(store.cycle.rounds if store.cycle else [], key=lambda x: x.number):
+            cycle = store.cycle  # again under the lock: another request may have run a step since the check
+            for r in sorted(cycle.rounds if cycle else [], key=lambda x: x.number):
                 if r.published_at is not None:
                     continue
-                _run_matching(store, r, now, outbox)
-                _publish(store, r, now, outbox)
+                _run_matching(store, cycle, r, now, outbox)
+                _publish(store, cycle, r, now, outbox)
                 if r.published_at is None and (status := _status_for(r, now)) is not None and status != r.status:
                     r.status = status
                     store.save_round(r)
-            _expire_offers(store, now)
+            _expire_offers(store, now, cycle, store.matches)
     finally:
         for user_ids, event, title, message, link in outbox:
             notify(store, user_ids, event, title, message, now, link)
