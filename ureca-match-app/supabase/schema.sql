@@ -129,6 +129,7 @@ create table project_listings (
   mode              text check (mode in ('on_site', 'hybrid', 'remote')),
   gallery_urls      text[] not null default '{}',               -- up to 4 photos, public covers bucket
   video_url         text,                                       -- YouTube or Vimeo, canonical form
+  score_weights     jsonb,                                      -- REQ-VRANK-5: null means the defaults
   status            listing_status not null default 'draft',
   created_at        timestamptz not null default now()
 );

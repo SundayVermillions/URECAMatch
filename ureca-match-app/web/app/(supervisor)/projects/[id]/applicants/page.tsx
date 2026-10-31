@@ -12,8 +12,9 @@ import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
 import { DocumentViewer } from "@/components/supervisor/document-viewer";
 import { StudentSummary } from "@/components/supervisor/student-summary";
+import { WeightsPie } from "@/components/supervisor/weights-pie";
 import { Avatar, Button, Card, Drawer, Empty, FilterMultiSelect, FilterSelect, Modal, Pill, ScoreRing, Segmented, Skeleton, Tip, fmtDate, inputCls } from "@/components/ui";
-import { ApiError, type Applicant, type ApplicantScore } from "@/lib/api/models";
+import { ApiError, type Applicant, type ApplicantScore, type ScoreWeights } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 
 const CGPA_MINS = [3.5, 4.0, 4.5];
@@ -46,24 +47,78 @@ function Sparkle({ size = 16 }: { size?: number }) {
   );
 }
 
-/** How the AI match scores were worked out, in the style of Uri's "How it works" on Browse. REQ-VRANK-1.
- *  Gemini has no fixed weights, so its factors carry no points; the local formula (api/app/services/ai_match.py) does. */
-const GEMINI_FACTORS = [
-  { c: "#22a06b", t: "Prerequisites", d: "Whether they have passed the project's prerequisite modules." },
-  { c: "#7c5cff", t: "Fit", d: "How their interests and modules overlap with the project." },
-  { c: "#f59e0b", t: "Statement", d: "The substance of their statement of interest." },
-  { c: "#3d7bff", t: "CGPA", d: "Their CGPA out of 5.00." },
+/** The factors of an AI match score and how much each counts. REQ-VRANK-1, REQ-VRANK-5.
+ *  The local formula (api/app/services/ai_match.py) reads no documents, so it shares the experience weight among the rest. */
+type FactorKey = keyof Required<ScoreWeights>;
+const FACTORS: { key: FactorKey; c: string; t: string; d: string; local?: string }[] = [
+  { key: "prerequisites", c: "#22a06b", t: "Prerequisites", d: "Whether they have passed the project's prerequisite modules.", local: "Share of the project's prerequisite modules they have passed." },
+  { key: "fit", c: "#7c5cff", t: "Fit", d: "How their interests, modules and statement suit the project.", local: "Interests the project is tagged with, or that its title or description names." },
+  { key: "experience", c: "#e0559b", t: "Experience", d: "Relevant projects, internships and skills in their attached documents." },
+  { key: "cgpa", c: "#3d7bff", t: "Grades", d: "Grades in modules related to the project count for more than overall CGPA.", local: "CGPA out of 5.00." },
 ];
-const LOCAL_FACTORS = [
-  { c: "#22a06b", t: "Prerequisites, up to 40", d: "Share of the project's prerequisite modules they have passed." },
-  { c: "#7c5cff", t: "Interests, up to 40", d: "20 for each interest the project is tagged with, 10 for each named in its title or description." },
-  { c: "#3d7bff", t: "CGPA, up to 20", d: "CGPA out of 5.00, scaled to 20 points." },
-];
+const weightOf = (w: ScoreWeights, k: FactorKey) => w[k] ?? 0;
+// An equal share, as on ScoreWeights in the API.
+const DEFAULT_WEIGHTS = Object.fromEntries(FACTORS.map((f) => [f.key, 100 / FACTORS.length])) as ScoreWeights;
 
-function AiMatchInfo({ total, local }: { total: number; local: number }) {
+/** REQ-VRANK-5: how much each factor counts for this project. Drag the pie, or use + and -, in fives. Neither can pass
+ *  100%, so raising a factor at 100% means lowering another first. Save needs them to total exactly 100. */
+function WeightsModal({ open, initial, busy, error, onClose, onSave }: { open: boolean; initial: ScoreWeights; busy: boolean; error?: string; onClose: () => void; onSave: (w: ScoreWeights) => void }) {
+  const [w, setW] = useState(initial);
+  const total = FACTORS.reduce((sum, f) => sum + weightOf(w, f.key), 0);
+  const left = 100 - total;
+  const step = (k: FactorKey, by: number) => setW({ ...w, [k]: Math.min(Math.max(weightOf(w, k) + by, 0), weightOf(w, k) + Math.max(left, 0)) });
+  const [pieKey, setPieKey] = useState(0); // a fresh pie starts its first slice at the top again
+  const clearAll = () => { setW(Object.fromEntries(FACTORS.map((f) => [f.key, 0])) as ScoreWeights); setPieKey((k) => k + 1); };
+  const resetToDefault = () => { setW(DEFAULT_WEIGHTS); setPieKey((k) => k + 1); };
+  return (
+    <Modal open={open} onClose={onClose} title="Score weights for this project"
+      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button disabled={total !== 100 || busy} onClick={() => onSave(w)}>{busy ? "Saving..." : "Save weights"}</Button></>}>
+      <p className="text-[13px] leading-[1.5] text-muted">How much each factor counts in AI match. This guides your shortlist only: it never changes your ranking or the matching. Students do not see it.</p>
+      <div className="mt-4">
+        <div role="status" className={`flex items-baseline justify-between text-[13px] font-medium tabular ${left === 0 ? "text-good-ink" : "text-text"}`}>
+          <span>{total}% of 100% used</span>
+          <span>{left === 0 ? "Ready to save. Lower a factor to raise another." : `${left}% left to assign`}</span>
+        </div>
+        <div aria-hidden className="mt-1.5 h-1.5 rounded-full bg-[#e8eef7]"><div className={`h-full rounded-full transition-[width] duration-150 ${left === 0 ? "bg-good" : "bg-accent"}`} style={{ width: `${Math.min(total, 100)}%` }} /></div>
+      </div>
+      <div className="mt-4 grid grid-cols-1 items-center gap-4 sm:grid-cols-[208px_minmax(0,1fr)]">
+        <div className="mx-auto w-full max-w-[208px]">
+          <WeightsPie key={pieKey} slices={FACTORS.map((f) => ({ key: f.key, color: f.c, label: f.t, value: weightOf(w, f.key) }))}
+            onChange={(values) => setW(Object.fromEntries(FACTORS.map((f, i) => [f.key, values[i]])) as ScoreWeights)} />
+          <div className="mt-1 text-center text-[12px] text-muted">Drag the white handles</div>
+        </div>
+        <ul className="flex min-w-0 flex-col gap-3">
+          {FACTORS.map((f) => (
+            <li key={f.key} className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: f.c }} />
+                <span className="min-w-0 flex-1 text-[13px] font-medium">{f.t}</span>
+                <button type="button" aria-label={`Lower ${f.t}`} disabled={!weightOf(w, f.key)} onClick={() => step(f.key, -5)} className="grid h-7 w-7 place-items-center rounded-full text-[15px] shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft disabled:opacity-40">-</button>
+                <span className="w-9 text-center text-[13px] font-semibold tabular">{weightOf(w, f.key)}%</span>
+                <button type="button" aria-label={`Raise ${f.t}`} disabled={left <= 0} onClick={() => step(f.key, 5)} className="grid h-7 w-7 place-items-center rounded-full text-[15px] shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft disabled:opacity-40">+</button>
+              </div>
+              <div className="mt-0.5 pl-[18px] text-[12px] leading-[1.35] text-muted">{f.d}</div>
+            </li>
+          ))}
+          <li className="flex gap-4 pl-[18px] text-[12.5px] font-medium">
+            <button type="button" onClick={clearAll} className="text-accent hover:text-accent-ink">Clear all</button>
+            <button type="button" onClick={resetToDefault} className="text-accent hover:text-accent-ink">Reset to default</button>
+          </li>
+        </ul>
+      </div>
+      {error && <div role="alert" className="mt-2 text-[12.5px] text-bad-ink">{error}</div>}
+    </Modal>
+  );
+}
+
+function AiMatchInfo({ total, local, weights }: { total: number; local: number; weights: ScoreWeights }) {
   const [open, setOpen] = useState(true);
   const gemini = local < total;
-  const rows = gemini ? GEMINI_FACTORS : LOCAL_FACTORS;
+  const formula = FACTORS.filter((f) => f.local);
+  const usable = formula.reduce((sum, f) => sum + weightOf(weights, f.key), 0);
+  const rows = gemini
+    ? FACTORS.map((f) => ({ c: f.c, t: `${f.t}, ${weightOf(weights, f.key)}%`, d: f.d }))
+    : formula.map((f) => ({ c: f.c, t: `${f.t}, up to ${usable ? Math.round((100 * weightOf(weights, f.key)) / usable) : 0}`, d: f.local! }));
   return (
     <Card padded={false} className="mb-4 p-4">
       <div style={{ animation: "uri-rise .35s ease-out both" }}>
@@ -72,8 +127,8 @@ function AiMatchInfo({ total, local }: { total: number; local: number }) {
           <div className="min-w-0 flex-1">
             <div className="text-[14px] font-semibold">{!gemini ? "Scored locally" : local ? `Scored by Gemini, ${local} locally` : "Scored by Gemini"}</div>
             <div className="mt-0.5 text-[12.5px] leading-[1.45] text-muted">
-              {gemini ? "Gemini read each application against the project and gave a 0 to 100 fit score with a reason."
-                : "Gemini was not used, so each applicant got a 0 to 100 score from a fixed formula."} Hover a score for the reason.
+              {gemini ? "Gemini read each application and its attached documents against the project and gave a 0 to 100 fit score with a reason."
+                : "Gemini was not used, so each applicant got a 0 to 100 score from a fixed formula."} Hover a score for the reason, or open an application for the evidence.
             </div>
           </div>
           <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
@@ -92,13 +147,51 @@ function AiMatchInfo({ total, local }: { total: number; local: number }) {
               ))}
             </div>
             <div className="mt-4 border-t border-border pt-3 text-[12px] text-muted">
-              {gemini && "Gemini weighs these together, with no fixed points. If it cannot be reached, a formula scores instead: prerequisites 40, interests 40, CGPA 20. "}
+              {gemini ? "Gemini rates each factor and these weights make the score. If it cannot be reached, a formula scores instead. " : "The formula cannot read documents, so the experience weight is shared among these. "}
               A guide only: read each application before ranking. It never changes your ranking or the matching.
             </div>
           </>
         )}
       </div>
     </Card>
+  );
+}
+
+const factorName = (k: string) => FACTORS.find((f) => f.key === k)?.t ?? k;
+
+/** What a score rests on, in the application drawer (REQ-VRANK-4). Gemini's quotes were checked against their source by the API. */
+function ScoreEvidencePanel({ score }: { score: ApplicantScore }) {
+  const ai = score.source === "ai";
+  return (
+    <div className="rounded-row bg-bg p-3.5">
+      <div className="flex items-center gap-3">
+        <ScoreRing score={score.score} size={38} />
+        <div className="min-w-0">
+          <div className="text-[13.5px] font-semibold">{ai ? "AI match evidence" : "How the formula scored this"}</div>
+          <div className="text-[12.5px] leading-[1.45] text-muted">{score.reason}</div>
+        </div>
+      </div>
+      {Object.keys(score.factor_scores ?? {}).length > 0 && (
+        <dl className="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-3 text-center">
+          {FACTORS.map((f) => (
+            <div key={f.key} className="min-w-0"><dd className="text-[14px] font-semibold tabular">{score.factor_scores![f.key] ?? "–"}</dd><dt className="truncate text-[11px] text-muted" title={f.t}>{f.t}</dt></div>
+          ))}
+        </dl>
+      )}
+      {(score.evidence?.length ?? 0) > 0 ? (
+        <ul className="mt-3 flex flex-col gap-2.5 border-t border-border pt-3">
+          {score.evidence!.map((e, i) => (
+            <li key={i} className="text-[12.5px] leading-[1.5]">
+              <div className="flex flex-wrap items-center gap-x-1.5 font-medium"><span>{factorName(e.factor)}</span><span className="font-normal text-muted">· {e.source}</span></div>
+              <div className="text-text/85">{ai ? <>&ldquo;{e.quote}&rdquo;</> : e.quote}</div>
+            </li>
+          ))}
+        </ul>
+      ) : ai && <div className="mt-3 border-t border-border pt-3 text-[12.5px] text-muted">Gemini gave no quote that could be found in this application, so check the score against the documents yourself.</div>}
+      {(score.unread_documents?.length ?? 0) > 0 && (
+        <div className="mt-3 border-t border-border pt-3 text-[12.5px] text-warn-ink">Could not be read, so not scored: {score.unread_documents!.join(", ")}. It may be a scan.</div>
+      )}
+    </div>
   );
 }
 
@@ -112,6 +205,10 @@ export default function Applicants() {
   const listing = useApi((api) => api.listing(id), [id]);
   const everyone = useApi((api) => api.applicants(id, {}), [id]);
   const ranking = useApi((api) => api.getRanking(id), [id]);
+  const weights = useApi((api) => api.scoreWeights(id), [id]);
+  const [weightsOpen, setWeightsOpen] = useState(false);
+  const [savingWeights, setSavingWeights] = useState(false);
+  const [weightsError, setWeightsError] = useState<string | undefined>();
   const [detail, setDetail] = useState<Applicant | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [opened, setOpened] = useState<string[]>([]); // documents expanded in the drawer, loaded on first open
@@ -178,6 +275,15 @@ export default function Applicants() {
     catch (e) { setError(e as ApiError); }
     finally { setMatching(false); }
   }
+  async function saveWeights(next: ScoreWeights) {
+    setSavingWeights(true); setWeightsError(undefined);
+    try {
+      weights.setData(await call((api) => api.saveScoreWeights(id, next)));
+      setWeightsOpen(false);
+      if (scores) runAiMatch(); // the scores on screen were made with the old weights
+    } catch (e) { setWeightsError((e as ApiError).message); }
+    finally { setSavingWeights(false); }
+  }
   function chooseSort(label: string | undefined) {
     const key = (Object.keys(SORTS) as SortKey[]).find((k) => SORTS[k] === label) ?? "cgpa";
     if (key === "ai" && !scores) { runAiMatch(); return; } // scores are needed first; runAiMatch switches the sort
@@ -243,6 +349,9 @@ export default function Applicants() {
               <span className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`}><I.ChevronDown size={14} /></span>
             </button>
             <FilterSelect size="sm" label="Sort" align="right" value={sortBy === "cgpa" ? undefined : SORTS[sortBy]} anyLabel={SORTS.cgpa} options={[SORTS.ai, SORTS.name]} onChange={chooseSort} />
+            <button type="button" onClick={() => setWeightsOpen(true)} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-pill bg-surface px-3.5 text-[13px] text-text shadow-[inset_0_0_0_1px_var(--border-strong)] transition-colors hover:bg-neutral-soft">
+              <I.Gear size={14} /> Weights
+            </button>
             {/* Glassy navy pill: a top sheen over a dark gradient, with gradient text and a sparkle. */}
             <button type="button" disabled={matching || !all.length} onClick={runAiMatch}
               className="group relative isolate inline-flex h-9 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-[linear-gradient(180deg,#3b4578_0%,#1c2566_55%,#151b4d_100%)] pl-4 pr-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_22px_-12px_rgba(28,37,102,0.8)] ring-1 ring-white/10 transition-[box-shadow,filter] duration-200 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_12px_28px_-10px_rgba(80,100,240,0.7)] hover:brightness-110 disabled:opacity-60 disabled:hover:brightness-100">
@@ -275,7 +384,7 @@ export default function Applicants() {
             <button type="button" onClick={clearAll} className="ml-1 text-[12.5px] font-medium text-accent hover:text-accent-ink">Clear all</button>
           </div>
         )}
-        {scores && <AiMatchInfo total={scores.size} local={scoredLocally} />}
+        {scores && <AiMatchInfo total={scores.size} local={scoredLocally} weights={weights.data ?? DEFAULT_WEIGHTS} />}
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
         <section className="min-w-0">
@@ -385,6 +494,7 @@ export default function Applicants() {
         </aside>
       </div>
 
+      <WeightsModal key={weightsOpen ? "open" : "closed"} open={weightsOpen} initial={weights.data ?? DEFAULT_WEIGHTS} busy={savingWeights} error={weightsError} onClose={() => setWeightsOpen(false)} onSave={saveWeights} />
       <Modal open={confirmTop} onClose={() => setConfirmTop(false)} title="Replace your ranking?"
         footer={<><Button variant="secondary" onClick={() => setConfirmTop(false)}>Cancel</Button><Button onClick={() => { save(topIds); setConfirmTop(false); }}>Replace ranking</Button></>}>
         Your ranking of {ids.length} will become the top {n} {n === 1 ? "applicant" : "applicants"} as listed now, sorted by {SORTS[sortBy]}{filtering ? ", with your filters" : ""}. Your current order will be lost.
@@ -400,6 +510,7 @@ export default function Applicants() {
               year={detail.student.year_of_study} cgpa={detail.student.cgpa} modules={detail.student.completed_modules} interests={detail.student.research_interests}
               missing={listing.data ? listing.data.prerequisites.filter((p) => !detail.student.completed_modules.includes(p)) : undefined}
               badge={ids.includes(detail.application_id) ? <Pill tone="accent">Ranked #{ids.indexOf(detail.application_id) + 1}</Pill> : <Pill>Not ranked</Pill>} note={`applied ${fmtDate(detail.submitted_at)}`} />
+            {scores?.get(detail.application_id) && <ScoreEvidencePanel score={scores.get(detail.application_id)!} />}
             <div><div className="eyebrow mb-1.5">Statement of interest</div><p className="text-[13px] leading-[1.65]">{detail.statement}</p></div>
             <div>
               <div className="eyebrow mb-2">Documents</div>
