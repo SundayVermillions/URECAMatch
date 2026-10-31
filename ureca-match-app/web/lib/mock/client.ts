@@ -344,6 +344,11 @@ export class MockClient implements ApiClient {
     const admins = this.db.users.filter((x) => x.role === "admin" && x.status === "active");
     if ((leavingAdmin || deactivating) && u.role === "admin" && u.status === "active" && admins.length === 1 && admins[0].id === u.id)
       throw new M.ApiError(409, "last_admin", "This is the only active administrator. Make another user an active admin first.");
+    // REQ-USER-3: match the API's self-access protections, including confirmed requests.
+    if (u.id === admin.id && deactivating)
+      throw new M.ApiError(409, "self_deactivation", "You cannot deactivate your own account. Ask another administrator to deactivate it.");
+    if (u.id === admin.id && roleChanging)
+      throw new M.ApiError(409, "self_role_change", "You cannot change your own role. Ask another administrator to change it.");
     if (!deactivating && !roleChanging) return;
     const items = this.activeItems(u);
     if (!items.length) return;
