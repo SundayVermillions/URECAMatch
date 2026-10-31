@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.models import Match, MatchStatus, NotificationEvent, ProposalStatus
+from app.models import ApplicationStatus, Match, MatchStatus, NotificationEvent, ProposalStatus
 from app.services.notify import notify
 
 # Matches that still hold a slot until the student accepts (then it is in filled_slots) or the match ends.
@@ -68,3 +68,38 @@ def withdraw_pending_proposals(store, student_id: str, now: datetime, reason: st
                 now,
                 "/proposals",
             )
+
+
+def withdraw_applications_to_full_listing(store, listing, now: datetime) -> None:
+    """The last slot of a project was taken, so every application still under review for it is withdrawn: nobody
+    should keep a preference that can no longer be matched. Each student's remaining preferences move up and they are told."""
+    if listing.filled_slots < listing.available_slots:
+        return
+    waiting = [a for a in store.applications_for(listing_id=listing.id) if a.status == ApplicationStatus.submitted]
+    if not waiting:
+        return
+    for a in waiting:
+        a.status, a.preference_rank = ApplicationStatus.withdrawn, None
+    store.save_applications(*waiting)
+    for student_id, round_id in {(a.student_id, a.round_id) for a in waiting}:
+        left = sorted(
+            (
+                x
+                for x in store.applications_for(student_id=student_id, round_id=round_id)
+                if x.status == ApplicationStatus.submitted
+            ),
+            key=lambda x: x.preference_rank or 99,
+        )
+        for i, x in enumerate(left, start=1):
+            x.preference_rank = i
+        if left:
+            store.save_applications(*left)
+    notify(
+        store,
+        sorted({a.student_id for a in waiting}),
+        NotificationEvent.proposal_decided,
+        "A project you applied to is full",
+        f"{listing.title} has no slots left, so your application was withdrawn. Your other preferences moved up.",
+        now,
+        "/my-applications",
+    )

@@ -518,7 +518,7 @@ export function Drawer({ open, onClose, title, children, footer }: { open: boole
 
 /** Modal: 520 px, centred, for confirmations before irreversible actions. Content taller than the window scrolls
  *  between the title and the buttons; its 4 px inset keeps focus rings from being clipped. */
-export function Modal({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode }) {
+export function Modal({ open, onClose, title, children, footer, wide }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -529,7 +529,7 @@ export function Modal({ open, onClose, title, children, footer }: { open: boolea
   return (
     <>
       <div className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="fixed z-40 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] bg-surface rounded-modal shadow-[var(--shadow-float)] ring-1 ring-black/[0.06] p-7 flex flex-col gap-2.5">
+      <div className={`fixed z-40 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${wide ? "w-[960px]" : "w-[520px]"} max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] bg-surface rounded-modal shadow-[var(--shadow-float)] ring-1 ring-black/[0.06] p-7 flex flex-col gap-2.5`}>
         <h2 className="text-[19px]">{title}</h2>
         <div className="min-h-0 overflow-y-auto -m-1 p-1 text-[14px] text-muted leading-[1.55]">{children}</div>
         {footer && <div className="flex justify-end gap-2.5 mt-4">{footer}</div>}

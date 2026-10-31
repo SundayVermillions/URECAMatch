@@ -897,6 +897,7 @@ def accept_offer(user: StudentUser, store: StoreDep, settings: SettingsDep) -> M
     if lst:
         lst.filled_slots += 1
         store.save_listing(lst)
+        placement.withdraw_applications_to_full_listing(store, lst, now)  # last slot gone: others lose this preference
     # placed: exclude from later rounds (REQ-OUTCOME-1), and withdraw any proposal still waiting
     _mark_ineligible(store, user.id, now, "accepted a match offer")
     # Use case 2-5: accepting closes the student's other open applications.
