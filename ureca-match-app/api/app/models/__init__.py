@@ -518,8 +518,8 @@ class ApplicantRankingUpdate(BaseModel):
 
 
 class ScoreWeights(BaseModel):
-    """How much each factor counts in a project's AI match, in percent (REQ-VRANK-5). The router checks they total 100, each at least 5.
-    The default is an equal share."""
+    """How much each factor counts in a project's AI match, in percent (REQ-VRANK-5).
+    The router checks they total 100, each at least 5. The default is an equal share."""
 
     prerequisites: int = Field(default=25, ge=0, le=100)
     fit: int = Field(default=25, ge=0, le=100)
