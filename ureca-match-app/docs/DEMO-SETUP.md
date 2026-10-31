@@ -185,7 +185,6 @@ Order matters. Some steps only work in the right window.
 
 ## 10. Known issues
 
-- Browser mock only: the "Application cycle dates changed" notification still uses the long wording with no link. The API sends the short one.
 - "Cycle closes" must be moved before Round 3's review window can be extended, because the seed leaves no slack after offers.
 - A cycle can still be created with an opening date in the past.
 - My applications can list rows from a closed cycle.
