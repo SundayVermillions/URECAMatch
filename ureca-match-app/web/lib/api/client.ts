@@ -63,7 +63,8 @@ export interface ApiClient {
   summary(roundId: string): Promise<M.RoundSummary>;
   matches(roundId: string, status?: M.MatchStatus): Promise<M.Match[]>;
   reassign(matchId: string, body: M.ReassignRequest): Promise<M.Match>;
-  manualAssign(roundId: string, body: M.ManualAssignRequest): Promise<M.Match>;
+  assignments(): Promise<M.AssignmentsView>;
+  assignStudent(body: M.ManualAssignRequest): Promise<M.Match>;
   unassign(matchId: string, note: string): Promise<void>;
   unmatched(roundId: string): Promise<M.UserListItem[]>;
   auditLog(): Promise<M.AuditEntry[]>;

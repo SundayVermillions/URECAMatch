@@ -70,6 +70,7 @@ function checkTimeToRespond(rounds: M.Round[], closing: number) {
 // Mirrors of the helpers in routers/cycles.py.
 const DAY = 86_400_000;
 const GAP = 2 * DAY; // a round without a start date opens 2 days after the previous round's approval window
+const OPEN: M.MatchStatus[] = ["proposed", "approved", "reassigned", "published"]; // mirror of placement.OPEN: matches that hold a slot
 const iso = (ms: number) => new Date(ms).toISOString();
 /** A round's application, review and approval window lengths, in days. */
 const lengthsOf = (r: M.Round) => ({
@@ -164,8 +165,7 @@ export class MockClient implements ApiClient {
       return { cycle_id: c.id, round_id: null, round_number: null, window: "pre_application", window_ends_at: ends, label: c.rounds.length ? `Applications open ${when(ends)}` : "The rounds are not scheduled yet" };
     }
     // Between rounds, the latest round that has started (its results and offers are what is happening).
-    const started = c.rounds.filter((r) => Date.parse(r.application_start) <= t).sort((x, y) => Date.parse(y.application_start) - Date.parse(x.application_start));
-    const r = c.rounds.find((r) => t >= Date.parse(r.application_start) && t <= Date.parse(r.approval_end)) ?? started[0];
+    const r = this.currentRound(c)!; // a round has started: the pre-application case returned above
     if (t >= Date.parse(r.application_start) && t <= Date.parse(r.application_end))
       return { cycle_id: c.id, round_id: r.id, round_number: r.number, window: "application", window_ends_at: r.application_end, label: `Round ${r.number} closes ${when(r.application_end)}` };
     if (t >= Date.parse(r.review_start) && t <= Date.parse(r.review_end))
@@ -1049,21 +1049,24 @@ export class MockClient implements ApiClient {
     const r = this.round(m.round_id); this.expireOffers();
     const l = this.assignableListing(b.listing_id);
     if (l.id === m.listing_id) throw new M.ApiError(422, "same_project", "The student is already matched to this project. Choose a different one.", "listing_id");
-    const deadline = this.lateOfferDeadline(r);
+    const deadline = this.lateOfferDeadline(r), was = m.listing_title;
     m.original_listing_id = m.original_listing_id ?? m.listing_id;
     Object.assign(m, { listing_id: l.id, listing_title: l.title, supervisor_id: l.supervisor_id, supervisor_name: l.supervisor_name,
       preference_rank: this.preference(m.student_id, m.round_id, l.id), status: "reassigned", justification: b.justification }); // for the new project, not the old one
-    this.audit(a, "manual_reassignment", [m.id], b.justification); this.offerNow(m, deadline); return m;
+    this.audit(a, "manual_reassignment", [m.id], `Moved from ${was} to ${l.title}: ${b.justification}`); // use case 1-4 AF-S3: both allocations
+    this.offerNow(m, deadline); return m;
   }
   /** Mirror of _preference: where the student ranked this project among their applications in the round, or null. */
   private preference(studentId: string, roundId: string, listingId: string) {
     return this.db.applications.find((x) => x.student_id === studentId && x.round_id === roundId && x.listing_id === listingId)?.preference_rank ?? null;
   }
-  async manualAssign(roundId: string, b: M.ManualAssignRequest) {
+  private async manualAssign(roundId: string, b: M.ManualAssignRequest) {
     const a = this.need("admin"); const r = this.round(roundId); this.expireOffers();
+    if (b.justification.length < 10) throw new M.ApiError(422, "invalid", "Give a justification of at least 10 characters.", "justification");
     const student = this.db.users.find((u) => u.id === b.student_id);
     if (!student || student.role !== "student") throw new M.ApiError(422, "unknown_student", "Choose a student account.", "student_id");
-    if (this.db.matches.some((m) => m.student_id === b.student_id && !["rejected", "declined", "timed_out"].includes(m.status))) throw new M.ApiError(409, "already_assigned", "This student already has a project. Unassign it first.");
+    // REQ-ASSIGN-3, in this cycle only: a project from an earlier cycle does not stop a new one
+    if (this.cycleMatches(b.student_id).some((m) => !["rejected", "declined", "timed_out"].includes(m.status))) throw new M.ApiError(409, "already_assigned", "This student already has a project. Unassign it first.");
     const l = this.assignableListing(b.listing_id); const deadline = this.lateOfferDeadline(r);
     const placement = { listing_id: l.id, listing_title: l.title, supervisor_id: l.supervisor_id, supervisor_name: l.supervisor_name, status: "reassigned" as const, justification: b.justification, preference_rank: this.preference(b.student_id, roundId, l.id) };
     // one row per student per round (match_results unique key), so an earlier rejected or declined row is reused
@@ -1098,6 +1101,56 @@ export class MockClient implements ApiClient {
     const placed = new Set(ms.filter((m) => m.status !== "rejected").map((m) => m.student_id)); const earlier = this.ruledOut(r);
     return [...applied].filter((sid) => !placed.has(sid) && !earlier.has(sid) && this.student(sid)?.eligible_for_matching !== false)
       .map((sid) => ({ user: this.db.users.find((u) => u.id === sid)!, school: this.student(sid)?.school ?? null })).filter((x) => x.user).sort((x, y) => x.user.name.localeCompare(y.user.name));
+  }
+  // ---- Assignments page: mirror of the assignments section of routers/matching.py (REQ-ASSIGN-1..3, use case 1-6)
+  /** Mirror of windows.current_round: the round whose window holds now, else the latest that has started, else the first. */
+  private currentRound(c: M.Cycle): M.Round | null {
+    const t = this.now.getTime(), byStart = [...c.rounds].sort((x, y) => Date.parse(x.application_start) - Date.parse(y.application_start));
+    return c.rounds.find((r) => t >= Date.parse(r.application_start) && t <= Date.parse(r.approval_end))
+      ?? byStart.filter((r) => Date.parse(r.application_start) <= t).pop() ?? byStart[0] ?? null;
+  }
+  /** Mirror of _assignment_round: the round a new assignment joins, or null once the cycle has closed or if it has no rounds. */
+  private assignmentRound() { const c = this.activeCycle(); return !c || this.cycleClosed() ? null : this.currentRound(c); }
+  /** Mirror of _standing: the match that places the student (newest round first), or why they have none. */
+  private standing(ms: M.Match[], applied: Set<number>, unrun: Set<number>, p?: M.StudentProfile): [M.AssignmentStatus, M.Match | null, string | null] {
+    const t = this.now.getTime();
+    const lapsed = new Set(ms.filter((m) => m.status === "published" && m.offer_expires_at && t > Date.parse(m.offer_expires_at)).map((m) => m.id));
+    const holds: [M.AssignmentStatus, M.MatchStatus[]][] = [["accepted", ["accepted"]], ["offered", ["published"]], ["matched", OPEN.filter((s) => s !== "published")]];
+    for (const [status, held] of holds) {
+      const m = ms.find((x) => held.includes(x.status) && !lapsed.has(x.id));
+      if (m) return [status, m, null];
+    }
+    const waiting = [...applied].filter((n) => unrun.has(n)).sort((x, y) => x - y);
+    const reason = lapsed.size || ms.some((m) => m.status === "timed_out") ? "Did not answer an offer in time"
+      : ms.some((m) => m.status === "declined") ? "Declined an offer"
+      : waiting.length ? `Waiting for Round ${waiting[0]} matching`
+      : ms.some((m) => m.status === "rejected") ? "Rejected by the supervisor"
+      : applied.size ? "Not matched"
+      : p && !p.profile_complete ? "Profile not complete"
+      : "Has not applied";
+    return ["unassigned", null, reason];
+  }
+  async assignments(): Promise<M.AssignmentsView> {
+    this.need("admin");
+    const c = this.activeCycle();
+    const number = new Map((c?.rounds ?? []).map((r) => [r.id, r.number]));
+    const unrun = new Set((c?.rounds ?? []).filter((r) => !r.executed_at).map((r) => r.number));
+    const students = this.db.users.filter((u) => u.role === "student" && u.status === "active").map((u): M.StudentAssignment => {
+      const ms = this.db.matches.filter((m) => m.student_id === u.id && number.has(m.round_id)).sort((x, y) => number.get(y.round_id)! - number.get(x.round_id)!);
+      const applied = new Set(this.db.applications.filter((x) => x.student_id === u.id && x.round_id && number.has(x.round_id) && x.status !== "withdrawn").map((x) => number.get(x.round_id!)!));
+      const p = this.student(u.id);
+      const [status, match, reason] = this.standing(ms, applied, unrun, p);
+      return { user: u, school: p?.school ?? null, status, match, round_number: match ? number.get(match.round_id)! : null, reason, eligible: p?.eligible_for_matching ?? true };
+    }).sort((x, y) => x.user.name.localeCompare(y.user.name));
+    const r = this.assignmentRound();
+    return { round: r, offer_deadline: r?.published_at ? this.offerDeadline(r) : null, students };
+  }
+  async assignStudent(b: M.ManualAssignRequest) {
+    this.need("admin");
+    if (this.cycleClosed()) throw new M.ApiError(409, "cycle_closed", "No application cycle is open, so students cannot be assigned.");
+    const r = this.assignmentRound();
+    if (!r) throw new M.ApiError(409, "no_rounds", "Set up the cycle's rounds before assigning students.");
+    return this.manualAssign(r.id, b);
   }
   /** Mirror of _publish (REQ-PUB-1..3): once the approval window closes, every match nobody declined is offered. */
   private publishRound(r: M.Round) {

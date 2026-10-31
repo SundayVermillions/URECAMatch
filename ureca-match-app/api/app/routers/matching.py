@@ -22,6 +22,8 @@ from app.models import (
     Applicant,
     ApplicantStudent,
     ApplicationStatus,
+    AssignmentStatus,
+    AssignmentsView,
     AuditEntry,
     AuditOperation,
     Cycle,
@@ -36,6 +38,7 @@ from app.models import (
     Role,
     RoundStatus,
     RoundSummary,
+    StudentAssignment,
     UserListItem,
 )
 from app.services import listing_lifecycle, placement, windows
@@ -240,13 +243,15 @@ def reassign(match_id: str, body: ReassignRequest, admin: AdminUser, store: Stor
         if lst.id == m.listing_id:
             raise invalid("same_project", "The student is already matched to this project. Choose a different one.", "listing_id")
         deadline = _late_offer_deadline(store, r, now)
+        was = m.listing_title
         m.original_listing_id = m.original_listing_id or m.listing_id
         m.listing_id, m.listing_title = lst.id, lst.title
         m.supervisor_id, m.supervisor_name = lst.supervisor_id, lst.supervisor_name
         m.preference_rank = _preference(store, m.student_id, m.round_id, lst.id)  # for the new project, not the old one
         m.status, m.justification = MatchStatus.reassigned, body.justification  # REQ-ASSIGN-1, 2
         store.save_match(m)
-        audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
+        note = f"Moved from {was} to {lst.title}: {body.justification}"  # use case 1-4 AF-S3: both allocations are logged
+        audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, note)
         _offer_now(store, m, deadline, now)
     return m
 
@@ -327,15 +332,12 @@ def manual_assign(round_id: str, body: ManualAssignRequest, admin: AdminUser, st
         student = store.user(body.student_id)
         if student is None or student.role != Role.student:
             raise invalid("unknown_student", "Choose a student account.", "student_id")
-        if any(
-            m.student_id == body.student_id
-            and m.status not in (MatchStatus.rejected, MatchStatus.declined, MatchStatus.timed_out)
-            for m in store.matches
-        ):  # REQ-ASSIGN-3
+        if placement.is_placed(store, body.student_id) or placement.open_matches(store, body.student_id):
+            # REQ-ASSIGN-3, in this cycle only: a project from an earlier cycle does not stop a new one
             raise conflict("already_assigned", "This student already has a project. Unassign it first.")
         lst = _assignable_listing(store, body.listing_id)
         deadline = _late_offer_deadline(store, r, now)
-        placement = {
+        fields = {
             "listing_id": lst.id,
             "listing_title": lst.title,
             "supervisor_id": lst.supervisor_id,
@@ -348,13 +350,13 @@ def manual_assign(round_id: str, body: ManualAssignRequest, admin: AdminUser, st
         m = next((m for m in store.matches if m.round_id == round_id and m.student_id == body.student_id), None)
         if m is not None:
             m.original_listing_id = m.original_listing_id or m.listing_id
-            for k, v in placement.items():
+            for k, v in fields.items():
                 setattr(m, k, v)
             m.supervisor_decided_at = m.published_at = m.offer_expires_at = m.student_responded_at = None
             store.save_match(m)
         else:
             m = Match(
-                id=store.next_id("mt"), round_id=round_id, student_id=body.student_id, student_name=student.name, **placement
+                id=store.next_id("mt"), round_id=round_id, student_id=body.student_id, student_name=student.name, **fields
             )
             store.add_matches(m)
         audit(store, admin, AuditOperation.manual_reassignment, [m.id], now, body.justification)
@@ -418,6 +420,97 @@ def unassign(match_id: str, body: MatchDecision, admin: AdminUser, store: StoreD
         "/approvals",
     )
     return Ok()
+
+
+# ------------------------------------------------------------------ assignments page (REQ-ASSIGN-1..3, use case 1-6)
+
+
+def _assignment_round(cycle, now):
+    """The round a new assignment joins: the one whose window is open, or the latest that has started (before Round 1,
+    the first). The student hears with that round's results, or at once if they are out. None once the cycle has
+    closed, or if it has no rounds. Takes the cycle already read, since in Supabase mode every read is a query."""
+    return None if windows.cycle_closed(cycle, now) else windows.current_round(cycle, now)
+
+
+def _standing(
+    ms: list[Match], applied: set[int], unrun: set[int], profile, now
+) -> tuple[AssignmentStatus, Match | None, str | None]:
+    """Where one student stands, from their matches (newest round first) and the rounds they applied in: the match
+    that places them, or why they have none. An offer past its deadline counts as lapsed even if the scheduler has not
+    timed it out yet (in Supabase mode it runs on the daily cron)."""
+    lapsed = {m.id for m in ms if m.status == MatchStatus.published and m.offer_expires_at and now > m.offer_expires_at}
+    for status, held in (
+        (AssignmentStatus.accepted, (MatchStatus.accepted,)),
+        (AssignmentStatus.offered, (MatchStatus.published,)),
+        (AssignmentStatus.matched, tuple(s for s in placement.OPEN if s != MatchStatus.published)),
+    ):
+        if m := next((m for m in ms if m.status in held and m.id not in lapsed), None):
+            return status, m, None
+    if lapsed or any(m.status == MatchStatus.timed_out for m in ms):
+        reason = "Did not answer an offer in time"
+    elif any(m.status == MatchStatus.declined for m in ms):
+        reason = "Declined an offer"
+    elif waiting := sorted(applied & unrun):
+        reason = f"Waiting for Round {waiting[0]} matching"
+    elif any(m.status == MatchStatus.rejected for m in ms):
+        reason = "Rejected by the supervisor"
+    elif applied:
+        reason = "Not matched"
+    elif profile is not None and not profile.profile_complete:
+        reason = "Profile not complete"
+    else:
+        reason = "Has not applied"
+    return AssignmentStatus.unassigned, None, reason
+
+
+@router.get("/admin/assignments", response_model=AssignmentsView)
+def assignments(admin: AdminUser, store: StoreDep, settings: SettingsDep) -> AssignmentsView:
+    """Every active student and where they stand in the active cycle, and the round a new assignment would join.
+    Each table is read once: in Supabase mode every read is a query."""
+    now, cycle = settings.now(), store.cycle
+    rounds = {r.id: r.number for r in cycle.rounds} if cycle else {}
+    unrun = {r.number for r in cycle.rounds if r.executed_at is None} if cycle else set()
+    by_student: dict[str, list[Match]] = {}
+    for m in sorted((m for m in store.matches if m.round_id in rounds), key=lambda m: rounds[m.round_id], reverse=True):
+        by_student.setdefault(m.student_id, []).append(m)
+    applied: dict[str, set[int]] = {}
+    for a in store.applications:
+        if a.round_id in rounds and a.status != ApplicationStatus.withdrawn:
+            applied.setdefault(a.student_id, set()).add(rounds[a.round_id])
+    profiles = {p.user_id: p for p in store.students}
+    students = []
+    for u in store.users:
+        if u.role != Role.student or u.status != AccountStatus.active:
+            continue
+        p = profiles.get(u.id)
+        status, m, reason = _standing(by_student.get(u.id, []), applied.get(u.id, set()), unrun, p, now)
+        students.append(
+            StudentAssignment(
+                user=u,
+                school=p.school if p else None,
+                status=status,
+                match=m,
+                round_number=rounds[m.round_id] if m else None,
+                reason=reason,
+                eligible=p.eligible_for_matching if p else True,
+            )
+        )
+    r = _assignment_round(cycle, now)
+    deadline = windows.offer_deadline(cycle, r, now) if r is not None and r.published_at is not None else None
+    return AssignmentsView(round=r, offer_deadline=deadline, students=sorted(students, key=lambda s: s.user.name))
+
+
+@router.post("/admin/assignments", response_model=Match, status_code=201)
+def assign_student(body: ManualAssignRequest, admin: AdminUser, store: StoreDep, settings: SettingsDep) -> Match:
+    """REQ-ASSIGN-1..3 from the Assignments page. The API picks the round (_assignment_round), so the page cannot put
+    a student in the wrong one; the checks are manual_assign's."""
+    now, cycle = settings.now(), store.cycle
+    if windows.cycle_closed(cycle, now):
+        raise conflict("cycle_closed", "No application cycle is open, so students cannot be assigned.")
+    r = _assignment_round(cycle, now)
+    if r is None:
+        raise conflict("no_rounds", "Set up the cycle's rounds before assigning students.")
+    return manual_assign(r.id, body, admin, store, settings)
 
 
 # ------------------------------------------------------------------ publishing (run by the scheduler)
