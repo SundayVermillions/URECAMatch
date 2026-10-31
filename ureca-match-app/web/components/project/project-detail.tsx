@@ -2,14 +2,15 @@
 /** Project detail, shared by the student (ProjectDetailPage, REQ-BROWSE-1..3) and the admin (read-only view of the listing).
  *  Optional details (tasks, skills, hours, mode, photos, video) show only when the supervisor filled them in.
  *  Student: one status in the card, in priority order: applied, applications closed, full, not eligible, else Apply.
- *  Admin: the same page without Apply, and prerequisites without "met or missing" (there is no student to compare). */
+ *  Admin: the same page without Apply, and prerequisites without "met or missing" (there is no student to compare),
+ *  plus the students the project holds this cycle. */
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { titleCase } from "@/components/pickers";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
-import { ApplicantStack, Avatar, Banner, Button, Card, LISTING_MODES, Loading, Pill, isHighDemand } from "@/components/ui";
-import type { Listing, Me } from "@/lib/api/models";
+import { ApplicantStack, Avatar, Banner, Button, Card, LISTING_MODES, Loading, Pill, Skeleton, Status, fmtDeadline, isHighDemand } from "@/components/ui";
+import type { AssignmentStatus, Listing, Me } from "@/lib/api/models";
 import { useApi } from "@/lib/use-api";
 import { type Standing, useStanding } from "@/lib/use-standing";
 import { embedUrl } from "@/lib/video";
@@ -120,6 +121,7 @@ export function ProjectView({ id, admin = false }: { id: string; admin?: boolean
           )}
         </div>
         <div className="flex flex-col gap-6 min-w-0">
+          {admin && <ProjectStudents id={l.id} />}
           <Card>
             <h2 className="text-[16px]">At a glance</h2>
             <dl className="mt-3 flex flex-col gap-2.5 text-[14px]">
@@ -174,6 +176,39 @@ export function ProjectView({ id, admin = false }: { id: string; admin?: boolean
 type Credit = { title: string; author: string; license: string; source: string };
 
 /** Up to 4 photos in a row; one opens full size, with ← and → to move and Esc to close. */
+const ORDER: Record<AssignmentStatus, number> = { accepted: 0, offered: 1, matched: 2, unassigned: 3 };
+
+/** Admin only (REQ-ASSIGN-1..3): the students this project holds in the active cycle, matched, offered or accepted, from
+ *  the same standings as the Assignments page. A name opens Assignments for that student. Only the admin view renders
+ *  it, so a student browsing the project never calls the admin-only endpoint. */
+function ProjectStudents({ id }: { id: string }) {
+  const { data, loading, error } = useApi((api) => api.listingAssignments(id), [id]);
+  const held = [...(data ?? [])].sort((x, y) => ORDER[x.status] - ORDER[y.status] || x.user.name.localeCompare(y.user.name));
+  return (
+    <Card>
+      <h2 className="text-[16px]">Students</h2>
+      {loading && !data ? <div className="mt-3 flex flex-col gap-2"><Skeleton className="h-4 w-40" /><Skeleton className="h-4 w-32" /></div>
+        : error ? <p className="mt-2 text-[13px] text-muted">The students could not be loaded.</p>
+        : held.length === 0 ? <p className="mt-2 text-[13px] text-muted">No students are currently assigned to this project.</p> : (
+          <ul className="mt-3 flex flex-col gap-3">
+            {held.map((s) => (
+              <li key={s.user.id} className="flex items-start gap-3">
+                <Avatar name={s.user.name} size={30} tone="auto" />
+                <div className="min-w-0 flex-1">
+                  <Link href={`/assignments?student=${encodeURIComponent(s.user.id)}`} className="block truncate text-[13.5px] font-semibold">{s.user.name}</Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
+                    {s.match && <Status value={s.match.status} />}
+                    <span>Round {s.round_number}{s.status === "offered" && s.match?.offer_expires_at ? ` · answer by ${fmtDeadline(s.match.offer_expires_at)}` : ""}</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+    </Card>
+  );
+}
+
 function Gallery({ urls }: { urls: string[] }) {
   const [open, setOpen] = useState<number | null>(null);
   // Seeded demo photos come from Wikimedia Commons; their licences ask for the author and licence to be shown.

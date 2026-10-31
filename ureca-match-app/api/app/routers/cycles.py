@@ -29,7 +29,7 @@ from app.models import (
     User,
 )
 from app.routers.matching import _schedule_lock, moved_offer_deadlines
-from app.services import listing_lifecycle
+from app.services import cycle_end, listing_lifecycle
 from app.services.audit import audit
 from app.services.notify import notify
 from app.services.windows import cycle_closed, when
@@ -85,10 +85,11 @@ def create_cycle(body: CycleCreate, admin: AdminUser, store: StoreDep, settings:
     clash = next((c for c in store.cycles if _overlaps(c, opening, closing)), None)
     if clash is not None:  # use case 1-1 E2: cycles must not overlap in time
         raise conflict("cycle_overlap", f"These dates overlap the {clash.academic_year} cycle. Cycles cannot overlap.")
-    if old is not None:  # it has closed, so it moves to the history (REQ-CYCLE-4)
+    if old is not None:  # it has closed, so it moves to the history (REQ-CYCLE-4), and nothing from it carries over
         old.status = CycleStatus.closed
         store.save_cycle(old)
         listing_lifecycle.close_published(store)  # REQ-PROJ-4: in case the schedule has not run since it closed
+        cycle_end.close_out(store, old, now)  # lapsed offers, waiting proposals, students' eligibility
         audit(store, admin, AuditOperation.cycle_updated, [old.id], now, "closed")
     cycle = Cycle(
         id=store.next_id("cyc"),

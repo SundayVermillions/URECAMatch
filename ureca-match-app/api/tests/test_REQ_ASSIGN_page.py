@@ -94,6 +94,16 @@ def test_REQ_ASSIGN_1_once_the_rounds_results_are_out_the_offer_goes_at_once(as_
     assert _standing(_view(as_admin), "stu-39") == ("offered", None)
 
 
+def test_REQ_ASSIGN_1_a_projects_page_lists_the_students_it_holds(as_admin):
+    r = as_admin.get("/admin/listings/lst-1/assignments")
+    assert r.status_code == 200 and [(s["user"]["id"], s["status"]) for s in r.json()] == [("stu-33", "accepted")]
+    assert as_admin.post("/admin/assignments", json=ASSIGN).status_code == 201  # stu-1 onto lst-2, out with Round 2
+    assert [(s["user"]["id"], s["status"]) for s in as_admin.get("/admin/listings/lst-2/assignments").json()] == [
+        ("stu-1", "matched")
+    ]  # stu-38's declined match on lst-2 no longer holds it
+    assert as_admin.get("/admin/listings/lst-nope/assignments").status_code == 404
+
+
 def test_REQ_ASSIGN_2_assigning_needs_a_justification(as_admin):
     assert as_admin.post("/admin/assignments", json={**ASSIGN, "justification": "short"}).status_code == 422
 

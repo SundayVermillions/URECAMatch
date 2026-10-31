@@ -25,6 +25,27 @@ def is_placed(store, student_id: str) -> bool:
     return any(m.status == MatchStatus.accepted for m in _cycle_matches(store, student_id))
 
 
+def held_by_listing(cycle, matches: list[Match]) -> dict[str, int]:
+    """Slots held per project: matches and offers in `cycle` (the active one) that are still open, counted from the
+    caller's reads. An earlier cycle's leftovers hold nothing, so they cannot shrink the next cycle's projects."""
+    rounds = {r.id for r in cycle.rounds} if cycle else set()
+    held: dict[str, int] = {}
+    for m in matches:
+        if m.round_id in rounds and m.status in OPEN:
+            held[m.listing_id] = held.get(m.listing_id, 0) + 1
+    return held
+
+
+def holds_project(cycle, matches: list[Match], student_id: str) -> bool:
+    """is_placed() or open_matches() in one pass over the caller's reads: the student has accepted a project in `cycle`
+    or holds a match there that keeps a slot (REQ-ASSIGN-3)."""
+    rounds = {r.id for r in cycle.rounds} if cycle else set()
+    return any(
+        m.student_id == student_id and m.round_id in rounds and (m.status == MatchStatus.accepted or m.status in OPEN)
+        for m in matches
+    )
+
+
 def open_matches(store, student_id: str) -> list[Match]:
     """Matches in the active cycle that still hold a slot for the student: proposed, approved, reassigned or offered."""
     return [m for m in _cycle_matches(store, student_id) if m.status in OPEN]

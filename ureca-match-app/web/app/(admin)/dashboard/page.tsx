@@ -129,7 +129,7 @@ export default function AdminDashboardPage() {
   const listings = useApi((api) => api.browse(), []);
   const roundId = me?.phase.round_id ?? null;
   const summary = useApi((api) => (roundId ? api.summary(roundId) : Promise.resolve(null)), [roundId]);
-  const audit = useApi((api) => api.auditLog(), []);
+  const audit = useApi((api) => api.auditLog({ limit: 3 }), []); // only the latest three are shown
 
   const data = dash.data;
   const cycle = data?.cycle ?? null;

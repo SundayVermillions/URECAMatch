@@ -857,7 +857,7 @@ export interface paths {
         /**
          * Unmatched Students
          * @description REQ-REV-1 "Unmatched": students who applied in this round and hold no match, so an admin can assign them
-         *     (REQ-ASSIGN-1). The same set as the summary's unmatched count.
+         *     (REQ-ASSIGN-1). The same set as the summary's unmatched count. Profiles and accounts are read once, not per student.
          */
         get: operations["unmatched_students_admin_rounds__round_id__unmatched_get"];
         put?: never;
@@ -957,9 +957,30 @@ export interface paths {
         /**
          * Assign Student
          * @description REQ-ASSIGN-1..3 from the Assignments page. The API picks the round (_assignment_round), so the page cannot put
-         *     a student in the wrong one; the checks are manual_assign's.
+         *     a student in the wrong one; the checks are _assign's.
          */
         post: operations["assign_student_admin_assignments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/listings/{listing_id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listing Assignments
+         * @description The students one project holds in the active cycle (matched, offered or accepted), for the admin's project page.
+         *     Reads that project's matches and only their students, not the whole roster as GET /admin/assignments does.
+         */
+        get: operations["listing_assignments_admin_listings__listing_id__assignments_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -975,8 +996,10 @@ export interface paths {
         };
         /**
          * Audit Log
-         * @description REQ-AUDIT-1, newest first. Entries are never changed (REQ-AUDIT-2); readable names for the records they
-         *     affect are added to the copies sent out.
+         * @description REQ-AUDIT-1: newest first (order=asc for oldest first), a page at a time: up to `limit` entries after the entry
+         *     `cursor`, the id of the last one the page already shows. `q` searches the names, notes and who did it. Entries are
+         *     never changed (REQ-AUDIT-2); readable names for the records they affect are added to the copies sent out, from one
+         *     read of each table they come from, however long the log is.
          */
         get: operations["audit_log_admin_audit_get"];
         put?: never;
@@ -4541,10 +4564,48 @@ export interface operations {
             };
         };
     };
+    listing_assignments_admin_listings__listing_id__assignments_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentAssignment"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     audit_log_admin_audit_get: {
         parameters: {
             query?: {
                 operation?: components["schemas"]["AuditOperation"] | null;
+                q?: string | null;
+                order?: "desc" | "asc";
+                limit?: number | null;
+                cursor?: string | null;
             };
             header?: {
                 authorization?: string | null;

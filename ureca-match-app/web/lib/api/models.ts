@@ -69,6 +69,8 @@ export type SupervisorDashboard = S["SupervisorDashboard"];
 export type ClockState = S["ClockState"];
 
 export type ListingFilters = { q?: string; school?: string; tag?: string; supervisor?: string };
+/** GET /admin/audit: newest first unless order is "asc"; `limit` entries after the entry `cursor` (an id). */
+export type AuditQuery = { operation?: AuditOperation; q?: string; order?: "desc" | "asc"; limit?: number; cursor?: string };
 export type ApplicantFilters = { school?: string; min_cgpa?: number; prerequisites_only?: boolean };
 export type UserFilters = { role?: Role; status?: AccountStatus; q?: string };
 

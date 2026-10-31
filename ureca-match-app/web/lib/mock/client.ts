@@ -187,8 +187,9 @@ export class MockClient implements ApiClient {
     return { ...l, supervisor_email, applicant_count: apps.length, held_slots: this.heldSlots(l.id), applied: !!mine, applied_rank: mine?.preference_rank ?? null };
   }
   /** Matches and offers not yet answered; each holds a slot (mirror of listings._held_slots). */
-  private heldSlots(listingId: string) {
-    return this.db.matches.filter((m) => m.listing_id === listingId && ["proposed", "approved", "reassigned", "published"].includes(m.status)).length;
+  private heldSlots(listingId: string) { // this cycle's only, as placement.held_by_listing: earlier leftovers hold nothing
+    const rounds = new Set((this.activeCycle()?.rounds ?? []).map((r) => r.id));
+    return this.db.matches.filter((m) => m.listing_id === listingId && rounds.has(m.round_id) && OPEN.includes(m.status)).length;
   }
   private notify(userIds: string[], event: M.NotificationEvent, title: string, message: string, link?: string) {
     for (const uid of userIds) this.db.notifications.push({ id: this.id("ntf"), user_id: uid, event, title, message, created_at: this.iso(), read: false, link: link ?? null });
@@ -493,6 +494,14 @@ export class MockClient implements ApiClient {
   async myListings() { const u = this.need("supervisor"); return this.db.listings.filter((l) => l.supervisor_id === u.id).map((l) => this.decorate(l, u)); }
   /** True once the cycle closing date has passed (REQ-PROJ-1, REQ-PROJ-2), as in routers/listings.py. */
   private cycleClosed() { const c = this.activeCycle(); return !c || this.now.getTime() > Date.parse(c.closing_date); }
+  /** Mirror of cycle_end.close_out: the old cycle's unanswered offers time out, proposals still waiting are withdrawn,
+   *  and every student is eligible again, since accepting, declining or missing an offer counts only for its own cycle. */
+  private closeOut(c: M.Cycle) {
+    const rounds = new Set(c.rounds.map((r) => r.id));
+    for (const m of this.db.matches) if (rounds.has(m.round_id) && m.status === "published") m.status = "timed_out";
+    for (const p of this.db.proposals) if (p.status === "submitted") { p.status = "withdrawn"; p.decided_at = this.iso(); }
+    for (const sp of this.db.students) sp.eligible_for_matching = true;
+  }
   /** Mirror of listing_lifecycle.close_published (REQ-PROJ-4): close every published project. Drafts stay drafts. */
   private closePublished() { for (const l of this.db.listings) if (l.status === "published") l.status = "closed"; }
   private checkListingText(title?: string | null, description?: string | null) {
@@ -831,9 +840,10 @@ export class MockClient implements ApiClient {
     if (Date.parse(b.closing_date) <= this.now.getTime()) throw new M.ApiError(422, "date_in_past", "This closing date has already passed. Pick a later one.", "closing_date"); // use case 1-1 E3
     const clash = this.db.cycles.find((c) => Date.parse(c.opening_date) <= Date.parse(b.closing_date) && Date.parse(b.opening_date) <= Date.parse(c.closing_date));
     if (clash) throw new M.ApiError(409, "cycle_overlap", `These dates overlap the ${clash.academic_year} cycle. Cycles cannot overlap.`);
-    if (old) { // it has closed, so it moves to the history (REQ-CYCLE-4)
+    if (old) { // it has closed, so it moves to the history (REQ-CYCLE-4), and nothing from it carries over
       old.status = "closed";
       this.closePublished(); // REQ-PROJ-4: in case the schedule has not run since it closed
+      this.closeOut(old);
       this.audit(a, "cycle_updated", [old.id], "closed");
     }
     const c: M.Cycle = { id: this.id("cyc"), academic_year: b.academic_year, opening_date: b.opening_date, closing_date: b.closing_date, pre_application_days: b.pre_application_days ?? 7, status: "draft", rounds: [], rollover_unmatched: true };
@@ -937,10 +947,7 @@ export class MockClient implements ApiClient {
   }
   private round(id: string) { const r = (this.activeCycle()?.rounds ?? []).find((r) => r.id === id); if (!r) throw new M.ApiError(404, "not_found", "Round was not found."); return r; }
   // mirror of _open_slots (with placement.OPEN) and _ruled_out in routers/matching.py
-  private openSlots(l: M.Listing) {
-    const held = this.db.matches.filter((m) => m.listing_id === l.id && ["proposed", "approved", "reassigned", "published"].includes(m.status)).length;
-    return Math.max(l.available_slots - l.filled_slots - held, 0);
-  }
+  private openSlots(l: M.Listing) { return Math.max(l.available_slots - l.filled_slots - this.heldSlots(l.id), 0); }
   private ruledOut(before?: M.Round) {
     const rounds = new Set((this.activeCycle()?.rounds ?? []).filter((x) => !before || x.number < before.number).map((x) => x.id));
     return new Set(this.db.matches.filter((m) => rounds.has(m.round_id) && m.status !== "rejected").map((m) => m.student_id));
@@ -982,8 +989,9 @@ export class MockClient implements ApiClient {
     m.status = "published"; m.published_at = this.iso(); m.offer_expires_at = deadline;
     this.notify([m.student_id], "offer_received", "You have a match offer", `Respond by ${when(deadline)}.`, "/my-applications");
   }
-  private expireOffers() {
-    for (const m of this.db.matches) if (m.status === "published" && m.offer_expires_at && this.now.getTime() > Date.parse(m.offer_expires_at)) { m.status = "timed_out"; this.markIneligible(m.student_id, "did not answer a match offer in time"); }
+  private expireOffers() { // this cycle's offers only (mirror of _expire_offers): an earlier cycle's never mark a student now
+    const rounds = new Set((this.activeCycle()?.rounds ?? []).map((r) => r.id));
+    for (const m of this.db.matches) if (rounds.has(m.round_id) && m.status === "published" && m.offer_expires_at && this.now.getTime() > Date.parse(m.offer_expires_at)) { m.status = "timed_out"; this.markIneligible(m.student_id, "did not answer a match offer in time"); }
   }
   /** Mirror of _run_matching (REQ-EXEC-1..4): runs once, as soon as the round's review window has closed. */
   private runMatching(r: M.Round) {
@@ -1145,6 +1153,11 @@ export class MockClient implements ApiClient {
     const r = this.assignmentRound();
     return { round: r, offer_deadline: r?.published_at ? this.offerDeadline(r) : null, students };
   }
+  async listingAssignments(listingId: string) {
+    // mirror of listing_assignments: the students this project holds now, from the same standings
+    if (!this.db.listings.some((l) => l.id === listingId)) throw new M.ApiError(404, "not_found", "Project was not found.");
+    return (await this.assignments()).students.filter((s) => s.match?.listing_id === listingId);
+  }
   async assignStudent(b: M.ManualAssignRequest) {
     this.need("admin");
     if (this.cycleClosed()) throw new M.ApiError(409, "cycle_closed", "No application cycle is open, so students cannot be assigned.");
@@ -1188,15 +1201,22 @@ export class MockClient implements ApiClient {
     const unplaced = !declined ? "" : declined === 1 ? " 1 student declined by a supervisor is now unmatched." : ` ${declined} students declined by supervisors are now unmatched.`;
     this.notify(this.activeAdmins(), "results_published", `Round ${r.number} results published`, `${sent}${unplaced} Students have until ${when(expires)} to respond.`, `/rounds/${roundId}/matches`);
   }
-  async auditLog() {
-    // mirror of audit_log and _describe: readable names for the affected records, entries themselves unchanged
+  async auditLog(query: M.AuditQuery = {}) {
+    // mirror of audit_log and _describer: readable names for the affected records, entries themselves unchanged;
+    // newest first (or oldest), searched, and a page of `limit` after the entry `cursor`
     this.need("admin");
     const describe = (id: string) => {
       const m = this.db.matches.find((x) => x.id === id); if (m) return `${m.student_name} → ${m.listing_title}`;
       for (const c of this.db.cycles) { if (c.id === id) return c.academic_year; const r = c.rounds.find((x) => x.id === id); if (r) return `Round ${r.number}, ${c.academic_year}`; }
       return this.db.users.find((x) => x.id === id)?.name ?? this.db.listings.find((x) => x.id === id)?.title ?? id;
     };
-    return [...this.db.audit].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map((e) => ({ ...e, affected_labels: e.affected_records.map(describe) }));
+    const dir = query.order === "asc" ? 1 : -1, needle = (query.q ?? "").trim().toLowerCase();
+    let rows = this.db.audit.filter((e) => !query.operation || e.operation === query.operation)
+      .sort((a, b) => dir * (a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id)))
+      .map((e) => ({ ...e, affected_labels: e.affected_records.map(describe) }));
+    if (needle) rows = rows.filter((e) => [e.affected_labels.join(" "), e.note ?? "", e.actor_name].join(" ").toLowerCase().includes(needle));
+    if (query.cursor) { const at = rows.findIndex((e) => e.id === query.cursor); rows = at < 0 ? [] : rows.slice(at + 1); }
+    return query.limit ? rows.slice(0, query.limit) : rows;
   }
   async supervisorMatches() { const u = this.need("supervisor"); return this.db.matches.filter((m) => m.supervisor_id === u.id); }
   async declineMatch(id: string, note?: string) {
