@@ -33,12 +33,12 @@ from app.services.storage import get_storage
 router = APIRouter(tags=["listings"])
 
 
-def _submitted_by_listing(store, settings) -> dict[str, list[Application]]:
-    """Applications under review in the current round, grouped by project. Applications from an earlier round or
-    cycle, and everything before Round 1 opens, do not count: a new cycle starts with no applicants and nobody
-    marked as applied. Read through applications_for(), which is the database in Supabase mode (store.applications
-    is only the in-memory seed there), and read once so Browse does not query once per card."""
-    round_id = windows.phase(store.cycle, settings.now()).round_id
+def _submitted_by_listing(store, settings, cycle) -> dict[str, list[Application]]:
+    """Applications under review in the current round of `cycle` (the active one, already read), grouped by project.
+    Applications from an earlier round or cycle, and everything before Round 1 opens, do not count: a new cycle starts
+    with no applicants and nobody marked as applied. Read through applications_for(), which queries only that round
+    in Supabase mode, and read once so Browse does not query once per card."""
+    round_id = windows.phase(cycle, settings.now()).round_id
     out: dict[str, list[Application]] = {}
     if round_id is None:
         return out
@@ -48,13 +48,10 @@ def _submitted_by_listing(store, settings) -> dict[str, list[Application]]:
     return out
 
 
-def _held_by_listing(store) -> dict[str, int]:
-    """Open matches and offers per project, counted in one pass (see _held_slots for one project)."""
-    out: dict[str, int] = {}
-    for m in store.matches:
-        if m.status in placement.OPEN:
-            out[m.listing_id] = out.get(m.listing_id, 0) + 1
-    return out
+def _counts(store, settings, cycle) -> tuple[dict[str, list[Application]], dict[str, int]]:
+    """Applications under review and held slots per project, for _decorate. Both use the cycle the handler read once:
+    in Supabase mode every read of store.cycle is two queries."""
+    return _submitted_by_listing(store, settings, cycle), placement.held_by_listing(cycle, store.matches)
 
 
 def _decorate(lst: Listing, user, submitted: dict[str, list[Application]], held: dict[str, int]) -> Listing:
@@ -74,8 +71,9 @@ def _decorate(lst: Listing, user, submitted: dict[str, list[Application]], held:
 
 def _held_slots(lst: Listing, store) -> int:
     """Matches and offers on this project that the student has not answered yet. Each one holds a slot until the
-    student accepts (it then counts in filled_slots) or it ends, so the supervisor cannot take that slot away."""
-    return sum(1 for m in store.matches if m.listing_id == lst.id and m.status in placement.OPEN)
+    student accepts (it then counts in filled_slots) or it ends, so the supervisor cannot take that slot away. Only this
+    cycle's count: an earlier cycle's leftovers hold nothing."""
+    return placement.held_by_listing(store.cycle, store.matches).get(lst.id, 0)
 
 
 @router.get("/listings", response_model=list[Listing])
@@ -90,10 +88,11 @@ def browse(
 ) -> list[Listing]:
     """REQ-BROWSE-1: open in every phase, including before the cycle opens.
     REQ-BROWSE-2: keyword, school, topic and supervisor filters, combined with AND, case-insensitive."""
-    if store.cycle is not None and not listing_lifecycle.cycle_open(store.cycle, settings.now()):
+    cycle = store.cycle
+    if cycle is not None and not listing_lifecycle.cycle_open(cycle, settings.now()):
         return []  # REQ-PROJ-4: past the closing date nothing is on offer, even before the schedule has closed the projects
     out = []
-    submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
+    submitted, held = _counts(store, settings, cycle)
     for lst in store.all_listings():
         if lst.status != ListingStatus.published:  # REQ-BROWSE-3
             continue
@@ -114,7 +113,7 @@ def browse(
 def admin_listings(user: AdminUser, store: StoreDep, settings: SettingsDep) -> list[Listing]:
     """REQ-PROJ-4: the admin sees every project and where it stands, drafts and closed ones included. Read only. Students
     still see published projects only (REQ-BROWSE-3). Published first, then drafts, then closed; by title within each."""
-    submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
+    submitted, held = _counts(store, settings, store.cycle)
     order = {ListingStatus.published: 0, ListingStatus.draft: 1, ListingStatus.closed: 2}
     rows = [_decorate(lst, user, submitted, held) for lst in store.all_listings()]
     return sorted(rows, key=lambda lst: (order[lst.status], lst.title.lower()))
@@ -134,7 +133,7 @@ def recommendations(
     sp = store.student(user.id)
     if sp is None or not sp.research_interests or not sp.eligible_for_matching or placement.is_placed(store, user.id):
         return []
-    submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
+    submitted, held = _counts(store, settings, store.cycle)
     open_listings = [
         d
         for d in (_decorate(lst, user, submitted, held) for lst in store.all_listings() if lst.status == ListingStatus.published)
@@ -148,7 +147,7 @@ def detail(listing_id: str, user: CurrentUser, store: StoreDep, settings: Settin
     lst = store.listing(listing_id)
     if lst is None or (lst.status != ListingStatus.published and user.id != lst.supervisor_id and user.role != Role.admin):
         raise not_found("Project")
-    return _decorate(lst, user, _submitted_by_listing(store, settings), _held_by_listing(store))
+    return _decorate(lst, user, *_counts(store, settings, store.cycle))
 
 
 @router.get("/supervisors", response_model=list[SupervisorSummary])
@@ -164,7 +163,7 @@ def supervisors(user: CurrentUser, store: StoreDep) -> list[SupervisorSummary]:
 
 @router.get("/supervisor/listings", response_model=list[Listing])
 def my_listings(user: SupervisorUser, store: StoreDep, settings: SettingsDep) -> list[Listing]:
-    submitted, held = _submitted_by_listing(store, settings), _held_by_listing(store)
+    submitted, held = _counts(store, settings, store.cycle)
     return [_decorate(lst, user, submitted, held) for lst in store.all_listings() if lst.supervisor_id == user.id]
 
 

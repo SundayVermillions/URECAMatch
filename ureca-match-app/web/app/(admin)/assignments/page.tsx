@@ -93,13 +93,6 @@ function AssignmentsPage() {
   return (
     <>
       <PageTitle title="Assignments" />
-      {v && (
-        <div className="mb-4">
-          <Banner tone="accent">{v.round
-            ? `New assignments join Round ${v.round.number}. ${v.offer_deadline ? `Its results are out, so the offer goes straight away, to be answered by ${fmtDeadline(v.offer_deadline)}.` : pending ? "They go out with its results, which are being published now." : `They go out with its results on ${fmtDeadline(v.round.approval_end)}.`}`
-            : "Students can be assigned once an application cycle with rounds is open."}</Banner>
-        </div>
-      )}
       {view.error && <div className="mb-4"><Banner tone="bad">{view.error.message}</Banner></div>}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">

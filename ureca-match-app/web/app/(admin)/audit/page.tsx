@@ -1,27 +1,42 @@
 "use client";
 /** MaintainAuditLog (4.7). REQ-AUDIT-1..3. Screen: AuditOverridesPage. Read only: a table like a spreadsheet, with a sticky header,
- *  gridlines, a row number and a sortable "When" column. */
-import { useState } from "react";
+ *  gridlines, a row number and a sortable "When" column. The log grows forever, so it loads a page at a time: the search,
+ *  the operation filter and the order are applied by the API, and "Load more" adds the next page. */
+import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/shell/app-shell";
 import { I } from "@/components/shell/icons";
-import { Avatar, Card, Empty, FilterSelect, Input, Pill, Skeleton, fmtDateTime } from "@/components/ui";
-import type { AuditOperation } from "@/lib/api/models";
-import { useApi } from "@/lib/use-api";
+import { Avatar, Button, Card, Empty, FilterSelect, Input, Pill, Skeleton, fmtDateTime } from "@/components/ui";
+import type { AuditEntry, AuditOperation } from "@/lib/api/models";
+import { useApi, useCall } from "@/lib/use-api";
 
 const LABEL: Record<AuditOperation, string> = { matching_executed: "Matching run", manual_reassignment: "Manual reassignment", results_published: "Results published", user_updated: "User updated", user_deactivated: "User deactivated", cycle_updated: "Cycle updated" };
 
 const COLS = "grid-cols-[48px_170px_200px_1fr_180px]";
 const CELL = "px-4 border-r border-border last:border-r-0";
+const PAGE = 50; // entries per page; one more is asked for, to know whether there is a next page
 
 export default function Audit() {
+  const call = useCall();
   const [op, setOp] = useState<AuditOperation | undefined>();
   const [q, setQ] = useState("");
+  const [query, setQuery] = useState(""); // `q` once typing pauses, so every keystroke is not a request
   const [newest, setNewest] = useState(true);
-  const { data, loading } = useApi((api) => api.auditLog(), []);
-  const text = (e: NonNullable<typeof data>[number]) => [(e.affected_labels?.length ? e.affected_labels : e.affected_records).join(" "), e.note ?? "", e.actor_name].join(" ").toLowerCase();
-  const rows = [...(data ?? [])]
-    .filter((e) => (!op || e.operation === op) && (!q.trim() || text(e).includes(q.trim().toLowerCase())))
-    .sort((a, b) => (newest ? -1 : 1) * (Date.parse(a.timestamp) - Date.parse(b.timestamp)));
+  useEffect(() => { const t = setTimeout(() => setQuery(q.trim()), 300); return () => clearTimeout(t); }, [q]);
+  const filters = { operation: op, q: query || undefined, order: newest ? "desc" : "asc" } as const;
+  const sig = JSON.stringify(filters); // later pages belong to the filters they were loaded for
+  const { data, loading } = useApi((api) => api.auditLog({ ...filters, limit: PAGE + 1 }), [sig]);
+  const [later, setLater] = useState<{ sig: string; rows: AuditEntry[]; more: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const extra = later?.sig === sig ? later : null;
+  const rows = [...(data ?? []).slice(0, PAGE), ...(extra?.rows ?? [])];
+  const more = extra ? extra.more : (data?.length ?? 0) > PAGE;
+  async function loadMore() {
+    setBusy(true);
+    try {
+      const next = await call((api) => api.auditLog({ ...filters, limit: PAGE + 1, cursor: rows[rows.length - 1]?.id }));
+      setLater({ sig, rows: [...(extra?.rows ?? []), ...next.slice(0, PAGE)], more: next.length > PAGE });
+    } finally { setBusy(false); }
+  }
   return (
     <>
       <PageTitle title="Audit Log" />
@@ -29,7 +44,7 @@ export default function Audit() {
         <div className="relative w-64"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"><I.Search size={16} /></span><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search names and notes" aria-label="Search the audit log" className="w-full pl-9" /></div>
         <FilterSelect label="Operation" value={op ? LABEL[op] : undefined} options={Object.values(LABEL)} anyLabel="All" align="left"
           onChange={(v) => setOp(v ? (Object.keys(LABEL) as AuditOperation[]).find((k) => LABEL[k] === v) : undefined)} />
-        {data && <span className="ml-auto text-[12.5px] tabular text-faint">{rows.length} {rows.length === 1 ? "entry" : "entries"}</span>}
+        {data && <span className="ml-auto text-[12.5px] tabular text-faint">{rows.length}{more ? "+" : ""} {rows.length === 1 && !more ? "entry" : "entries"}</span>}
       </div>
 
       {loading && !data ? (
@@ -75,6 +90,11 @@ export default function Audit() {
             ))}
           </div>
         </Card>
+      )}
+      {more && (
+        <div className="mt-4 flex justify-center">
+          <Button size="sm" variant="soft" disabled={busy} onClick={loadMore}>{busy ? "Loading…" : "Load more"}</Button>
+        </div>
       )}
       <p className="mt-4 px-1 text-[12px] text-faint">Append-only. Every matching run and manual reassignment is recorded with who did it and when. System marks what ran on its own when a window closed.</p>
     </>

@@ -81,20 +81,20 @@ def test_REQ_EXEC_4_a_clock_jump_runs_matching_before_publishing(fresh_store, at
 
 
 def test_REQ_EXEC_4_a_failed_run_leaves_nothing_half_done(fresh_store, anon, at, monkeypatch):
-    real, lookups = fresh_store.user, []
+    real, lookups = fresh_store.ranking, []
 
-    def unavailable_after_one(user_id):
-        lookups.append(user_id)
+    def unavailable_after_one(listing_id, round_id):
+        lookups.append(listing_id)
         if len(lookups) > 1:
             raise RuntimeError("database unavailable")
-        return real(user_id)
+        return real(listing_id, round_id)
 
-    monkeypatch.setattr(fresh_store, "user", unavailable_after_one)  # fails with the matches half built
+    monkeypatch.setattr(fresh_store, "ranking", unavailable_after_one)  # fails with the round claimed and half read
     monkeypatch.setattr(get_settings(), "demo_now", REVIEW_CLOSED)
     assert anon.get("/health").status_code == 200  # the failure is logged, not passed on to this request
     assert _round_2(fresh_store).executed_at is None
     assert not [m for m in fresh_store.matches if m.round_id == "rnd-2"]
-    monkeypatch.setattr(fresh_store, "user", real)
+    monkeypatch.setattr(fresh_store, "ranking", real)
     at(REVIEW_CLOSED)  # the next request runs it in full
     students = [m.student_id for m in fresh_store.matches if m.round_id == "rnd-2"]
     assert students and len(students) == len(set(students))

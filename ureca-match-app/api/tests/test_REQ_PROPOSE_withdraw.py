@@ -134,7 +134,7 @@ def test_REQ_OUTCOME_2_declining_an_offer_withdraws_waiting_proposals(client_for
 def test_REQ_OUTCOME_4_an_offer_that_times_out_withdraws_waiting_proposals(fresh_store):
     now = get_settings().now()
     _offer(fresh_store, "stu-9", offer_expires_at=now - timedelta(hours=1))
-    _expire_offers(fresh_store, now)
+    _expire_offers(fresh_store, now, fresh_store.cycle, fresh_store.matches)
     assert fresh_store.proposal("prp-2").status == ProposalStatus.withdrawn
     assert fresh_store.student("stu-9").eligible_for_matching is False
 
