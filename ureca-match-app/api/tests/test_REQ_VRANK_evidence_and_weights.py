@@ -155,9 +155,12 @@ def _weights(**kw):
     return {**base, **kw}
 
 
+VALID = {"prerequisites": 5, "fit": 15, "experience": 70, "cgpa": 10}
+
+
 def test_REQ_VRANK_5_defaults_then_saved_per_project(as_supervisor, fresh_store):
     assert as_supervisor.get(WEIGHTS).json() == ScoreWeights().model_dump()
-    body = _weights(experience=40, cgpa=10, fit=50)
+    body = VALID
     assert as_supervisor.put(WEIGHTS, json=body).json() == body
     assert as_supervisor.get(WEIGHTS).json() == body
     other = next(lst for lst in fresh_store.listings if lst.supervisor_id == "sup-1" and lst.id != "lst-1")
@@ -165,21 +168,26 @@ def test_REQ_VRANK_5_defaults_then_saved_per_project(as_supervisor, fresh_store)
 
 
 def test_REQ_VRANK_5_must_total_100(as_supervisor):
-    r = as_supervisor.put(WEIGHTS, json=_weights(fit=50))
+    r = as_supervisor.put(WEIGHTS, json={**VALID, "fit": 10})
     assert r.status_code == 422 and r.json()["code"] == "bad_weights"
     assert as_supervisor.put(WEIGHTS, json=_weights(fit=150, cgpa=-50)).status_code == 422
+
+
+def test_REQ_VRANK_5_no_factor_under_5(as_supervisor):
+    r = as_supervisor.put(WEIGHTS, json={"prerequisites": 0, "fit": 25, "experience": 65, "cgpa": 10})
+    assert r.status_code == 422 and r.json()["code"] == "bad_weights"
 
 
 def test_REQ_VRANK_5_only_the_projects_supervisor(as_supervisor, client_for, fresh_store):
     other = next(lst for lst in fresh_store.listings if lst.supervisor_id != "sup-1")
     path = f"/supervisor/listings/{other.id}/score-weights"
     assert as_supervisor.get(path).status_code == 403
-    assert as_supervisor.put(path, json=_weights(fit=100)).status_code == 403
+    assert as_supervisor.put(path, json=VALID).status_code == 403
     assert client_for("stu-1").get(WEIGHTS).status_code == 403
 
 
 def test_REQ_VRANK_5_not_in_the_listing_students_read(as_supervisor, as_student):
-    as_supervisor.put(WEIGHTS, json=_weights(fit=100))
+    assert as_supervisor.put(WEIGHTS, json=VALID).status_code == 200
     assert "score_weights" not in as_student.get("/listings/lst-1").text
 
 
@@ -187,11 +195,12 @@ def test_REQ_VRANK_5_weights_decide_the_gemini_score(as_supervisor, monkeypatch)
     a = as_supervisor.get("/supervisor/listings/lst-1/applicants").json()[0]["student"]["id"]
     rating = {"prerequisites": 0, "fit": 0, "experience": 90, "cgpa": 50}
     _gemini(monkeypatch, lambda _: [{"student_id": a, "factor_scores": rating, "reason": "ok"}])
-    as_supervisor.put(WEIGHTS, json=_weights(experience=50, cgpa=50))
-    s = next(x for x in as_supervisor.post(AI_MATCH).json() if x["student_id"] == a)
-    assert s["score"] == 70 and s["factor_scores"]["experience"] == 90
-    as_supervisor.put(WEIGHTS, json=_weights(experience=100))
-    assert next(x for x in as_supervisor.post(AI_MATCH).json() if x["student_id"] == a)["score"] == 90
+    for weights in (VALID, {"prerequisites": 5, "fit": 5, "experience": 45, "cgpa": 45}):
+        assert as_supervisor.put(WEIGHTS, json=weights).status_code == 200
+        s = next(x for x in as_supervisor.post(AI_MATCH).json() if x["student_id"] == a)
+        assert s["factor_scores"]["experience"] == 90 and s["score"] == ai_match.weighted(
+            s["factor_scores"], ScoreWeights(**weights)
+        )
 
 
 def test_REQ_VRANK_5_a_statement_cannot_claim_a_prerequisite(as_supervisor, fresh_store, monkeypatch):
@@ -202,9 +211,8 @@ def test_REQ_VRANK_5_a_statement_cannot_claim_a_prerequisite(as_supervisor, fres
     passed = sum(m in a["student"]["completed_modules"] for m in lst.prerequisites)
     rating = {"prerequisites": 100, "fit": 0, "experience": 0, "cgpa": 0}
     _gemini(monkeypatch, lambda _: [{"student_id": a["student"]["id"], "factor_scores": rating, "reason": "ok"}])
-    as_supervisor.put(WEIGHTS, json=_weights(prerequisites=100))
     s = next(x for x in as_supervisor.post(AI_MATCH).json() if x["student_id"] == a["student"]["id"])
-    assert s["score"] == s["factor_scores"]["prerequisites"] == round(100 * passed / len(lst.prerequisites))
+    assert s["factor_scores"]["prerequisites"] == round(100 * passed / len(lst.prerequisites))
 
 
 def test_REQ_VRANK_5_incomplete_rating_is_scored_locally(as_supervisor, monkeypatch):

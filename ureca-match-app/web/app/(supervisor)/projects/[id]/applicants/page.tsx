@@ -56,52 +56,50 @@ const FACTORS: { key: FactorKey; c: string; t: string; d: string; local?: string
   { key: "experience", c: "#e0559b", t: "Experience", d: "Relevant projects, internships and skills in their attached documents." },
   { key: "cgpa", c: "#3d7bff", t: "Grades", d: "Grades in modules related to the project count for more than overall CGPA.", local: "CGPA out of 5.00." },
 ];
+const MIN_WEIGHT = 5; // as in the API
 const weightOf = (w: ScoreWeights, k: FactorKey) => w[k] ?? 0;
 // An equal share, as on ScoreWeights in the API.
 const DEFAULT_WEIGHTS = Object.fromEntries(FACTORS.map((f) => [f.key, 100 / FACTORS.length])) as ScoreWeights;
 
-/** REQ-VRANK-5: how much each factor counts for this project. Drag the pie, or use + and -, in fives. Neither can pass
- *  100%, so raising a factor at 100% means lowering another first. Save needs them to total exactly 100. */
+/** REQ-VRANK-5: how much each factor counts for this project. It always totals 100%, in fives, and no factor goes under
+ *  MIN_WEIGHT. Drag the pie to move share between two neighbours; + and - trade with the factor above, going round the list. */
 function WeightsModal({ open, initial, busy, error, onClose, onSave }: { open: boolean; initial: ScoreWeights; busy: boolean; error?: string; onClose: () => void; onSave: (w: ScoreWeights) => void }) {
   const [w, setW] = useState(initial);
-  const total = FACTORS.reduce((sum, f) => sum + weightOf(w, f.key), 0);
-  const left = 100 - total;
-  const step = (k: FactorKey, by: number) => setW({ ...w, [k]: Math.min(Math.max(weightOf(w, k) + by, 0), weightOf(w, k) + Math.max(left, 0)) });
   const [pieKey, setPieKey] = useState(0); // a fresh pie starts its first slice at the top again
-  const clearAll = () => { setW(Object.fromEntries(FACTORS.map((f) => [f.key, 0])) as ScoreWeights); setPieKey((k) => k + 1); };
+  /** Raise or lower a factor by 5. The factor above it gives or takes the difference, or the next one up if it is at the minimum. */
+  const step = (i: number, by: 5 | -5) => {
+    const others = FACTORS.map((_, j) => FACTORS[(i - j - 1 + 2 * FACTORS.length) % FACTORS.length]).slice(0, FACTORS.length - 1);
+    const other = by < 0 ? others[0] : others.find((f) => weightOf(w, f.key) > MIN_WEIGHT);
+    if (!other) return;
+    const k = FACTORS[i].key;
+    setW({ ...w, [k]: weightOf(w, k) + by, [other.key]: weightOf(w, other.key) - by });
+  };
+  const atMax = (k: FactorKey) => weightOf(w, k) >= 100 - MIN_WEIGHT * (FACTORS.length - 1);
   const resetToDefault = () => { setW(DEFAULT_WEIGHTS); setPieKey((k) => k + 1); };
   return (
     <Modal open={open} onClose={onClose} title="Score weights for this project"
-      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button disabled={total !== 100 || busy} onClick={() => onSave(w)}>{busy ? "Saving..." : "Save weights"}</Button></>}>
+      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button disabled={busy} onClick={() => onSave(w)}>{busy ? "Saving..." : "Save weights"}</Button></>}>
       <p className="text-[13px] leading-[1.5] text-muted">How much each factor counts in AI match. This guides your shortlist only: it never changes your ranking or the matching. Students do not see it.</p>
-      <div className="mt-4">
-        <div role="status" className={`flex items-baseline justify-between text-[13px] font-medium tabular ${left === 0 ? "text-good-ink" : "text-text"}`}>
-          <span>{total}% of 100% used</span>
-          <span>{left === 0 ? "Ready to save. Lower a factor to raise another." : `${left}% left to assign`}</span>
-        </div>
-        <div aria-hidden className="mt-1.5 h-1.5 rounded-full bg-[#e8eef7]"><div className={`h-full rounded-full transition-[width] duration-150 ${left === 0 ? "bg-good" : "bg-accent"}`} style={{ width: `${Math.min(total, 100)}%` }} /></div>
-      </div>
       <div className="mt-4 grid grid-cols-1 items-center gap-4 sm:grid-cols-[208px_minmax(0,1fr)]">
         <div className="mx-auto w-full max-w-[208px]">
-          <WeightsPie key={pieKey} slices={FACTORS.map((f) => ({ key: f.key, color: f.c, label: f.t, value: weightOf(w, f.key) }))}
+          <WeightsPie key={pieKey} min={MIN_WEIGHT} slices={FACTORS.map((f) => ({ key: f.key, color: f.c, label: f.t, value: weightOf(w, f.key) }))}
             onChange={(values) => setW(Object.fromEntries(FACTORS.map((f, i) => [f.key, values[i]])) as ScoreWeights)} />
-          <div className="mt-1 text-center text-[12px] text-muted">Drag the white handles</div>
+          <div className="mt-1 text-center text-[12px] text-muted">Drag the white handles. Each factor keeps at least {MIN_WEIGHT}%.</div>
         </div>
         <ul className="flex min-w-0 flex-col gap-3">
-          {FACTORS.map((f) => (
+          {FACTORS.map((f, i) => (
             <li key={f.key} className="min-w-0">
               <div className="flex items-center gap-2">
                 <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: f.c }} />
                 <span className="min-w-0 flex-1 text-[13px] font-medium">{f.t}</span>
-                <button type="button" aria-label={`Lower ${f.t}`} disabled={!weightOf(w, f.key)} onClick={() => step(f.key, -5)} className="grid h-7 w-7 place-items-center rounded-full text-[15px] shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft disabled:opacity-40">-</button>
+                <button type="button" aria-label={`Lower ${f.t}`} disabled={weightOf(w, f.key) <= MIN_WEIGHT} onClick={() => step(i, -5)} className="grid h-7 w-7 place-items-center rounded-full text-[15px] shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft disabled:opacity-40">-</button>
                 <span className="w-9 text-center text-[13px] font-semibold tabular">{weightOf(w, f.key)}%</span>
-                <button type="button" aria-label={`Raise ${f.t}`} disabled={left <= 0} onClick={() => step(f.key, 5)} className="grid h-7 w-7 place-items-center rounded-full text-[15px] shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft disabled:opacity-40">+</button>
+                <button type="button" aria-label={`Raise ${f.t}`} disabled={atMax(f.key)} onClick={() => step(i, 5)} className="grid h-7 w-7 place-items-center rounded-full text-[15px] shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-neutral-soft disabled:opacity-40">+</button>
               </div>
               <div className="mt-0.5 pl-[18px] text-[12px] leading-[1.35] text-muted">{f.d}</div>
             </li>
           ))}
           <li className="flex gap-4 pl-[18px] text-[12.5px] font-medium">
-            <button type="button" onClick={clearAll} className="text-accent hover:text-accent-ink">Clear all</button>
             <button type="button" onClick={resetToDefault} className="text-accent hover:text-accent-ink">Reset to default</button>
           </li>
         </ul>

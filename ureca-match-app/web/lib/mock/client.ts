@@ -807,7 +807,8 @@ export class MockClient implements ApiClient {
   async scoreWeights(listingId: string) { this.ownListing(listingId); return this.weights[listingId] ?? DEFAULT_WEIGHTS; }
   async saveScoreWeights(listingId: string, w: M.ScoreWeights) {
     this.ownListing(listingId);
-    if (Object.values(w).reduce((a, b) => a + (b ?? 0), 0) !== 100) throw new M.ApiError(422, "bad_weights", "The weights must add up to 100%.", "weights");
+    const parts = Object.values(w).map((v) => v ?? 0);
+    if (parts.reduce((a, b) => a + b, 0) !== 100 || parts.some((v) => v < 5)) throw new M.ApiError(422, "bad_weights", "The weights must add up to 100%, with at least 5% each.", "weights");
     this.weights[listingId] = w;
     return w;
   }

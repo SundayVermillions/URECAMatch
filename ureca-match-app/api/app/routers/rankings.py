@@ -23,6 +23,7 @@ from app.services.storage import get_storage
 router = APIRouter(tags=["rankings"])
 
 TOP_N = 10  # REQ-VRANK-1
+MIN_WEIGHT = 5  # REQ-VRANK-5: every factor keeps some say
 
 
 def _applicants(store, listing_id: str, round_id: str | None) -> list[Applicant]:
@@ -123,8 +124,9 @@ def get_score_weights(listing_id: str, user: SupervisorUser, store: StoreDep) ->
 @router.put("/supervisor/listings/{listing_id}/score-weights", response_model=ScoreWeights)
 def put_score_weights(listing_id: str, body: ScoreWeights, user: SupervisorUser, store: StoreDep) -> ScoreWeights:
     _own_listing(store, listing_id, user)
-    if sum(body.model_dump().values()) != 100:
-        raise invalid("bad_weights", "The weights must add up to 100%.", "weights")
+    parts = body.model_dump().values()
+    if sum(parts) != 100 or min(parts) < MIN_WEIGHT:
+        raise invalid("bad_weights", f"The weights must add up to 100%, with at least {MIN_WEIGHT}% each.", "weights")
     store.save_score_weights(listing_id, body)
     return body
 
