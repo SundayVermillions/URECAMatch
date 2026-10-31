@@ -126,7 +126,7 @@ test("REQ-PROF-3: transcript opens in the page without a popup", async ({ page }
   await profileApi(page);
   await page.goto("/profile");
   await page.getByRole("button", { name: "View transcript.pdf", exact: true }).click();
-  await expect(page.locator('iframe[title="transcript.pdf"]')).toHaveAttribute("src", /sample-transcript\.pdf$/);
+  await expect(page.locator('iframe[title="transcript.pdf"]')).toHaveAttribute("src", /sample-transcript\.pdf#toolbar=0/);
   expect(page.context().pages()).toHaveLength(1);
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await expect(page.locator('iframe[title="transcript.pdf"]')).toHaveCount(0);

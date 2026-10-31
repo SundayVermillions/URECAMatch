@@ -1,7 +1,7 @@
 """Projects live only while a cycle is open (REQ-PROJ-4).
 
-A cycle ends when an admin closes it or its closing date passes. Every published project is then closed, so the next
-cycle does not inherit last cycle's Browse. A supervisor reopens the same project for the new cycle instead of
+A cycle ends when its closing date passes. Every published project is then closed, so the next cycle does not
+inherit last cycle's Browse. A supervisor reopens the same project for the new cycle instead of
 creating it again.
 """
 

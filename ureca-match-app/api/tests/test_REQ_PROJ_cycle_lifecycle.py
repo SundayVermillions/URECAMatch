@@ -6,6 +6,7 @@ Seed: sup-1 owns lst-1..3, demo clock 7 Sep 2026 (inside Round 2). The seeded cy
 from datetime import UTC, datetime
 
 from app.models import ListingStatus
+from app.settings import get_settings
 from tests.test_REQ_PROJ import new_listing
 
 AFTER_CYCLE = datetime(2026, 12, 1, 9, tzinfo=UTC)
@@ -15,9 +16,18 @@ def _status(store, lid):
     return store.listing(lid).status
 
 
-def test_REQ_PROJ_4_closing_the_cycle_closes_published_projects(as_admin, fresh_store):
-    cycle = fresh_store.cycle
-    assert as_admin.post(f"/admin/cycles/{cycle.id}/close").status_code == 200
+def test_REQ_PROJ_4_creating_the_next_cycle_closes_last_cycles_projects(as_admin, fresh_store, monkeypatch):
+    # In Supabase mode the schedule runs on the daily cron, so the next cycle can be created before it has run.
+    monkeypatch.setattr(get_settings(), "scheduler_on_request", False)
+    monkeypatch.setattr(get_settings(), "demo_now", AFTER_CYCLE)
+    assert _status(fresh_store, "lst-1") == ListingStatus.published
+    body = {
+        "academic_year": "AY27/28 Semester 1",
+        "opening_date": "2027-08-01T09:00:00Z",
+        "closing_date": "2027-11-01T09:00:00Z",
+        "pre_application_days": 7,
+    }
+    assert as_admin.post("/admin/cycles", json=body).status_code == 201
     assert _status(fresh_store, "lst-1") == ListingStatus.closed
 
 
@@ -27,9 +37,9 @@ def test_REQ_PROJ_4_the_closing_date_passing_closes_them_and_empties_browse(at, 
     assert as_student.get("/listings").json() == []
 
 
-def test_REQ_PROJ_4_drafts_stay_drafts(as_supervisor, as_admin, fresh_store):
+def test_REQ_PROJ_4_drafts_stay_drafts(as_supervisor, at, fresh_store):
     draft = as_supervisor.post("/supervisor/listings", json=new_listing(publish=False)).json()["id"]
-    as_admin.post(f"/admin/cycles/{fresh_store.cycle.id}/close")
+    at(AFTER_CYCLE)
     assert _status(fresh_store, draft) == ListingStatus.draft
 
 
@@ -60,4 +70,3 @@ def test_REQ_PROJ_4_only_the_owner_reopens_and_only_a_closed_project(client_for,
     assert client_for("sup-2").post("/supervisor/listings/lst-1/reopen").status_code == 403
     assert as_supervisor.post("/supervisor/listings/lst-1/reopen").status_code == 200
     assert as_supervisor.post("/supervisor/listings/lst-1/reopen").status_code == 409
-

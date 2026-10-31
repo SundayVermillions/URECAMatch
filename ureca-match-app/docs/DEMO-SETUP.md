@@ -21,23 +21,45 @@ Backups, in order: this setup, then the browser-only mock (`NEXT_PUBLIC_API_MODE
 - Mailpit for Windows: download the zip from <https://github.com/axllent/mailpit/releases>, unzip it, you get `mailpit.exe`.
 - The latest `main`: `git checkout main` then `git pull`.
 
-## 2. Set the files
+## 2. Create the two settings files
 
-Never commit these two files. Both are ignored by git.
+Both files are ignored by git, so every laptop makes its own. Create each one by pasting the whole block. Do not copy `.env.example`: it has a comment after `EMAIL_ALLOWLIST=` that the app reads as the value, which silently blocks all e-mail.
+
+Rules for both files: one `NAME=value` per line, no spaces around `=`, no comment on the same line as a value, and restart the program after any change.
 
 **`ureca-match-app/api/.env`**
 
 ```
+# Demo setup. The API runs in mock mode, so no database or Supabase keys are needed.
 API_MODE=mock
 DEBUG_CLOCK=true
 EMAIL_MODE=smtp
+SMTP_HOST=localhost
+SMTP_PORT=1025
+EMAIL_FROM=URECAMatch <noreply@urecamatch.xyz>
 EMAIL_ALLOWLIST=student1@e.ntu.edu.sg,student2@e.ntu.edu.sg
+APP_URL=http://localhost:3000
+SESSION_MINUTES=30
+APPROVED_EMAIL_DOMAINS=e.ntu.edu.sg,ntu.edu.sg
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
-- Put your own two student addresses in `EMAIL_ALLOWLIST`, comma separated, no spaces.
-- Nothing after the `=` on that line. A `# comment` on the same line becomes the value and blocks all e-mail.
-- Only listed addresses get e-mail. Seeded accounts get none, which keeps Mailpit clean.
-- Leave the Supabase keys as they are. They are not used in this setup.
+| Line | What it does | Change it? |
+| --- | --- | --- |
+| `API_MODE=mock` | Data lives in the API's memory. Restarting the API resets everything. | No |
+| `DEBUG_CLOCK=true` | Lets the clock chip move time. The demo needs it. | No |
+| `EMAIL_MODE=smtp` | Sends e-mail to Mailpit on this laptop. Nothing leaves the laptop. | No |
+| `SMTP_HOST`, `SMTP_PORT` | Where Mailpit listens (localhost, 1025). | No |
+| `EMAIL_FROM` | The sender shown in Mailpit. | No |
+| `EMAIL_ALLOWLIST` | Only these addresses get e-mail. Seeded accounts get none, which keeps Mailpit clean. | **Yes**: your own two student addresses, comma separated, no spaces. Leave it empty to e-mail every account. |
+| `APP_URL` | Base address for links inside e-mails. | No |
+| `SESSION_MINUTES` | Idle time before sign-out. | No |
+| `APPROVED_EMAIL_DOMAINS` | Sign-up only accepts these domains. | No |
+| `GEMINI_API_KEY` | Empty: the AI match button scores locally and says so. Add a real key to show Gemini. | Optional |
+| `GEMINI_MODEL` | The Gemini model used when a key is set. | No |
+
+Not needed in this setup, leave them out: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `RESEND_API_KEY`, `CRON_SECRET`, `SCHEDULER_ON_REQUEST` (on by default in mock mode).
 
 **`ureca-match-app/web/.env.local`**
 
@@ -47,6 +69,23 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_DEBUG_CLOCK=true
 NEXT_PUBLIC_DEMO_ACCOUNTS=true
 ```
+
+| Line | What it does |
+| --- | --- |
+| `NEXT_PUBLIC_API_MODE=live` | The web app talks to the API over HTTP, so several tabs share one set of data. `mock` would keep the data inside one browser tab instead. |
+| `NEXT_PUBLIC_API_URL` | Where the API runs. Use `localhost`, not `127.0.0.1`, because the API only allows `localhost:3000`. |
+| `NEXT_PUBLIC_DEBUG_CLOCK=true` | Shows the clock chip at the top right. |
+| `NEXT_PUBLIC_DEMO_ACCOUNTS=true` | Shows the demo account buttons on the sign-in page, which live mode hides. |
+
+There is no `web/.env.example`, so create `.env.local` yourself. Next.js reads it only when `npm run dev` starts.
+
+**Check that the settings were read.** From the `api` folder:
+
+```powershell
+uv run python -c "from app.settings import get_settings as g; s=g(); print(s.api_mode, s.debug_clock, s.email_mode, repr(s.email_allowlist))"
+```
+
+You should see `mock True smtp 'student1@e.ntu.edu.sg,student2@e.ntu.edu.sg'`. If the last part shows text starting with `#`, there is a comment on that line: delete it.
 
 ## 3. Start everything
 
@@ -135,14 +174,14 @@ Order matters. Some steps only work in the right window.
 | Mailpit stays empty | Check `EMAIL_MODE=smtp`, the Mailpit window is open, the address is in `EMAIL_ALLOWLIST`, and there is no comment on that line |
 | "Sent 0 of 11" from the sample script | The allowlist excludes that address. Test with a listed one. |
 | Broken cover image | The API must be on the latest `main` (images are fixed in mock mode) |
-| Nothing updates after a clock jump | Refresh once or twice. Admin: open Matching Rounds. |
+| Nothing updates after a clock jump | Refresh once or twice. Admin: open Application Cycle. |
 | Port 3000, 8000 or 8025 is busy | Close the older terminal that still runs it |
 
 ## 9. Other setups
 
 **Browser mock (backup).** In `web/.env.local` set `NEXT_PUBLIC_API_MODE=mock` and restart the web app. No API needed. Data lives in one tab: use one tab only, switch actors with Sign out and Sign in, and do not press F5.
 
-**Supabase (shared database).** `API_MODE=supabase`, `DEBUG_CLOCK=true`, `SCHEDULER_ON_REQUEST=true`, and the SQL in `supabase/migrations/2026-10-31-shared-debug-clock.sql` applied once. All laptops share the data and one clock. The shared database must be reset to the November seed first, and requests are slow (2 to 4 seconds each) until the speed fix lands. Not the first choice for a live demo.
+**Supabase (shared database).** In `api/.env` change `API_MODE=supabase`, add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_JWT_SECRET` (ask the team for them, never commit them), and add `SCHEDULER_ON_REQUEST=true`. `web/.env.local` stays the same. Also apply the SQL in `supabase/migrations/2026-10-31-shared-debug-clock.sql` once. All laptops share the data and one clock. The shared database must be reset to the November seed first, and requests are slow (2 to 4 seconds each) until the speed fix lands. Not the first choice for a live demo.
 
 ## 10. Known issues
 

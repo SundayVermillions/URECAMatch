@@ -115,7 +115,7 @@ function ThisRound({ summary, loading, phase, round }: { summary: RoundSummary |
   const until = timeLeft(round.review_end, phase.now);
   return (
     <>
-      <div className="text-[12.5px] font-medium text-muted">Matching runs by itself</div>
+      <div className="text-[12.5px] font-medium text-muted">Matching runs</div>
       <div className="mt-1 font-display text-[24px] font-semibold leading-tight tracking-[-0.02em]">{fmtDeadline(round.review_end)}</div>
       {until && <div className="mt-1 text-[13px] font-medium text-accent-ink">in {until.n} {until.unit.replace(" left", "")}</div>}
       <p className="mt-5 text-[13px] leading-[1.55] text-muted">{summary.eligible} eligible students and {summary.open_slots} open slots go in. Supervisors can still change their rankings until then.</p>
@@ -191,7 +191,7 @@ export default function AdminDashboardPage() {
 
           <div className="grid grid-cols-5 gap-4">
             <Card className="col-span-2">
-              <SectionHead title={current ? `Round ${current.number} matching` : "Matching"} link={{ href: "/rounds", label: "Manage rounds" }} />
+              <SectionHead title={current ? `Round ${current.number}` : "Matching"} link={{ href: "/rounds", label: "Manage rounds" }} />
               <ThisRound summary={summary.data} loading={summary.loading && !summary.data && !!roundId} phase={me.phase} round={current} />
             </Card>
             <Card className="col-span-3">
