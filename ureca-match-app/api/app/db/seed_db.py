@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 from app.db import seed_data
 from app.db.store import SupabaseStore
 from app.models import AccountStatus, Role, User
+from app.services.storage import DEMO_DOCS
 
 CHUNK = 200  # rows per request
 
@@ -74,6 +75,16 @@ def seed_database(client: Any) -> dict[str, int]:
     return counts
 
 
+def upload_demo_documents(client: Any) -> None:
+    """Put the real files of seeded documents (Wei Ling's CV) into Storage so the AI match can read them."""
+    for s in seed_data.build()["students"]:
+        for d in (d for d in s.documents if d.storage_path):
+            src = DEMO_DOCS / d.storage_path.rsplit("/", 1)[-1]
+            if src.is_file():
+                options = {"content-type": "application/pdf", "upsert": "true"}
+                client.storage.from_("documents").upload(d.storage_path, src.read_bytes(), file_options=options)
+
+
 def main(argv: list[str] | None = None) -> int:
     from supabase import create_client
 
@@ -89,7 +100,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"This inserts the demo rows that are missing into {host}. Existing rows are not changed.")
         print("Run again with --yes to go ahead.")
         return 1
-    counts = seed_database(create_client(settings.supabase_url, settings.supabase_service_role_key))
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    counts = seed_database(client)
+    upload_demo_documents(client)
     for name, n in counts.items():
         print(f"  {name}: {n} rows offered")
     print(f"Seeded {host}. Run `uv run python -m app.db.seed_auth` next to create the sign-in accounts.")

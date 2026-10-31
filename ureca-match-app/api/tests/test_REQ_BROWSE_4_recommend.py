@@ -1,6 +1,6 @@
 """Slice B. Recommended projects on Browse.  REQ-BROWSE-4.
 
-Seed: stu-1 likes Healthcare AI and Marine Biology and has passed SC3020 among others. stu-33 is placed
+Seed: stu-1 likes Deep Learning and Machine Learning and has passed SC3020 among others. stu-33 is placed
 (accepted mt-1 in Round 1). Score = interests (40 for one shared topic, 50 for two or more) + readiness
 (share of prerequisites passed, out of 30) + chance (fewer applicants per open slot, out of 20).
 """
@@ -68,7 +68,7 @@ def test_REQ_BROWSE_4_score_is_the_sum_of_its_parts():
 def test_REQ_BROWSE_4_best_first_and_only_shared_topics(as_student):
     rows = as_student.get("/me/recommendations").json()
     assert rows and [r["score"] for r in rows] == sorted((r["score"] for r in rows), reverse=True)
-    mine = {"Healthcare AI", "Marine Biology"}
+    mine = {"Deep Learning", "Machine Learning"}
     assert all(mine & set(r["listing"]["topic_tags"]) for r in rows)
 
 

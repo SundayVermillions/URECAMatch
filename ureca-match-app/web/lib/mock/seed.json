@@ -450,14 +450,34 @@
       "cgpa": 3.99,
       "year_of_study": 2,
       "completed_modules": [
+        "CC0001",
+        "CC0003",
+        "CC0015",
         "CE4041",
+        "EG1001",
+        "MH1812",
+        "SC1003",
+        "SC1004",
+        "SC1005",
+        "SC1006",
+        "SC1007",
+        "SC1008",
+        "SC1013",
         "SC1015",
+        "SC2000",
+        "SC2001",
+        "SC2002",
+        "SC2005",
+        "SC2006",
+        "SC3000",
+        "SC3010",
         "SC3020",
+        "SC4001",
         "SC4002"
       ],
       "research_interests": [
-        "Healthcare AI",
-        "Marine Biology"
+        "Deep Learning",
+        "Machine Learning"
       ],
       "profile_complete": true,
       "eligible_for_matching": true,
@@ -468,10 +488,10 @@
           "file_name": "Transcript_WeiLingTan.pdf",
           "file_format": "pdf",
           "kind": "transcript",
-          "file_size": 644726,
+          "file_size": 19304,
           "uploaded_at": "2026-10-10T09:00:00Z",
           "url": null,
-          "storage_path": null
+          "storage_path": "stu-1/Transcript_WeiLingTan.pdf"
         },
         {
           "id": "doc-stu-1-cv",
@@ -479,10 +499,10 @@
           "file_name": "CV_WeiLingTan.pdf",
           "file_format": "pdf",
           "kind": "supporting",
-          "file_size": 232751,
+          "file_size": 4000,
           "uploaded_at": "2026-10-10T09:00:00Z",
           "url": null,
-          "storage_path": null
+          "storage_path": "stu-1/CV_WeiLingTan.pdf"
         }
       ]
     },

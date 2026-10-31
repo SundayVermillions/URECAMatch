@@ -6,6 +6,7 @@ In supabase mode, uploads bytes and signs URLs via Supabase Storage.
 """
 
 import base64
+from pathlib import Path
 from typing import Protocol
 
 from app.settings import get_settings
@@ -31,6 +32,9 @@ class StorageService(Protocol):
         ...
 
 
+DEMO_DOCS = Path(__file__).resolve().parents[1] / "db" / "demo_docs"  # real files for the seeded documents that have one
+
+
 class MockStorageService:
     def __init__(self, base_url: str = "") -> None:
         self.base_url = base_url
@@ -52,6 +56,9 @@ class MockStorageService:
         if key in self._files:  # show what was uploaded, not a stock file
             data, content_type = self._files[key]
             return f"data:{content_type};base64,{base64.b64encode(data).decode()}"
+        seeded = DEMO_DOCS / Path(path).name
+        if seeded.is_file():
+            return f"data:application/pdf;base64,{base64.b64encode(seeded.read_bytes()).decode()}"
         if bucket == "covers":
             return "/sample-cover.png"
         return "/sample-transcript.pdf"
@@ -59,7 +66,10 @@ class MockStorageService:
     def read(self, bucket: str, path: str) -> bytes | None:
         key = path if path.startswith(f"{bucket}/") else f"{bucket}/{path.lstrip('/')}"
         found = self._files.get(key)
-        return found[0] if found else None
+        if found:
+            return found[0]
+        seeded = DEMO_DOCS / Path(path).name
+        return seeded.read_bytes() if seeded.is_file() else None
 
 
 class SupabaseStorageService:

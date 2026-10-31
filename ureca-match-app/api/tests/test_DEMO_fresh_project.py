@@ -21,6 +21,13 @@ def test_DEMO_fresh_leaves_the_demo_project_with_no_applicants(monkeypatch):
     assert any(m.student_id == "stu-33" for m in data["matches"])  # the account that has an offer history keeps it
 
 
+def test_DEMO_fresh_starts_with_no_student_proposals(monkeypatch):
+    monkeypatch.setattr(get_settings(), "demo_fresh", True)
+    data = seed_data.build()
+    assert data["proposals"] == []
+    assert not [n for n in data["notifications"] if n.link == "/proposals"]
+
+
 def test_DEMO_fresh_keeps_every_students_preferences_numbered_without_gaps(monkeypatch):
     monkeypatch.setattr(get_settings(), "demo_fresh", True)
     ranks: dict[tuple[str, str], list[int]] = {}

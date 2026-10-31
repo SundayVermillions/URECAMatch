@@ -177,6 +177,13 @@ INTERESTS = [
 ]
 
 
+# Wei Ling (stu-1) is the demo's strong-fit applicant with a modest CGPA: her transcript and CV are real files, so they
+# open in the viewer and the AI match can read the CV. The PDFs live in app/db/demo_docs.
+DEMO_TRANSCRIPT = {"file_size": 19304, "storage_path": "stu-1/Transcript_WeiLingTan.pdf"}
+DEMO_CV = {"file_size": 4000, "storage_path": "stu-1/CV_WeiLingTan.pdf"}
+DEMO_MODULES = ["CC0001", "CC0003", "CC0015", "CE4041", "EG1001", "MH1812", "SC1003", "SC1004", "SC1005", "SC1006", "SC1007", "SC1008", "SC1013", "SC1015", "SC2000", "SC2001", "SC2002", "SC2005", "SC2006", "SC3000", "SC3010", "SC3020", "SC4001", "SC4002"]
+
+
 def make_users() -> tuple[list[User], list[StudentProfile], list[SupervisorProfile]]:
     users: list[User] = []
     students: list[StudentProfile] = []
@@ -210,19 +217,21 @@ def make_users() -> tuple[list[User], list[StudentProfile], list[SupervisorProfi
                         owner_id=uid,
                         file_name=f"Transcript_{name.replace(' ', '')}.pdf",
                         kind="transcript",
-                        file_size=rng.randint(180_000, 900_000),
+                        **({"file_size": rng.randint(180_000, 900_000)} | (DEMO_TRANSCRIPT if i == 0 else {})),
                         uploaded_at=dt(12 + i % 6, 8),
                     ),
                     Document(
                         id=f"doc-{uid}-cv",
                         owner_id=uid,
                         file_name=f"CV_{name.replace(' ', '')}.pdf",
-                        file_size=rng.randint(80_000, 400_000),
+                        **({"file_size": rng.randint(80_000, 400_000)} | (DEMO_CV if i == 0 else {})),
                         uploaded_at=dt(12 + i % 6, 8),
                     ),
                 ],
             )
         )
+    students[0].completed_modules = DEMO_MODULES  # the same modules her transcript shows
+    students[0].research_interests = ["Deep Learning", "Machine Learning"]
     return users, students, supervisors
 
 
@@ -888,7 +897,8 @@ DEMO_PROJECT_MOVED_TO = "lst-3"  # where the earlier student's accepted match mo
 
 
 def make_demo_project_fresh(data: dict) -> None:
-    """DEMO_FRESH: nobody has applied to or been placed on the demo project, and it has one slot (demo set-up only)."""
+    """DEMO_FRESH: nobody has applied to or been placed on the demo project, it has one slot, and no student has proposed
+    anything yet, so the supervisors' Proposals page starts empty (demo set-up only)."""
     other = next(lst for lst in data["listings"] if lst.id == DEMO_PROJECT_MOVED_TO)
     demo = next(lst for lst in data["listings"] if lst.id == DEMO_PROJECT)
     for a in data["applications"]:
@@ -903,6 +913,8 @@ def make_demo_project_fresh(data: dict) -> None:
                 other.supervisor_name,
             )
     data["applications"] = [a for a in data["applications"] if a.listing_id != DEMO_PROJECT]
+    data["proposals"] = []
+    data["notifications"] = [n for n in data["notifications"] if n.id != "ntf-4"]  # "New proposal from ..." for a proposal that is gone
     demo.available_slots, demo.filled_slots = 1, 0
     other.filled_slots += 1
     ranks: dict[tuple[str, str], int] = {}

@@ -54,7 +54,7 @@ insert into users (id, email, name, role, status, created_at) values
 on conflict (id) do nothing;
 
 insert into student_profiles (user_id, school, cgpa, year_of_study, completed_modules, research_interests, profile_complete, eligible_for_matching) values
-('stu-1', 'CCDS', 3.99, 2, array['CE4041','SC1015','SC3020','SC4002']::text[], array['Healthcare AI','Marine Biology']::text[], true, true),
+('stu-1', 'CCDS', 3.99, 2, array['CC0001','CC0003','CC0015','CE4041','EG1001','MH1812','SC1003','SC1004','SC1005','SC1006','SC1007','SC1008','SC1013','SC1015','SC2000','SC2001','SC2002','SC2005','SC2006','SC3000','SC3010','SC3020','SC4001','SC4002']::text[], array['Deep Learning','Machine Learning']::text[], true, true),
 ('stu-2', 'CCDS', 3.69, 4, array['SC1015','SC2001']::text[], array['Healthcare AI','Natural Language Processing']::text[], true, true),
 ('stu-3', 'CCDS', 4.82, 2, array['CE4041','SC3020','SC4001']::text[], array['Human-Computer Interaction','Materials Science']::text[], true, true),
 ('stu-4', 'EEE', 4.68, 4, array['EE2101','EE3015','EE4285','SC1015']::text[], array['Human-Computer Interaction','Explainable AI']::text[], true, true),
@@ -106,8 +106,8 @@ insert into supervisor_profiles (user_id, faculty, organisation, title) values
 on conflict (user_id) do nothing;
 
 insert into supporting_documents (id, owner_id, file_name, file_format, kind, file_size, uploaded_at) values
-('doc-stu-1-t', 'stu-1', 'Transcript_WeiLingTan.pdf', 'pdf', 'transcript', 644726, '2026-10-10T09:00:00+00:00'),
-('doc-stu-1-cv', 'stu-1', 'CV_WeiLingTan.pdf', 'pdf', 'supporting', 232751, '2026-10-10T09:00:00+00:00'),
+('doc-stu-1-t', 'stu-1', 'Transcript_WeiLingTan.pdf', 'pdf', 'transcript', 19304, '2026-10-10T09:00:00+00:00'),
+('doc-stu-1-cv', 'stu-1', 'CV_WeiLingTan.pdf', 'pdf', 'supporting', 4000, '2026-10-10T09:00:00+00:00'),
 ('doc-stu-2-t', 'stu-2', 'Transcript_BryanKoh.pdf', 'pdf', 'transcript', 513023, '2026-10-11T09:00:00+00:00'),
 ('doc-stu-2-cv', 'stu-2', 'CV_BryanKoh.pdf', 'pdf', 'supporting', 360285, '2026-10-11T09:00:00+00:00'),
 ('doc-stu-3-t', 'stu-3', 'Transcript_AishaRahman.pdf', 'pdf', 'transcript', 361764, '2026-10-12T09:00:00+00:00'),

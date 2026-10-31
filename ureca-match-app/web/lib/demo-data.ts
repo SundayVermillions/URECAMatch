@@ -1,6 +1,7 @@
 /** The words and files the demo "Fill demo" button types in. Edit the text here; no other code needs to change.
- *  Story: Student 1 has the weaker CGPA but a specific statement and a portfolio full of evidence, so the AI score puts them first.
- *  Student 2 has the higher CGPA but a general statement and a thin portfolio. Their self-proposal is declined, then revised and accepted. */
+ *  Story: Student 1 (Jason Tan, a new account) has the high CGPA, no CV and a general statement. Their self-proposal is declined, then revised and accepted.
+ *  Student 2 (Wei Ling Tan, preloaded with a transcript and CV) has the lower CGPA but a specific statement and a CV full of related work,
+ *  so the AI score puts her first. */
 export type DemoRole = "s1" | "s2";
 
 export type DemoProposal = { title: string; description: string; interests: string[]; statement: string };
@@ -10,7 +11,7 @@ const NONE: DemoProposal = { title: "", description: "", interests: [], statemen
 export const DEMO: Record<DemoRole, {
   label: string;
   transcript: string;
-  portfolio: string;
+  portfolio: string; // empty: nothing to upload
   interests: string[];
   applyStatement: string;
   proposal: DemoProposal;
@@ -18,27 +19,13 @@ export const DEMO: Record<DemoRole, {
 }> = {
   s1: {
     label: "Student 1",
-    transcript: "/demo/mock-transcript-student1-lower.pdf",
-    portfolio: "/demo/portfolio-student1.pdf",
-    interests: ["Machine Learning", "Healthcare AI", "Computer Vision", "Explainable AI"],
+    transcript: "/demo/mock-transcript-JasonTan.pdf",
+    portfolio: "",
+    interests: ["Machine Learning", "Statistics"],
     applyStatement:
-      "I trained a retinal grading model on the APTOS 2019 dataset as a personal project and reached a quadratic weighted kappa of 0.89. " +
-      "I added Grad-CAM maps and checked them with a medical student, then cut the calibration error from 9.2% to 3.1% with temperature scaling. " +
-      "These are the same steps this project asks for. I also spent a summer with an eye clinic's data team, so I know how clinicians read model output. " +
-      "My CGPA is not my strongest point, but I have already built the kind of work this project needs. " +
-      "I would like to repeat it on a public fundus dataset under Prof. Chua and write it up properly.",
-    proposal: NONE, // Student 1 does not self-propose in the demo
-    revisedProposal: NONE,
-  },
-  s2: {
-    label: "Student 2",
-    transcript: "/demo/mock-transcript-student2-higher.pdf",
-    portfolio: "/demo/portfolio-student2.pdf",
-    interests: ["Machine Learning", "Natural Language Processing"],
-    applyStatement:
-      "I am interested in artificial intelligence and did well in SC4001 Neural Network and Deep Learning. " +
+      "I am interested in artificial intelligence and took SC4001 Neural Network and Deep Learning this year. " +
       "I think this project is a good chance to learn more about deep learning in healthcare. " +
-      "I am a hard working student and I am willing to learn whatever is needed to contribute to the project.",
+      "I have a high CGPA, I am a hard working student and I am willing to learn whatever is needed to contribute to the project.",
     proposal: {
       title: "Using AI on medical images",
       description:
@@ -58,9 +45,22 @@ export const DEMO: Record<DemoRole, {
       interests: ["Healthcare AI", "Deep Learning", "Medical Imaging"],
       statement:
         "Since your feedback I ran a small experiment: a ResNet-18 on 500 APTOS images reached a kappa of 0.71 with an uncalibrated error of 11%. " +
-        "I now have one dataset and one question, as you suggested. I took SC4001 and earned an A, and I can commit 8 hours a week. " +
+        "I now have one dataset and one question, as you suggested. I took SC4001 and can commit 8 hours a week. " +
         "I would like to work under you because your lab already works on explainable grading, so the calibration results would feed straight into it.",
     },
+  },
+  s2: {
+    label: "Student 2 (Wei Ling)",
+    transcript: "/demo/Transcript_WeiLingTan.pdf", // already on her profile; used only if it was deleted
+    portfolio: "", // her CV is already on her profile
+    interests: ["Deep Learning", "Machine Learning"],
+    applyStatement:
+      "I trained ResNet-50 and EfficientNet-B3 models to grade diabetic retinopathy on the public APTOS and EyePACS datasets and reached a quadratic weighted kappa of 0.84. " +
+      "I used temperature scaling to cut the expected calibration error from 0.11 to 0.03, and I made Grad-CAM heatmaps that an ophthalmology student checked. " +
+      "These are the same steps this project asks for. My CGPA is not my strongest point, but I have already built the kind of work this project needs. " +
+      "I would like to repeat it on a public fundus dataset under Prof. Chua and write it up properly.",
+    proposal: NONE, // Student 2 does not self-propose in the demo
+    revisedProposal: NONE,
   },
 };
 

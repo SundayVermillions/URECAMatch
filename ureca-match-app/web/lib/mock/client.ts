@@ -823,7 +823,7 @@ export class MockClient implements ApiClient {
       const proposed = this.db.proposals.some((p) => p.student_id === s.user_id && p.supervisor_id === u.id && (p.document_ids ?? []).includes(id));
       const ok = u.id === s.user_id || u.role === "admin" || (u.role === "supervisor" && (applied || proposed));
       if (!ok) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
-      const liveUrl = mockFileUrls.get(id) ?? d.url ?? "/sample-transcript.pdf";
+      const liveUrl = mockFileUrls.get(id) ?? d.url ?? (d.storage_path ? `/demo-docs/${d.storage_path.split("/").pop()}` : "/sample-transcript.pdf");
       return { ...d, url: liveUrl };
     }
     throw new M.ApiError(404, "not_found", "Document was not found.");
