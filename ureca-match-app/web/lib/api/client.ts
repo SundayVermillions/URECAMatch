@@ -44,6 +44,7 @@ export interface ApiClient {
   // slice C
   myApplications(): Promise<M.Application[]>;
   apply(body: M.ApplicationCreate): Promise<M.Application>;
+  applicationTips(body: M.ApplicationTipsRequest): Promise<M.ApplicationTips>;
   withdraw(id: string): Promise<void>;
   setRanking(applicationIds: string[]): Promise<M.Application[]>;
   applicants(listingId: string, f?: M.ApplicantFilters): Promise<M.Applicant[]>;
@@ -51,6 +52,8 @@ export interface ApiClient {
   getRanking(listingId: string): Promise<M.ApplicantRanking>;
   putRanking(listingId: string, applicationIds: string[]): Promise<M.ApplicantRanking>;
   aiMatch(listingId: string): Promise<M.ApplicantScore[]>;
+  scoreWeights(listingId: string): Promise<M.ScoreWeights>;
+  saveScoreWeights(listingId: string, weights: M.ScoreWeights): Promise<M.ScoreWeights>;
   documentUrl(documentId: string): Promise<M.Document>;
   // slice D
   cycle(): Promise<M.Cycle | null>;

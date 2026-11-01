@@ -12,6 +12,7 @@ from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
+from pydantic.json_schema import SkipJsonSchema
 
 # ---------------------------------------------------------------- enums
 
@@ -146,6 +147,8 @@ class Document(BaseModel):
     uploaded_at: datetime
     url: str | None = None  # signed URL for in-app viewing (REQ-VRANK-3)
     storage_path: str | None = None  # path in Storage bucket (REQ-PROF-3)
+    # Demo seed only: stands in for a PDF, as seeded documents have no file. Server only: never in a response or the contract.
+    extracted_text: SkipJsonSchema[str | None] = Field(default=None, exclude=True)
 
 
 # ---------------------------------------------------------------- users
@@ -523,6 +526,24 @@ class ApplicantRankingUpdate(BaseModel):
     application_ids: list[str]
 
 
+class ScoreWeights(BaseModel):
+    """How much each factor counts in a project's AI match, in percent (REQ-VRANK-5).
+    The router checks they total 100, each at least 5. The default is an equal share."""
+
+    prerequisites: int = Field(default=25, ge=0, le=100)
+    fit: int = Field(default=25, ge=0, le=100)
+    experience: int = Field(default=25, ge=0, le=100)
+    cgpa: int = Field(default=25, ge=0, le=100)
+
+
+class ScoreEvidence(BaseModel):
+    """Why a score is what it is (REQ-VRANK-4). From Gemini, quote is checked word for word against source."""
+
+    factor: Literal["prerequisites", "fit", "experience", "cgpa"]
+    source: str  # "Statement", "Profile", "GitHub" or a document's file name
+    quote: str
+
+
 class ApplicantScore(BaseModel):
     """AI match fit score for one applicant (REQ-VRANK-1). source says whether Gemini or the local formula scored it."""
 
@@ -530,6 +551,29 @@ class ApplicantScore(BaseModel):
     student_id: str
     score: int = Field(ge=0, le=100)
     reason: str
+    source: Literal["ai", "local"]
+    factor_scores: dict[str, int] = {}  # 0 to 100 per factor, from Gemini; the weights turn these into the score
+    evidence: list[ScoreEvidence] = []
+    unread_documents: list[str] = []  # attached files with no readable text, such as scans
+
+
+class ApplicationTipsRequest(BaseModel):
+    """A draft application to check before submitting (REQ-APPLY-4). Nothing is saved."""
+
+    listing_id: str
+    statement: str = Field(default="", max_length=6000)
+    document_ids: list[str] = []
+
+
+class ApplicationTip(BaseModel):
+    tone: Literal["good", "improve"]
+    text: str
+
+
+class ApplicationTips(BaseModel):
+    """Advice for the student. Never a score."""
+
+    tips: list[ApplicationTip]
     source: Literal["ai", "local"]
 
 

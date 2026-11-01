@@ -54,6 +54,7 @@ STUDENT_ONLY = {
     ("GET", "/me/proposals"),
     ("POST", "/me/proposals/{proposal_id}/withdraw"),
     ("GET", "/me/applications"),
+    ("POST", "/me/applications/tips"),
     ("POST", "/applications"),
     ("DELETE", "/applications/{application_id}"),
     ("PUT", "/me/ranking"),

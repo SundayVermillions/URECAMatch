@@ -579,6 +579,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/applications/tips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tips
+         * @description Tips on a draft application before it is submitted (REQ-APPLY-4). Saves nothing and never shows a score.
+         */
+        post: operations["tips_me_applications_tips_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/applications": {
         parameters: {
             query?: never;
@@ -662,6 +682,27 @@ export interface paths {
          *     Only the listing's own supervisor: the scores are built from applicants' personal data (SRS 5.3.3).
          */
         post: operations["ai_match_supervisor_listings__listing_id__applicants_ai_match_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supervisor/listings/{listing_id}/score-weights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Score Weights
+         * @description How much each factor counts in this project's AI match (REQ-VRANK-5). Students never see these.
+         */
+        get: operations["get_score_weights_supervisor_listings__listing_id__score_weights_get"];
+        /** Put Score Weights */
+        put: operations["put_score_weights_supervisor_listings__listing_id__score_weights_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1409,6 +1450,23 @@ export interface components {
              * @enum {string}
              */
             source: "ai" | "local";
+            /**
+             * Factor Scores
+             * @default {}
+             */
+            factor_scores: {
+                [key: string]: number;
+            };
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ScoreEvidence"][];
+            /**
+             * Unread Documents
+             * @default []
+             */
+            unread_documents: string[];
         };
         /** ApplicantStudent */
         ApplicantStudent: {
@@ -1483,6 +1541,47 @@ export interface components {
          * @enum {string}
          */
         ApplicationStatus: "submitted" | "withdrawn" | "matched" | "unmatched";
+        /** ApplicationTip */
+        ApplicationTip: {
+            /**
+             * Tone
+             * @enum {string}
+             */
+            tone: "good" | "improve";
+            /** Text */
+            text: string;
+        };
+        /**
+         * ApplicationTips
+         * @description Advice for the student. Never a score.
+         */
+        ApplicationTips: {
+            /** Tips */
+            tips: components["schemas"]["ApplicationTip"][];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "ai" | "local";
+        };
+        /**
+         * ApplicationTipsRequest
+         * @description A draft application to check before submitting (REQ-APPLY-4). Nothing is saved.
+         */
+        ApplicationTipsRequest: {
+            /** Listing Id */
+            listing_id: string;
+            /**
+             * Statement
+             * @default
+             */
+            statement: string;
+            /**
+             * Document Ids
+             * @default []
+             */
+            document_ids: string[];
+        };
         /**
          * AssignmentStatus
          * @description Where a student stands in the active cycle, on the Assignments page (REQ-ASSIGN-1..3).
@@ -2273,6 +2372,48 @@ export interface components {
              * @default true
              */
             rollover_unmatched: boolean;
+        };
+        /**
+         * ScoreEvidence
+         * @description Why a score is what it is (REQ-VRANK-4). From Gemini, quote is checked word for word against source.
+         */
+        ScoreEvidence: {
+            /**
+             * Factor
+             * @enum {string}
+             */
+            factor: "prerequisites" | "fit" | "experience" | "cgpa";
+            /** Source */
+            source: string;
+            /** Quote */
+            quote: string;
+        };
+        /**
+         * ScoreWeights
+         * @description How much each factor counts in a project's AI match, in percent (REQ-VRANK-5).
+         *     The router checks they total 100, each at least 5. The default is an equal share.
+         */
+        ScoreWeights: {
+            /**
+             * Prerequisites
+             * @default 25
+             */
+            prerequisites: number;
+            /**
+             * Fit
+             * @default 25
+             */
+            fit: number;
+            /**
+             * Experience
+             * @default 25
+             */
+            experience: number;
+            /**
+             * Cgpa
+             * @default 25
+             */
+            cgpa: number;
         };
         /** Session */
         Session: {
@@ -3712,6 +3853,42 @@ export interface operations {
             };
         };
     };
+    tips_me_applications_tips_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationTipsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationTips"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     apply_applications_post: {
         parameters: {
             query?: never;
@@ -3877,6 +4054,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicantScore"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_score_weights_supervisor_listings__listing_id__score_weights_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreWeights"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_score_weights_supervisor_listings__listing_id__score_weights_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoreWeights"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreWeights"];
                 };
             };
             /** @description Validation Error */

@@ -10,12 +10,14 @@ from app.models import (
     Application,
     ApplicationCreate,
     ApplicationStatus,
+    ApplicationTips,
+    ApplicationTipsRequest,
     ListingStatus,
     MatchStatus,
     Ok,
     PreferenceRankingUpdate,
 )
-from app.services import cycle_scope, placement, windows
+from app.services import application_tips, cycle_scope, placement, windows
 
 router = APIRouter(tags=["applications"])
 
@@ -39,6 +41,22 @@ def _active(store, student_id: str, round_id: str | None) -> list[Application]:
     """The student's applications still under review in this round."""
     apps = store.applications_for(student_id=student_id, round_id=round_id)
     return [a for a in apps if a.status == ApplicationStatus.submitted]
+
+
+@router.post("/me/applications/tips", response_model=ApplicationTips)
+def tips(body: ApplicationTipsRequest, user: StudentUser, store: StoreDep, settings: SettingsDep) -> ApplicationTips:
+    """Tips on a draft application before it is submitted (REQ-APPLY-4). Saves nothing and never shows a score."""
+    lst = store.listing(body.listing_id)
+    if lst is None or lst.status != ListingStatus.published:
+        raise not_found("Project")
+    sp = store.student(user.id)
+    if sp is None:
+        raise not_found("Profile")
+    own = {d.id: d for d in sp.documents}
+    if any(d not in own for d in body.document_ids):
+        raise invalid("unknown_document", "Attach documents from your own profile only.", "document_ids")
+    docs = [own[d] for d in body.document_ids]
+    return application_tips.application_tips(settings, lst, sp, body.statement, docs)
 
 
 @router.post("/applications", response_model=Application, status_code=201)

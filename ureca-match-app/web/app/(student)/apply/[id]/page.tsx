@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
 import { Banner, Button, Card, Field, Loading, Textarea } from "@/components/ui";
-import { ApiError } from "@/lib/api/models";
+import { ApiError, type ApplicationTips } from "@/lib/api/models";
 import { useApi, useCall } from "@/lib/use-api";
 import { useStanding } from "@/lib/use-standing";
 
@@ -25,6 +25,9 @@ export default function Apply() {
   const [docs, setDocs] = useState<string[]>(() => (me?.student?.documents ?? []).map((d) => d.id));
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tips, setTips] = useState<ApplicationTips | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [tipsFailed, setTipsFailed] = useState(false);
   const standing = useStanding();
   if ((loading && !l) || standing.loading) return <Loading />;
   if (!l) return null;
@@ -46,6 +49,13 @@ export default function Apply() {
   const long = statement.length >= MIN_STATEMENT;
   const windowOpen = me?.phase.window === "application";
   const canSubmit = !busy && long;
+
+  /** REQ-APPLY-4. Saves nothing. A failure here must never get in the way of submitting. */
+  async function checkApplication() {
+    setChecking(true); setTipsFailed(false);
+    try { setTips(await call((api) => api.applicationTips({ listing_id: id, statement, document_ids: docs }))); }
+    catch { setTips(null); setTipsFailed(true); } finally { setChecking(false); }
+  }
 
   return (
     <form onSubmit={submit}>
@@ -115,6 +125,23 @@ export default function Apply() {
             <div className="text-[12.5px] text-muted mt-3 leading-[1.5]">
               {long ? "It will be added as your next preference. Reorder in My applications." : `Add ${MIN_STATEMENT - statement.length} more ${MIN_STATEMENT - statement.length === 1 ? "character" : "characters"} to submit.`}
             </div>
+          </Card>
+          <Card>
+            <h2 className="text-[16px]">Check my application</h2>
+            <div className="mt-1 text-[12.5px] leading-[1.5] text-muted">Tips on your draft. Optional, and not shared with the supervisor.</div>
+            <Button type="button" variant="secondary" className="mt-3 w-full" disabled={checking || !statement.trim()} onClick={checkApplication}><I.Bulb size={15} /> {checking ? "Checking..." : tips ? "Check again" : "Check my application"}</Button>
+            {tipsFailed && <div role="alert" className="mt-3 text-[12.5px] text-muted">Tips are not available right now. You can still submit.</div>}
+            {tips && (
+              <ul className="mt-3 flex flex-col gap-2.5 text-[12.5px] leading-[1.5]" aria-live="polite">
+                {tips.tips.map((t, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span aria-hidden className={`mt-0.5 shrink-0 ${t.tone === "good" ? "text-good" : "text-warn"}`}>{t.tone === "good" ? <I.CheckCircle size={15} /> : <I.Info size={15} />}</span>
+                    <span>{t.text}</span>
+                  </li>
+                ))}
+                {!tips.tips.length && <li className="text-muted">Nothing to flag.</li>}
+              </ul>
+            )}
           </Card>
         </aside>
       </div>

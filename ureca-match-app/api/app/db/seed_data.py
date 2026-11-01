@@ -222,7 +222,25 @@ def make_users() -> tuple[list[User], list[StudentProfile], list[SupervisorProfi
                 ],
             )
         )
+    _add_document_text(students)
     return users, students, supervisors
+
+
+def _add_document_text(students: list[StudentProfile]) -> None:
+    """Seeded documents have no file, so give AI match words to read (REQ-VRANK-4). Uses no rng: the rest of the seed
+    stays the same. Every fifth CV stands in for a scan."""
+    for i, s in enumerate(students):
+        focus, other = s.research_interests[0], s.research_interests[-1]
+        for d in s.documents:
+            if d.kind == "transcript":
+                d.extracted_text = f"Cumulative GPA: {s.cgpa:.2f}\nCourses passed: {', '.join(s.completed_modules)}"
+            elif i % 5:
+                d.extracted_text = (
+                    f"Curriculum vitae\nProjects: built a prototype on {focus} using Python and wrote a report on {other}.\n"
+                    f"Experience: teaching assistant for a programming class in {s.school}.\nSkills: Python, Git, SQL."
+                )
+            else:
+                d.extracted_text = ""
 
 
 # ---------------------------------------------------------------- cycle

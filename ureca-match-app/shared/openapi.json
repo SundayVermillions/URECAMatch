@@ -2576,6 +2576,82 @@
         }
       }
     },
+    "/me/applications/tips": {
+      "post": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Tips",
+        "description": "Tips on a draft application before it is submitted (REQ-APPLY-4). Saves nothing and never shows a score.",
+        "operationId": "tips_me_applications_tips_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationTipsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationTips"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/applications": {
       "post": {
         "tags": [
@@ -2986,6 +3062,163 @@
                     "$ref": "#/components/schemas/ApplicantScore"
                   },
                   "title": "Response Ai Match Supervisor Listings  Listing Id  Applicants Ai Match Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/supervisor/listings/{listing_id}/score-weights": {
+      "get": {
+        "tags": [
+          "rankings"
+        ],
+        "summary": "Get Score Weights",
+        "description": "How much each factor counts in this project's AI match (REQ-VRANK-5). Students never see these.",
+        "operationId": "get_score_weights_supervisor_listings__listing_id__score_weights_get",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Listing Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreWeights"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "rankings"
+        ],
+        "summary": "Put Score Weights",
+        "operationId": "put_score_weights_supervisor_listings__listing_id__score_weights_put",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Listing Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-demo-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoreWeights"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreWeights"
                 }
               }
             }
@@ -6075,6 +6308,30 @@
               "local"
             ],
             "title": "Source"
+          },
+          "factor_scores": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Factor Scores",
+            "default": {}
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreEvidence"
+            },
+            "type": "array",
+            "title": "Evidence",
+            "default": []
+          },
+          "unread_documents": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unread Documents",
+            "default": []
           }
         },
         "type": "object",
@@ -6286,6 +6543,82 @@
           "unmatched"
         ],
         "title": "ApplicationStatus"
+      },
+      "ApplicationTip": {
+        "properties": {
+          "tone": {
+            "type": "string",
+            "enum": [
+              "good",
+              "improve"
+            ],
+            "title": "Tone"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tone",
+          "text"
+        ],
+        "title": "ApplicationTip"
+      },
+      "ApplicationTips": {
+        "properties": {
+          "tips": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicationTip"
+            },
+            "type": "array",
+            "title": "Tips"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "local"
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tips",
+          "source"
+        ],
+        "title": "ApplicationTips",
+        "description": "Advice for the student. Never a score."
+      },
+      "ApplicationTipsRequest": {
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "title": "Listing Id"
+          },
+          "statement": {
+            "type": "string",
+            "maxLength": 6000,
+            "title": "Statement",
+            "default": ""
+          },
+          "document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Document Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "listing_id"
+        ],
+        "title": "ApplicationTipsRequest",
+        "description": "A draft application to check before submitting (REQ-APPLY-4). Nothing is saved."
       },
       "AssignmentStatus": {
         "type": "string",
@@ -8323,6 +8656,71 @@
         ],
         "title": "ScheduleUpdate",
         "description": "Use case 1-1, 1-2: the cycle's dates and its rounds, checked as one schedule and saved together or not at all.\nA date left empty keeps its current value."
+      },
+      "ScoreEvidence": {
+        "properties": {
+          "factor": {
+            "type": "string",
+            "enum": [
+              "prerequisites",
+              "fit",
+              "experience",
+              "cgpa"
+            ],
+            "title": "Factor"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "quote": {
+            "type": "string",
+            "title": "Quote"
+          }
+        },
+        "type": "object",
+        "required": [
+          "factor",
+          "source",
+          "quote"
+        ],
+        "title": "ScoreEvidence",
+        "description": "Why a score is what it is (REQ-VRANK-4). From Gemini, quote is checked word for word against source."
+      },
+      "ScoreWeights": {
+        "properties": {
+          "prerequisites": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Prerequisites",
+            "default": 25
+          },
+          "fit": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Fit",
+            "default": 25
+          },
+          "experience": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Experience",
+            "default": 25
+          },
+          "cgpa": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Cgpa",
+            "default": 25
+          }
+        },
+        "type": "object",
+        "title": "ScoreWeights",
+        "description": "How much each factor counts in a project's AI match, in percent (REQ-VRANK-5).\nThe router checks they total 100, each at least 5. The default is an equal share."
       },
       "Session": {
         "properties": {
