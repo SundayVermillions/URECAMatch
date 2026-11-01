@@ -60,6 +60,7 @@ export const DEMO: Record<DemoRole, {
       "This is the machine learning and healthcare AI work, in computer vision, that this project asks for. " +
       "I now want to go further than my first models: I will test whether the calibration still holds on a second public fundus dataset, " +
       "and ask whether the heatmaps actually help a clinician decide, which my earlier work did not answer. " +
+      "I plan to measure this by asking ophthalmology students to grade the same images with and without the heatmaps and comparing their accuracy, the time they take and how confident they are. " +
       "I would like to do this under Prof. Chua and write up the results properly.",
     proposal: NONE, // Student 2 does not self-propose in the demo
     revisedProposal: NONE,
