@@ -43,3 +43,14 @@ def test_DEMO_the_seed_is_unchanged_without_the_switch():
 def test_REQ_VRANK_4_the_demo_portfolio_has_words_for_ai_match_to_read():
     """The demo portfolio is read once, at upload, by document_text; the words must survive for AI match (REQ-VRANK-4)."""
     assert "APTOS" in document_text.extract_text(PORTFOLIO.read_bytes())
+
+def test_DEMO_wei_ling_documents_are_read_from_their_real_files():
+    """Her CV and transcript are real PDFs. Seeding must not give them made-up text (or a 'scan' with none), or AI match
+    and the application tips say the CV cannot be read."""
+    from app.services import ai_match
+
+    student = seed_data.build()["students"][0]
+    assert student.user_id == "stu-1"
+    for d in student.documents:
+        assert d.extracted_text is None, d.file_name
+        assert len(ai_match.document_text(d)) > 500, d.file_name

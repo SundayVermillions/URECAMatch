@@ -44,7 +44,7 @@ def _gemini(monkeypatch, reply, seen=None):
 
 
 def test_REQ_VRANK_4_document_text_never_in_a_response(as_student, as_supervisor, fresh_store):
-    assert fresh_store.student("stu-1").documents[0].extracted_text
+    assert fresh_store.student("stu-2").documents[0].extracted_text  # seeded text; stu-1 has real PDFs
     for r in [as_student.get("/me/profile"), as_student.get("/me"), as_supervisor.get("/supervisor/listings/lst-1/applicants")]:
         assert r.status_code == 200 and "extracted_text" not in r.text and "Curriculum vitae" not in r.text
     assert "extracted_text" not in as_student.get("/openapi.json").text

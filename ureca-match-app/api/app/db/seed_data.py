@@ -238,10 +238,14 @@ def make_users() -> tuple[list[User], list[StudentProfile], list[SupervisorProfi
 
 def _add_document_text(students: list[StudentProfile]) -> None:
     """Seeded documents have no file, so give AI match words to read (REQ-VRANK-4). Uses no rng: the rest of the seed
-    stays the same. Every fifth CV stands in for a scan."""
+    stays the same. Every fifth CV stands in for a scan. A document with a real file (the demo student's) is left alone, so
+    AI match and the application tips read the actual PDF."""
+    real = {DEMO_TRANSCRIPT["storage_path"], DEMO_CV["storage_path"]}
     for i, s in enumerate(students):
         focus, other = s.research_interests[0], s.research_interests[-1]
         for d in s.documents:
+            if d.storage_path in real:
+                continue
             if d.kind == "transcript":
                 d.extracted_text = f"Cumulative GPA: {s.cgpa:.2f}\nCourses passed: {', '.join(s.completed_modules)}"
             elif i % 5:
