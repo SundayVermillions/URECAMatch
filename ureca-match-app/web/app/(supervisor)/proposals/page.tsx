@@ -1,5 +1,7 @@
 "use client";
 /** ManageSelf-ProposedProjects (4.18). REQ-REVPROP-1..3. Screen: StudentProposalPage. */
+import { DEMO_DECLINE_PROPOSAL } from "@/lib/demo-data";
+import { typeText, useDemoFill } from "@/lib/demo-fill";
 import { useState } from "react";
 import { PageTitle } from "@/components/shell/app-shell";
 import { refreshBadges } from "@/components/shell/badges";
@@ -23,6 +25,7 @@ export default function Proposals() {
   const [reason, setReason] = useState(""); // REQ-REVPROP-2: why a proposal is declined; the student reads it
   const [reasonError, setReasonError] = useState<string | null>(null);
   const reasonOk = reason.trim().length >= MIN_REASON;
+  useDemoFill(async () => { if (confirm && !confirm.accept) await typeText(setReason, DEMO_DECLINE_PROPOSAL); }); // demo only: the reason box of the open dialog
   const closeConfirm = () => { setConfirm(null); setReason(""); setReasonError(null); };
   async function decide() {
     if (!confirm || (!confirm.accept && !reasonOk)) return;

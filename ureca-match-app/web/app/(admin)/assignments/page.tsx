@@ -10,6 +10,8 @@ import { PageTitle } from "@/components/shell/app-shell";
 import { I } from "@/components/shell/icons";
 import { Avatar, Banner, Button, Card, Empty, Field, FilterSelect, Input, Modal, Pill, Segmented, Select, Skeleton, Status, Textarea, fmtDeadline } from "@/components/ui";
 import { ApiError, type AssignmentStatus, type MatchStatus, type StudentAssignment } from "@/lib/api/models";
+import { DEMO_ASSIGNMENT_REASON } from "@/lib/demo-data";
+import { typeText, useDemoFill } from "@/lib/demo-fill";
 import { useApi, useCall } from "@/lib/use-api";
 
 const PAGE = 25; // rows shown before "Show more"
@@ -49,6 +51,7 @@ function AssignmentsPage() {
   const [handled, setHandled] = useState<string | null>(null); // the linked student whose Assign has already opened
   const linkedRow = linked && linked !== handled && v?.round ? v.students.find((s) => s.user.id === linked && s.status === "unassigned") : undefined;
   const current: Action | null = action ?? (linkedRow ? { kind: "assign", row: linkedRow } : null);
+  useDemoFill(async () => { if (current) await typeText(setWhy, DEMO_ASSIGNMENT_REASON[current.kind]); }); // demo only: the justification box of the open dialog
 
   const needle = q.trim().toLowerCase();
   const shown = students.filter((s) => (!linked || s.user.id === linked) && (standing === "all" || s.status === standing)

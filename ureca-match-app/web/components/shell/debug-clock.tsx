@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMe } from "./app-provider";
 import { Button } from "@/components/ui";
 import { ApiError, type ClockState } from "@/lib/api/models";
+import { DemoFillPanel } from "@/lib/demo-fill";
 import { useCall } from "@/lib/use-api";
 
 export const DEBUG_CLOCK_ON = process.env.NEXT_PUBLIC_DEBUG_CLOCK === "true";
@@ -82,6 +83,7 @@ export function DebugClock({ onChanged }: { onChanged: () => void }) {
               <div className="text-faint leading-[1.5]">Moves the clock for every user on this API. Nothing is saved: restarting the API resets it.</div>
             </>
           )}
+          <DemoFillPanel onStart={() => setOpen(false)} />
           {error && <div className="text-bad-ink font-medium">{error}</div>}
         </div>
       )}
