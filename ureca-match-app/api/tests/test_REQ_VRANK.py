@@ -160,6 +160,7 @@ def test_REQ_VRANK_1_ai_match_uses_gemini_reply(as_supervisor, fresh_store, monk
     _with_applicants(fresh_store, "lst-1", 3)
     rows = as_supervisor.get("/supervisor/listings/lst-1/applicants").json()
     first, rest = rows[0]["student"]["id"], rows[1:]
+    fresh_store.student(first).completed_modules = [*fresh_store.listing("lst-1").prerequisites]  # that factor is from the record
     calls = []
 
     class Reply:
@@ -167,8 +168,9 @@ def test_REQ_VRANK_1_ai_match_uses_gemini_reply(as_supervisor, fresh_store, monk
             pass
 
         def json(self):
-            # Gemini answers for the first applicant only (score out of range on purpose); the rest fall back
-            text = json.dumps([{"student_id": first, "score": 140, "reason": "Strong CV background"}])
+            # Gemini answers for the first applicant only (ratings out of range on purpose); the rest fall back
+            factors = dict.fromkeys(["prerequisites", "fit", "experience", "cgpa"], 140)
+            text = json.dumps([{"student_id": first, "factor_scores": factors, "reason": "Strong CV background"}])
             return {"candidates": [{"content": {"parts": [{"text": text}]}}]}
 
     def fake_post(url, headers, json, timeout):

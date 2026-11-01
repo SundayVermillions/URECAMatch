@@ -65,6 +65,7 @@ export class LiveClient implements ApiClient {
 
   myApplications = () => this.req<M.Application[]>("GET", "/me/applications");
   apply = (b: M.ApplicationCreate) => this.req<M.Application>("POST", "/applications", b);
+  applicationTips = (b: M.ApplicationTipsRequest) => this.req<M.ApplicationTips>("POST", "/me/applications/tips", b);
   withdraw = (id: string) => this.req<void>("DELETE", `/applications/${id}`);
   setRanking = (ids: string[]) => this.req<M.Application[]>("PUT", "/me/ranking", { application_ids: ids });
   applicants = (id: string, f: M.ApplicantFilters = {}) => this.req<M.Applicant[]>("GET", `/supervisor/listings/${id}/applicants` + this.q(f));
@@ -72,6 +73,8 @@ export class LiveClient implements ApiClient {
   getRanking = (id: string) => this.req<M.ApplicantRanking>("GET", `/supervisor/listings/${id}/ranking`);
   putRanking = (id: string, ids: string[]) => this.req<M.ApplicantRanking>("PUT", `/supervisor/listings/${id}/ranking`, { application_ids: ids });
   aiMatch = (id: string) => this.req<M.ApplicantScore[]>("POST", `/supervisor/listings/${id}/applicants/ai-match`);
+  scoreWeights = (id: string) => this.req<M.ScoreWeights>("GET", `/supervisor/listings/${id}/score-weights`);
+  saveScoreWeights = (id: string, w: M.ScoreWeights) => this.req<M.ScoreWeights>("PUT", `/supervisor/listings/${id}/score-weights`, w);
   documentUrl = (id: string) => this.req<M.Document>("GET", `/documents/${id}/view`);
 
   cycle = () => this.req<M.Cycle | null>("GET", "/cycle");

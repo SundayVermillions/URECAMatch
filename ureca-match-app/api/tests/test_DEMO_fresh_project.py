@@ -3,9 +3,7 @@
 from pathlib import Path
 
 from app.db import seed_data
-from app.models import Applicant, ApplicantStudent, Document
-from app.services import ai_match
-from app.services.storage import MockStorageService
+from app.services import document_text
 from app.settings import get_settings
 
 PORTFOLIO = Path(__file__).resolve().parents[2] / "web" / "public" / "demo" / "portfolio-student1.pdf"
@@ -42,20 +40,6 @@ def test_DEMO_the_seed_is_unchanged_without_the_switch():
     assert [a for a in data["applications"] if a.listing_id == "lst-1" and a.round_id == "rnd-2"]
 
 
-def test_REQ_VRANK_1_ai_match_sends_the_words_of_supporting_documents(monkeypatch):
-    storage = MockStorageService()
-    storage.put("documents", "stu-1/doc-p.pdf", PORTFOLIO.read_bytes())
-    monkeypatch.setattr(ai_match, "get_storage", lambda: storage)
-    doc = Document(
-        id="p",
-        owner_id="stu-1",
-        file_name="portfolio.pdf",
-        file_size=1,
-        uploaded_at=get_settings().now(),
-        storage_path="documents/stu-1/doc-p.pdf",
-    )
-    stu = ApplicantStudent(
-        id="stu-1", name="A", school="CCDS", year_of_study=3, cgpa=3.5, completed_modules=[], research_interests=[]
-    )
-    a = Applicant(application_id="app-x", student=stu, statement="s", submitted_at=get_settings().now(), documents=[doc])
-    assert "APTOS" in ai_match.supporting_text(a)[0]["text"]
+def test_REQ_VRANK_4_the_demo_portfolio_has_words_for_ai_match_to_read():
+    """The demo portfolio is read once, at upload, by document_text; the words must survive for AI match (REQ-VRANK-4)."""
+    assert "APTOS" in document_text.extract_text(PORTFOLIO.read_bytes())

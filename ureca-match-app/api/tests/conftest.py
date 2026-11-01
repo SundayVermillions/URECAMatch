@@ -76,7 +76,7 @@ def anon():
 
 @pytest.fixture
 def at(monkeypatch):
-    """Move the demo clock and call the daily tick, so the scheduler does whatever is now due (REQ-EXEC-4, REQ-PUB-3).
+    """Move the demo clock and call the daily tick, so the scheduler does whatever is now due (REQ-EXEC-6, REQ-PUB-4).
     The tick, unlike other requests, lets a failing step raise, so a scheduler bug fails the test where it happens."""
 
     def _move(when: datetime) -> None:

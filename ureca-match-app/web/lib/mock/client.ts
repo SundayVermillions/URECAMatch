@@ -22,6 +22,9 @@ const catalog = catalogJson as unknown as { topics: M.TopicGroup[]; courses: M.C
 const topicByLower = new Map(catalog.topics.flatMap((g) => g.topics.map((t) => [t.toLowerCase(), t] as const)));
 const courseCodes = new Set(catalog.courses.map((c) => c.code));
 const courseCode = (t: string) => t.replace(/\s+/g, "").toUpperCase();
+/** Mirrors the defaults on ScoreWeights in app/models. REQ-VRANK-5. */
+const DEFAULT_WEIGHTS = { prerequisites: 25, fit: 25, experience: 25, cgpa: 25 };
+
 function cleanTopics(values: string[], field: string) {
   const out: string[] = [];
   for (const v of values) {
@@ -123,6 +126,7 @@ export class MockClient implements ApiClient {
   db: Seed = clone(seedJson as unknown as Seed);
   now = DEMO_NOW;
   private counter = 5000;
+  private weights: Record<string, M.ScoreWeights> = {};
   private passwords: Record<string, string> = {};
 
   private id(p: string) { return `${p}-${++this.counter}`; }
@@ -732,7 +736,7 @@ export class MockClient implements ApiClient {
     if (sp && !sp.profile_complete) throw new M.ApiError(409, "profile_incomplete", "Complete your profile before applying. Go to My Profile to finish it.");
     if (this.isPlaced(u.id)) throw new M.ApiError(409, "already_placed", "You have already accepted a project this cycle, so you cannot apply to another.");
     if (sp && !sp.eligible_for_matching) throw new M.ApiError(409, "not_eligible", "You declined or did not answer an earlier offer, so you cannot apply again this cycle.");
-    if (this.cycleMatches(u.id).some((m) => m.status === "published")) // REQ-APPLY-3, this cycle only (mirror of placement.open_matches)
+    if (this.cycleMatches(u.id).some((m) => m.status === "published")) // REQ-APPLY-5, this cycle only (mirror of placement.open_matches)
       throw new M.ApiError(409, "offer_open", "You have a project offer to answer, so you cannot apply this round. See My Applications.");
     if (l.filled_slots >= l.available_slots) throw new M.ApiError(409, "fully_allocated", "All slots on this project are filled.");
     const own = new Set((sp?.documents ?? []).map((d) => d.id)); // REQ-APPLY-2: own documents only
@@ -767,7 +771,7 @@ export class MockClient implements ApiClient {
       const u = this.db.users.find((u) => u.id === a.student_id), sp = this.student(a.student_id);
       if (!u || !sp) return [];
       return [{ application_id: a.id, student: { id: u.id, name: u.name, email: u.email, school: sp.school, degree: resolveDegreeBySchool(sp.school, sp.degree), year_of_study: sp.year_of_study ?? null, cgpa: sp.cgpa ?? null, completed_modules: sp.completed_modules, research_interests: sp.research_interests },
-        statement: a.statement, submitted_at: a.submitted_at, documents: sp.documents, meets_prerequisites: l.prerequisites.every((m) => sp.completed_modules.includes(m)), recommended: false, rank: null }];
+        statement: a.statement, submitted_at: a.submitted_at, documents: sp.documents.filter((d) => a.document_ids?.includes(d.id)), meets_prerequisites: l.prerequisites.every((m) => sp.completed_modules.includes(m)), recommended: false, rank: null }];
     });
   }
   async applicants(listingId: string, f: M.ApplicantFilters = {}) {
@@ -788,17 +792,55 @@ export class MockClient implements ApiClient {
     const u = this.need("supervisor"); const l = this.listingOr404(listingId);
     if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
     const tags = l.topic_tags.map((t) => t.toLowerCase()), text = `${l.title} ${l.description}`.toLowerCase();
+    const saved = this.weights[listingId] ?? DEFAULT_WEIGHTS;
+    const w = saved.prerequisites + saved.fit + saved.cgpa ? saved : DEFAULT_WEIGHTS; // it cannot read documents
     return this.applicantRows(listingId, this.phase().round_id).map((a) => {
       const s = a.student, met = l.prerequisites.filter((m) => s.completed_modules.includes(m));
       const tagged = s.research_interests.filter((i) => tags.includes(i.toLowerCase()));
       const mentioned = s.research_interests.filter((i) => !tagged.includes(i) && text.includes(i.toLowerCase()));
-      const score = (l.prerequisites.length ? 40 * met.length / l.prerequisites.length : 40)
-        + Math.min(40, 20 * tagged.length + 10 * mentioned.length) + 20 * Math.min(Math.max(s.cgpa ?? 0, 0), 5) / 5;
+      const usable = w.prerequisites + w.fit + w.cgpa;
+      const score = 100 * (w.prerequisites * (l.prerequisites.length ? met.length / l.prerequisites.length : 1)
+        + w.fit * Math.min(1, (2 * tagged.length + mentioned.length) / 4) + w.cgpa * Math.min(Math.max(s.cgpa ?? 0, 0), 5) / 5) / usable;
       const shared = [...tagged, ...mentioned];
       const reason = [met.length === l.prerequisites.length ? "meets prerequisites" : `missing ${l.prerequisites.filter((m) => !met.includes(m)).join(", ")}`,
         shared.length ? `shares ${shared.join(", ")}` : "no shared interests", ...(s.cgpa != null ? [`CGPA ${s.cgpa.toFixed(2)}`] : [])].join("; ");
-      return { application_id: a.application_id, student_id: s.id, score: Math.round(score), reason: reason[0].toUpperCase() + reason.slice(1), source: "local" as const };
+      const gaps = l.prerequisites.filter((m) => !met.includes(m));
+      const evidence: M.ScoreEvidence[] = [
+        ...(met.length ? [{ factor: "prerequisites" as const, source: "Profile", quote: `Passed ${met.join(", ")}` }] : []),
+        ...(gaps.length ? [{ factor: "prerequisites" as const, source: "Profile", quote: `Not passed ${gaps.join(", ")}` }] : []),
+        ...(shared.length ? [{ factor: "fit" as const, source: "Profile", quote: `Interested in ${shared.join(", ")}` }] : []),
+        ...(s.cgpa != null ? [{ factor: "cgpa" as const, source: "Profile", quote: `CGPA ${s.cgpa.toFixed(2)}` }] : []),
+      ];
+      return { application_id: a.application_id, student_id: s.id, score: Math.round(score), reason: reason[0].toUpperCase() + reason.slice(1), source: "local" as const, factor_scores: {}, evidence, unread_documents: [] };
     });
+  }
+  private ownListing(listingId: string) {
+    const u = this.need("supervisor"); const l = this.listingOr404(listingId);
+    if (l.supervisor_id !== u.id) throw new M.ApiError(403, "forbidden", "You do not have access to this.");
+  }
+  async scoreWeights(listingId: string) { this.ownListing(listingId); return this.weights[listingId] ?? DEFAULT_WEIGHTS; }
+  async saveScoreWeights(listingId: string, w: M.ScoreWeights) {
+    this.ownListing(listingId);
+    const parts = Object.values(w).map((v) => v ?? 0);
+    if (parts.reduce((a, b) => a + b, 0) !== 100 || parts.some((v) => v < 5)) throw new M.ApiError(422, "bad_weights", "The weights must add up to 100%, with at least 5% each.", "weights");
+    this.weights[listingId] = w;
+    return w;
+  }
+  /** Mirrors app/services/application_tips.py local_tips. REQ-APPLY-6. No Gemini in mock mode. */
+  async applicationTips(b: M.ApplicationTipsRequest): Promise<M.ApplicationTips> {
+    const u = this.need("student"); const l = this.listingOr404(b.listing_id); const sp = this.student(u.id)!;
+    const docs = sp.documents.filter((d) => b.document_ids?.includes(d.id));
+    const statement = b.statement ?? "", text = statement.toLowerCase(), tips: M.ApplicationTip[] = [];
+    const gaps = l.prerequisites.filter((m) => !sp.completed_modules.includes(m));
+    if (gaps.length) tips.push({ tone: "improve", text: `You have not passed ${gaps.join(", ")}. Say how you would cover it, or show related experience.` });
+    else if (l.prerequisites.length) tips.push({ tone: "good", text: "You have passed every prerequisite." });
+    if (statement.trim().length < 300) tips.push({ tone: "improve", text: "Your statement is short. Add a specific example of work you have done that relates to this project." });
+    const named = l.topic_tags.filter((t) => text.includes(t.toLowerCase()));
+    if (named.length) tips.push({ tone: "good", text: `Your statement mentions ${named.slice(0, 3).join(", ")}, which this project is tagged with.` });
+    else if (l.topic_tags.length) tips.push({ tone: "improve", text: `Your statement does not mention this project's topics, such as ${l.topic_tags.slice(0, 2).join(", ")}.` });
+    if (!docs.some((d) => d.kind === "transcript")) tips.push({ tone: "improve", text: "Your transcript is not attached, so the supervisor cannot see your grades." });
+    if (!docs.some((d) => d.kind === "supporting")) tips.push({ tone: "improve", text: "No CV or other supporting document is attached." });
+    return { tips, source: "local" };
   }
   async applicant(applicationId: string) {
     this.need("supervisor"); const a = this.db.applications.find((a) => a.id === applicationId);
@@ -1268,7 +1310,7 @@ export class MockClient implements ApiClient {
     return m;
   }
   async tick() { this.advance(); }
-  /** Mirror of advance() (REQ-EXEC-4, REQ-PUB-3, REQ-OUTCOME-3): round by round, run matching once review closes,
+  /** Mirror of advance() (REQ-EXEC-6, REQ-PUB-4, REQ-OUTCOME-3): round by round, run matching once review closes,
    *  publish once approval closes, keep statuses current, then time out lapsed offers. Safe to call again.
    *  Like the API, it does nothing once the cycle has closed (windows.cycle_closed). */
   private advance() {

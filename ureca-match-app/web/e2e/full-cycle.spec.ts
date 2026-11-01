@@ -34,7 +34,7 @@ async function signIn(page: Page, email: string) {
 }
 
 /** Sets the API clock with the debug clock (Singapore time, "YYYY-MM-DDTHH:mm"). Matching and publishing run on the
- *  next request after a window closes (REQ-EXEC-4, REQ-PUB-3), and the debug clock sends one straight away. */
+ *  next request after a window closes (REQ-EXEC-6, REQ-PUB-4), and the debug clock sends one straight away. */
 async function setClock(page: Page, local: string) {
   await page.getByRole("button", { name: "Debug clock" }).click();
   await page.locator('input[type="datetime-local"]').fill(local);
@@ -125,7 +125,7 @@ test("one URECA cycle end to end", async ({ page }) => {
   });
 
   await test.step("4. matching runs by itself; supervisor declines the student; admin reassigns them; results publish (slice D)", async () => {
-    await setClock(page, "2026-09-12T17:01"); // Round 2's review window has closed, so matching runs (REQ-EXEC-4)
+    await setClock(page, "2026-09-12T17:01"); // Round 2's review window has closed, so matching runs (REQ-EXEC-6)
     await page.goto("/approvals");
     await expect(page.getByText(/Approval window open until/)).toBeVisible();
     const row = page.getByRole("listitem").filter({ hasText: newStudent.name });
@@ -143,7 +143,7 @@ test("one URECA cycle end to end", async ({ page }) => {
     await page.getByLabel("Justification").fill("E2E: supervisor declined; moved to another project.");
     await page.getByRole("button", { name: "Reassign" }).last().click();
 
-    await setClock(page, "2026-09-14T17:01"); // the approval window has closed, so results publish (REQ-PUB-3)
+    await setClock(page, "2026-09-14T17:01"); // the approval window has closed, so results publish (REQ-PUB-4)
     await page.goto("/rounds");
     await expect(page.getByText("Results published.")).toBeVisible();
   });

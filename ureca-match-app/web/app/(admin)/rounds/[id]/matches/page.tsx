@@ -2,7 +2,7 @@
 /** ReviewMatchingResults (4.4), PublishResults (4.5). Screen: MatchingAwaitPublishPage. Read only.
  *  Status chips filter the matches (REQ-REV-1); "Unmatched" lists the round's applicants without a match. Assigning,
  *  reassigning and unassigning (REQ-ASSIGN-1..3) happen on the Assignments page; each unmatched student links there.
- *  Results publish by themselves when the approval window closes (REQ-PUB-3), so there is no Publish button. */
+ *  Results publish by themselves when the approval window closes (REQ-PUB-4), so there is no Publish button. */
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
