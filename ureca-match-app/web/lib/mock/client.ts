@@ -736,7 +736,7 @@ export class MockClient implements ApiClient {
     if (sp && !sp.profile_complete) throw new M.ApiError(409, "profile_incomplete", "Complete your profile before applying. Go to My Profile to finish it.");
     if (this.isPlaced(u.id)) throw new M.ApiError(409, "already_placed", "You have already accepted a project this cycle, so you cannot apply to another.");
     if (sp && !sp.eligible_for_matching) throw new M.ApiError(409, "not_eligible", "You declined or did not answer an earlier offer, so you cannot apply again this cycle.");
-    if (this.cycleMatches(u.id).some((m) => m.status === "published")) // REQ-APPLY-3, this cycle only (mirror of placement.open_matches)
+    if (this.cycleMatches(u.id).some((m) => m.status === "published")) // REQ-APPLY-5, this cycle only (mirror of placement.open_matches)
       throw new M.ApiError(409, "offer_open", "You have a project offer to answer, so you cannot apply this round. See My Applications.");
     if (l.filled_slots >= l.available_slots) throw new M.ApiError(409, "fully_allocated", "All slots on this project are filled.");
     const own = new Set((sp?.documents ?? []).map((d) => d.id)); // REQ-APPLY-2: own documents only
@@ -826,7 +826,7 @@ export class MockClient implements ApiClient {
     this.weights[listingId] = w;
     return w;
   }
-  /** Mirrors app/services/application_tips.py local_tips. REQ-APPLY-4. No Gemini in mock mode. */
+  /** Mirrors app/services/application_tips.py local_tips. REQ-APPLY-6. No Gemini in mock mode. */
   async applicationTips(b: M.ApplicationTipsRequest): Promise<M.ApplicationTips> {
     const u = this.need("student"); const l = this.listingOr404(b.listing_id); const sp = this.student(u.id)!;
     const docs = sp.documents.filter((d) => b.document_ids?.includes(d.id));
@@ -1310,7 +1310,7 @@ export class MockClient implements ApiClient {
     return m;
   }
   async tick() { this.advance(); }
-  /** Mirror of advance() (REQ-EXEC-4, REQ-PUB-3, REQ-OUTCOME-3): round by round, run matching once review closes,
+  /** Mirror of advance() (REQ-EXEC-6, REQ-PUB-4, REQ-OUTCOME-3): round by round, run matching once review closes,
    *  publish once approval closes, keep statuses current, then time out lapsed offers. Safe to call again.
    *  Like the API, it does nothing once the cycle has closed (windows.cycle_closed). */
   private advance() {

@@ -590,7 +590,7 @@ export interface paths {
         put?: never;
         /**
          * Tips
-         * @description Tips on a draft application before it is submitted (REQ-APPLY-4). Saves nothing and never shows a score.
+         * @description Tips on a draft application before it is submitted (REQ-APPLY-6). Saves nothing and never shows a score.
          */
         post: operations["tips_me_applications_tips_post"];
         delete?: never;
@@ -1566,7 +1566,7 @@ export interface components {
         };
         /**
          * ApplicationTipsRequest
-         * @description A draft application to check before submitting (REQ-APPLY-4). Nothing is saved.
+         * @description A draft application to check before submitting (REQ-APPLY-6). Nothing is saved.
          */
         ApplicationTipsRequest: {
             /** Listing Id */

@@ -578,7 +578,7 @@ def _publish(store, cycle, r, now, outbox: Outbox) -> None:
     memory has changed, so if one fails the next request starts again cleanly: the rollover copies (which skip copies
     that already exist), then the offers and the applications' outcomes together. Like matching, the round is claimed
     first with one atomic update, and the claim is given back if the step fails before the offers are saved."""
-    if r.executed_at is None or r.published_at is not None or now <= r.approval_end:  # REQ-PUB-1, REQ-PUB-3
+    if r.executed_at is None or r.published_at is not None or now <= r.approval_end:  # REQ-PUB-1, REQ-PUB-4
         return
     expires = windows.offer_deadline(cycle, r, now) if cycle else None  # REQ-OUTCOME-3
     if expires is None:
@@ -628,7 +628,7 @@ def _publish_round(store, cycle, r, now, expires, outbox: Outbox, committed: lis
             f"Respond by {when(expires)}. You cannot apply to other projects while this offer is open.",
             "/my-applications",
         )
-    )  # REQ-PUB-2, REQ-APPLY-3
+    )  # REQ-PUB-2, REQ-APPLY-5
     later = f"Round {nxt.number}" if nxt else ""
     for group, next_step in (
         (
@@ -961,7 +961,7 @@ def _due(store, cycle, now) -> bool:
 
 
 def advance(store, now) -> None:
-    """Bring the active cycle up to `now`, round by round in order (REQ-EXEC-4, REQ-PUB-3, REQ-OUTCOME-3):
+    """Bring the active cycle up to `now`, round by round in order (REQ-EXEC-6, REQ-PUB-4, REQ-OUTCOME-3):
     run matching once a review window has closed, publish once an approval window has closed, keep round statuses
     current, and time out unanswered offers. Each step runs once, so calling this again changes nothing.
     Notifications go out after the lock is released, even if a later step fails, since the earlier steps are done."""

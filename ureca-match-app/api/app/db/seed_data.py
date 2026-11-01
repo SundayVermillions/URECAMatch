@@ -268,7 +268,7 @@ def make_cycle() -> Cycle:
                 review_end=rev_end,
                 approval_end=rev_end + timedelta(days=2),  # REQ-APPRV-4: two days for supervisors to decline
                 status=status,
-                # REQ-EXEC-4, REQ-PUB-3: the system runs matching when review closes and publishes when approval closes
+                # REQ-EXEC-6, REQ-PUB-4: the system runs matching when review closes and publishes when approval closes
                 executed_at=rev_end + timedelta(seconds=1) if n == 1 else None,
                 published_at=rev_end + timedelta(days=2, seconds=1) if n == 1 else None,
             )

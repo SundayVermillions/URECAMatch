@@ -1,5 +1,5 @@
 """The schedule must not run again for a cycle that has closed, and must not run on every request in production.
-REQ-EXEC-4, REQ-PUB-3, REQ-OUTCOME-3.
+REQ-EXEC-6, REQ-PUB-4, REQ-OUTCOME-3.
 
 The bug: a new server loaded a cycle whose closing date had passed (the seeded one closed on 2 Oct) but whose status
 was still in progress. The first request after start looked "due", so it ran matching, published, decided
@@ -41,7 +41,7 @@ def new_server(monkeypatch, now):
     return store_module.get_store()
 
 
-def test_REQ_PUB_3_first_request_on_a_new_server_does_nothing_once_the_cycle_has_closed(monkeypatch, anon):
+def test_REQ_PUB_4_first_request_on_a_new_server_does_nothing_once_the_cycle_has_closed(monkeypatch, anon):
     s = new_server(monkeypatch, CLOSED_AFTER)
     assert s.cycle is not None and s.cycle.status.value != "closed"  # closed by date only, as the seed is
     before = snapshot(s)
@@ -49,14 +49,14 @@ def test_REQ_PUB_3_first_request_on_a_new_server_does_nothing_once_the_cycle_has
     assert snapshot(s) == before  # no matching, no publishing, no application decided, no notification
 
 
-def test_REQ_PUB_3_the_daily_tick_does_nothing_either_once_the_cycle_has_closed(monkeypatch, as_admin):
+def test_REQ_PUB_4_the_daily_tick_does_nothing_either_once_the_cycle_has_closed(monkeypatch, as_admin):
     s = new_server(monkeypatch, CLOSED_AFTER)
     before = snapshot(s)
     assert as_admin.post("/internal/tick").status_code == 200
     assert snapshot(s) == before
 
 
-def test_REQ_PUB_3_a_second_new_server_does_not_write_the_admin_notifications_again(monkeypatch, anon, db):
+def test_REQ_PUB_4_a_second_new_server_does_not_write_the_admin_notifications_again(monkeypatch, anon, db):
     """Two servers in turn over one shared database. Neither may add a row."""
     monkeypatch.setattr(get_settings(), "debug_clock", True)
     set_clock_override(CLOSED_AFTER)
@@ -146,7 +146,7 @@ def _an_offer(store):
     return offer
 
 
-def test_REQ_EXEC_4_tick_changes_nothing_once_the_cycle_has_closed(fresh_store, monkeypatch):
+def test_REQ_EXEC_6_tick_changes_nothing_once_the_cycle_has_closed(fresh_store, monkeypatch):
     c = fresh_store.cycle
     offer = _an_offer(fresh_store)
     offer.offer_expires_at = c.closing_date - timedelta(days=1)  # lapsed, but the cycle it belongs to is over
@@ -158,7 +158,7 @@ def test_REQ_EXEC_4_tick_changes_nothing_once_the_cycle_has_closed(fresh_store, 
     assert [r.status for r in fresh_store.cycle.rounds] == statuses
 
 
-def test_REQ_EXEC_4_tick_still_times_out_lapsed_offers_while_the_cycle_is_open(fresh_store, monkeypatch):
+def test_REQ_EXEC_6_tick_still_times_out_lapsed_offers_while_the_cycle_is_open(fresh_store, monkeypatch):
     c = fresh_store.cycle
     offer = _an_offer(fresh_store)
     offer.offer_expires_at = c.opening_date + timedelta(days=1)

@@ -1,6 +1,6 @@
 """Slice D on a store that behaves like SupabaseStore: reads return copies and only save_* calls change what
 is stored. Catches routers that read the in-memory seed lists or forget to save.
-REQ-EXEC-1..4, REQ-PUB-2, 3, REQ-OUTCOME-1..4."""
+REQ-EXEC-1..4, 6, REQ-PUB-2, 4, REQ-OUTCOME-1..4."""
 
 from datetime import UTC, datetime
 
@@ -125,7 +125,7 @@ def test_REQ_OUTCOME_4_timeout_saves_ineligibility(copies, as_admin, client_for,
 
 
 @pytest.mark.parametrize("failing_save", [1, 2])  # the rollover copies, then the applications' outcomes
-def test_REQ_PUB_3_a_failed_save_while_publishing_is_retried_cleanly(copies, client_for, at, monkeypatch, failing_save):
+def test_REQ_PUB_4_a_failed_save_while_publishing_is_retried_cleanly(copies, client_for, at, monkeypatch, failing_save):
     at(REVIEW_CLOSED)
     calls, save = [], copies.save_applications
 

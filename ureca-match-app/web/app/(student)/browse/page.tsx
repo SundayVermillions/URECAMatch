@@ -44,7 +44,7 @@ export default function Browse() {
   const shown = useMemo(() => sort === "Best match" && data
     ? [...data].sort((a, b) => (scores.get(b.id) ?? -1) - (scores.get(a.id) ?? -1)) : data, [sort, data, scores]);
   const windowOpen = me?.phase.window === "application";
-  // An open offer is answered before anything else (REQ-APPLY-3): until then the student cannot apply to projects.
+  // An open offer is answered before anything else (REQ-APPLY-5): until then the student cannot apply to projects.
   const offerLive = standing.match?.status === "published" && !!me && !(standing.match.offer_expires_at && Date.parse(me.phase.now) > Date.parse(standing.match.offer_expires_at)) && phaseWindow !== "closed" && phaseWindow !== "before_cycle";
   const canApply = windowOpen && !standing.viewOnly && !standing.loading && !offerLive; // placed or ineligible students browse view only
   const filtered = !!(q || school || tag || supervisor);
