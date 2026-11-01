@@ -150,7 +150,7 @@ Order matters. Some steps only work in the right window.
 3. **Supervisor.** Decline Student #1's proposal with a reason. This works in the application window.
 4. **Clock to the review window.** Supervisor opens the applicants, filters, uses the AI button, sorts, ranks Student #2 first.
 5. **Admin, review window.** Open Cycle settings. Try a start date for Round 3 that overlaps Round 2 (for example 13 Nov) and show the refusal. To extend Round 3's review window, move "Cycle closes" later first, then extend. Manual assign works here.
-6. **Clock to the approval window.** Supervisor declines a proposed match with a reason. Admin unassigns and assigns on the Assignments page. Show the audit log.
+6. **Clock to the approval window.** Supervisor declines a proposed match with a reason. Admin unassigns and assigns on the Overrides page. Show the audit log.
 7. **Clock to results.** Student #2 opens the offer, accepts. Show the e-mail in Mailpit. The project now shows as full. Student #1 sees "not matched".
 8. **Clock to Round 3.** Student #1 sees the full project, reads the decline reason, sends a new proposal.
 9. **Supervisor accepts the proposal.** Student #1 is now placed. Applying is refused.
