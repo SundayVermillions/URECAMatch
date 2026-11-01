@@ -62,6 +62,7 @@ export const DEMO: Record<DemoRole, {
       "and ask whether the heatmaps actually help a clinician decide, which my earlier work did not answer. " +
       "I plan to measure this by comparing the heatmaps with the lesion regions that experts marked in the public IDRiD dataset, using overlap and a pointing-game score, " +
       "so the work needs no new patient or clinician data. " +
+      "I can commit 10 hours a week alongside my coursework and will finish the IDRiD validation in the first semester. " +
       "I would like to do this under Prof. Chua and write up the results properly.",
     proposal: NONE, // Student 2 does not self-propose in the demo
     revisedProposal: NONE,
