@@ -42,7 +42,7 @@ def test_REQ_BROWSE_2_cards_show_real_applicant_counts_and_my_application(live_l
     assert rows["lst-2"]["applicant_count"] == expected > 0
 
 
-def test_REQ_BROWSE_4_recommendations_leave_out_what_the_student_really_applied_to(live_like, client_for):
+def test_REQ_BROWSE_7_recommendations_leave_out_what_the_student_really_applied_to(live_like, client_for):
     shown = {r["listing"]["id"] for r in client_for("stu-1").get("/me/recommendations", params={"limit": 50}).json()}
     assert "lst-2" not in shown  # applied, so not recommended again
 

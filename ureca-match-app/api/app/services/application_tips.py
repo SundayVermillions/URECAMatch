@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 MIN_GOOD_STATEMENT = 300
 MAX_AI_TIPS = 3
 TIP_MAX = 240
-CALLS_PER_WINDOW, WINDOW_SECONDS = 6, 600  # a student clicking repeatedly must not use up the shared Gemini quota
+CALLS_PER_WINDOW, WINDOW_SECONDS = 6, 600  # REQ-APPLY-9: a student clicking repeatedly must not use up the shared Gemini quota
 _calls: dict[str, list[float]] = {}
 
 TIPS_SCHEMA = {

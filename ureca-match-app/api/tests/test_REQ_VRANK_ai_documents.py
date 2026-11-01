@@ -62,7 +62,7 @@ def test_REQ_VRANK_4_the_transcript_is_read_too(monkeypatch):
     assert "transcript text" in sources["d"][1]
 
 
-def test_REQ_VRANK_4_missing_files_add_nothing_and_are_named(monkeypatch):
+def test_REQ_VRANK_7_missing_files_add_nothing_and_are_named(monkeypatch):
     storage = MockStorageService()
     monkeypatch.setattr(ai_match, "get_storage", lambda: storage)
     sources, unread = ai_match._sources(_applicant([_doc("supporting", None), _doc("supporting", "documents/stu-1/none.pdf")]))

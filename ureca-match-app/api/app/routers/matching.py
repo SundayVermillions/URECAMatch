@@ -834,7 +834,7 @@ def decline_match(match_id: str, body: MatchDecision, user: SupervisorUser, stor
             )
         if m.status != MatchStatus.proposed:
             raise conflict("not_declinable", "Only students the matching proposed for your project can be declined.")
-        m.status = MatchStatus.rejected  # REQ-APPRV-2: frees the slot
+        m.status = MatchStatus.rejected  # REQ-APPRV-6: frees the slot
         m.supervisor_decided_at = now
         # REQ-APPRV-2: the reason stays on the match for admin review. Admins are not notified of each decline: the
         # student is simply unmatched when results publish, and the admins' results notice gives the count.

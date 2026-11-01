@@ -38,26 +38,26 @@ def _student(interests, modules=()) -> StudentProfile:
 # ---------------------------------------------------------------- the score
 
 
-def test_REQ_BROWSE_4_one_shared_topic_40_two_or_more_50():
+def test_REQ_BROWSE_6_one_shared_topic_40_two_or_more_50():
     one = fit(_listing(topic_tags=["Robotics", "Statistics"]), _student(["Robotics"]))
     two = fit(_listing(topic_tags=["Robotics", "Statistics"]), _student(["Robotics", "Statistics"]))
     assert (one.parts.interests, two.parts.interests) == (40, 50)
 
 
-def test_REQ_BROWSE_4_readiness_is_share_of_prerequisites_passed():
+def test_REQ_BROWSE_6_readiness_is_share_of_prerequisites_passed():
     r = fit(_listing(prerequisites=["SC4001", "SC3020"]), _student([], ["SC3020"]))
     assert r.parts.readiness == 15 and "You have SC3020" in r.reasons and "Missing SC4001" in r.gaps
     assert fit(_listing(), _student([])).parts.readiness == 30  # no prerequisites
 
 
-def test_REQ_BROWSE_4_fewer_applicants_per_slot_scores_higher():
+def test_REQ_BROWSE_6_fewer_applicants_per_slot_scores_higher():
     quiet = fit(_listing(applicant_count=0), _student([]))
     busy = fit(_listing(applicant_count=14), _student([]))
     assert quiet.parts.chance == 20 and busy.parts.chance < 5
     assert "No applicants yet" in quiet.reasons and any("High demand" in g for g in busy.gaps)
 
 
-def test_REQ_BROWSE_4_score_is_the_sum_of_its_parts():
+def test_REQ_BROWSE_6_score_is_the_sum_of_its_parts():
     r = fit(_listing(topic_tags=["Robotics"], prerequisites=["MA3005"], applicant_count=3), _student(["Robotics"], ["MA3005"]))
     assert r.score == r.parts.interests + r.parts.readiness + r.parts.chance <= 100
 
@@ -72,7 +72,7 @@ def test_REQ_BROWSE_4_best_first_and_only_shared_topics(as_student):
     assert all(mine & set(r["listing"]["topic_tags"]) for r in rows)
 
 
-def test_REQ_BROWSE_4_leaves_out_applied_full_and_closed(as_student, fresh_store):
+def test_REQ_BROWSE_7_leaves_out_applied_full_and_closed(as_student, fresh_store):
     applied = {a.listing_id for a in fresh_store.applications_for(student_id="stu-1") if a.status.value == "submitted"}
     shown = {r["listing"]["id"] for r in as_student.get("/me/recommendations", params={"limit": 50}).json()}
     closed = {lst.id for lst in fresh_store.all_listings() if lst.status != ListingStatus.published}
@@ -84,16 +84,16 @@ def test_REQ_BROWSE_4_limit(as_student):
     assert len(as_student.get("/me/recommendations", params={"limit": 2}).json()) <= 2
 
 
-def test_REQ_BROWSE_4_nothing_without_interests(client_for, fresh_store):
+def test_REQ_BROWSE_7_nothing_without_interests(client_for, fresh_store):
     fresh_store.student("stu-1").research_interests = []
     assert client_for("stu-1").get("/me/recommendations").json() == []
 
 
-def test_REQ_BROWSE_4_nothing_once_placed(client_for):
+def test_REQ_BROWSE_7_nothing_once_placed(client_for):
     assert client_for("stu-33").get("/me/recommendations").json() == []
 
 
-def test_REQ_BROWSE_4_students_only(as_supervisor):
+def test_REQ_BROWSE_8_students_only(as_supervisor):
     assert as_supervisor.get("/me/recommendations").status_code == 403
 
 

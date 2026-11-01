@@ -50,13 +50,13 @@ def test_REQ_VRANK_4_document_text_never_in_a_response(as_student, as_supervisor
     assert "extracted_text" not in as_student.get("/openapi.json").text
 
 
-def test_REQ_VRANK_4_scrub_removes_private_details():
+def test_REQ_VRANK_10_scrub_removes_private_details():
     out = document_text.scrub("Me a.b@e.ntu.edu.sg U2345678A S1234567D +65 9123 4567 scored 4.50 in SC2001")
     assert "ntu.edu" not in out and "U2345678A" not in out and "S1234567D" not in out and "9123" not in out
     assert "4.50" in out and "SC2001" in out
 
 
-def test_REQ_VRANK_4_unreadable_pdf_gives_empty_text():
+def test_REQ_VRANK_7_unreadable_pdf_gives_empty_text():
     assert document_text.extract_text(b"not a pdf") == ""
 
 
@@ -76,7 +76,7 @@ def test_REQ_APPLY_2_supervisor_sees_only_attached_documents(as_supervisor, fres
 # ---------------------------------------------------------------- evidence
 
 
-def test_REQ_VRANK_4_keeps_real_quotes_and_drops_invented_ones(as_supervisor, monkeypatch):
+def test_REQ_VRANK_6_keeps_real_quotes_and_drops_invented_ones(as_supervisor, monkeypatch):
     a = as_supervisor.get("/supervisor/listings/lst-1/applicants").json()[0]
     real = " ".join(a["statement"].split())[:40]
     doc = next(d for d in a["documents"] if d["kind"] == "transcript")
@@ -103,7 +103,7 @@ def test_REQ_VRANK_4_keeps_real_quotes_and_drops_invented_ones(as_supervisor, mo
     assert [(e["factor"], e["source"]) for e in s["evidence"]] == [("fit", "Statement"), ("cgpa", doc["file_name"])]
 
 
-def test_REQ_VRANK_4_reads_attached_documents_and_names_unreadable_ones(as_supervisor, fresh_store, monkeypatch):
+def test_REQ_VRANK_7_reads_attached_documents_and_names_unreadable_ones(as_supervisor, fresh_store, monkeypatch):
     app = _application(fresh_store)
     sp = fresh_store.student(app.student_id)
     cv = next(d for d in sp.documents if d.kind == "supporting")
@@ -167,13 +167,13 @@ def test_REQ_VRANK_5_defaults_then_saved_per_project(as_supervisor, fresh_store)
     assert as_supervisor.get(f"/supervisor/listings/{other.id}/score-weights").json() == ScoreWeights().model_dump()
 
 
-def test_REQ_VRANK_5_must_total_100(as_supervisor):
+def test_REQ_VRANK_8_must_total_100(as_supervisor):
     r = as_supervisor.put(WEIGHTS, json={**VALID, "fit": 10})
     assert r.status_code == 422 and r.json()["code"] == "bad_weights"
     assert as_supervisor.put(WEIGHTS, json=_weights(fit=150, cgpa=-50)).status_code == 422
 
 
-def test_REQ_VRANK_5_no_factor_under_5(as_supervisor):
+def test_REQ_VRANK_8_no_factor_under_5(as_supervisor):
     r = as_supervisor.put(WEIGHTS, json={"prerequisites": 0, "fit": 25, "experience": 65, "cgpa": 10})
     assert r.status_code == 422 and r.json()["code"] == "bad_weights"
 
@@ -186,7 +186,7 @@ def test_REQ_VRANK_5_only_the_projects_supervisor(as_supervisor, client_for, fre
     assert client_for("stu-1").get(WEIGHTS).status_code == 403
 
 
-def test_REQ_VRANK_5_not_in_the_listing_students_read(as_supervisor, as_student):
+def test_REQ_VRANK_9_not_in_the_listing_students_read(as_supervisor, as_student):
     assert as_supervisor.put(WEIGHTS, json=VALID).status_code == 200
     assert "score_weights" not in as_student.get("/listings/lst-1").text
 
@@ -237,7 +237,7 @@ def test_REQ_VRANK_5_local_formula_uses_weights(fresh_store):
 # ---------------------------------------------------------------- tips
 
 
-def test_REQ_APPLY_6_local_tips_never_score(as_student):
+def test_REQ_APPLY_7_local_tips_never_score(as_student):
     r = as_student.post(TIPS, json={"listing_id": "lst-1", "statement": "Short.", "document_ids": []})
     assert r.status_code == 200
     body = r.json()
@@ -246,7 +246,7 @@ def test_REQ_APPLY_6_local_tips_never_score(as_student):
     assert "statement is short" in text and "transcript is not attached" in text
 
 
-def test_REQ_APPLY_6_saves_nothing(as_student, fresh_store):
+def test_REQ_APPLY_8_saves_nothing(as_student, fresh_store):
     before = len(fresh_store.applications)
     as_student.post(TIPS, json={"listing_id": "lst-1", "statement": "x" * 60})
     assert len(fresh_store.applications) == before
@@ -274,7 +274,7 @@ def test_REQ_APPLY_6_gemini_tips_come_first_and_failure_falls_back(as_student, m
     assert as_student.post(TIPS, json={"listing_id": "lst-1", "statement": "x" * 60}).json()["source"] == "local"
 
 
-def test_REQ_APPLY_6_repeat_clicks_stop_calling_gemini(as_student, monkeypatch):
+def test_REQ_APPLY_9_repeat_clicks_stop_calling_gemini(as_student, monkeypatch):
     application_tips._calls.clear()
     seen = []
     _gemini(monkeypatch, lambda _: [], seen)
