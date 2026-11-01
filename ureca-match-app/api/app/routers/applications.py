@@ -45,7 +45,7 @@ def _active(store, student_id: str, round_id: str | None) -> list[Application]:
 
 @router.post("/me/applications/tips", response_model=ApplicationTips)
 def tips(body: ApplicationTipsRequest, user: StudentUser, store: StoreDep, settings: SettingsDep) -> ApplicationTips:
-    """Tips on a draft application before it is submitted (REQ-APPLY-4). Saves nothing and never shows a score."""
+    """Tips on a draft application before it is submitted (REQ-APPLY-6). Saves nothing and never shows a score."""
     lst = store.listing(body.listing_id)
     if lst is None or lst.status != ListingStatus.published:
         raise not_found("Project")
@@ -72,7 +72,7 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
         raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot apply to another.")
     if sp and not sp.eligible_for_matching:
         raise conflict("not_eligible", "You declined or did not answer an earlier offer, so you cannot apply again this cycle.")
-    if any(m.status == MatchStatus.published for m in placement.open_matches(store, user.id)):  # REQ-APPLY-3, this cycle only
+    if any(m.status == MatchStatus.published for m in placement.open_matches(store, user.id)):  # REQ-APPLY-5, this cycle only
         raise conflict("offer_open", "You have a project offer to answer, so you cannot apply this round. See My Applications.")
     if lst.filled_slots >= lst.available_slots:
         raise conflict("fully_allocated", "All slots on this project are filled.")

@@ -1,4 +1,4 @@
-"""REQ-VRANK-4 evidence and document reading, REQ-VRANK-5 per-project weights, REQ-APPLY-4 tips before submitting."""
+"""REQ-VRANK-4 evidence and document reading, REQ-VRANK-5 per-project weights, REQ-APPLY-6 tips before submitting."""
 
 from __future__ import annotations
 
@@ -237,7 +237,7 @@ def test_REQ_VRANK_5_local_formula_uses_weights(fresh_store):
 # ---------------------------------------------------------------- tips
 
 
-def test_REQ_APPLY_4_local_tips_never_score(as_student):
+def test_REQ_APPLY_6_local_tips_never_score(as_student):
     r = as_student.post(TIPS, json={"listing_id": "lst-1", "statement": "Short.", "document_ids": []})
     assert r.status_code == 200
     body = r.json()
@@ -246,22 +246,22 @@ def test_REQ_APPLY_4_local_tips_never_score(as_student):
     assert "statement is short" in text and "transcript is not attached" in text
 
 
-def test_REQ_APPLY_4_saves_nothing(as_student, fresh_store):
+def test_REQ_APPLY_6_saves_nothing(as_student, fresh_store):
     before = len(fresh_store.applications)
     as_student.post(TIPS, json={"listing_id": "lst-1", "statement": "x" * 60})
     assert len(fresh_store.applications) == before
 
 
-def test_REQ_APPLY_4_only_own_documents(as_student):
+def test_REQ_APPLY_6_only_own_documents(as_student):
     r = as_student.post(TIPS, json={"listing_id": "lst-1", "statement": "x", "document_ids": ["doc-stu-2-t"]})
     assert r.status_code == 422
 
 
-def test_REQ_APPLY_4_students_only(as_supervisor):
+def test_REQ_APPLY_6_students_only(as_supervisor):
     assert as_supervisor.post(TIPS, json={"listing_id": "lst-1"}).status_code == 403
 
 
-def test_REQ_APPLY_4_gemini_tips_come_first_and_failure_falls_back(as_student, monkeypatch):
+def test_REQ_APPLY_6_gemini_tips_come_first_and_failure_falls_back(as_student, monkeypatch):
     application_tips._calls.clear()
     _gemini(monkeypatch, lambda _: [{"tone": "improve", "text": "Name a method you would try."}])
     body = as_student.post(TIPS, json={"listing_id": "lst-1", "statement": "x" * 60}).json()
@@ -274,7 +274,7 @@ def test_REQ_APPLY_4_gemini_tips_come_first_and_failure_falls_back(as_student, m
     assert as_student.post(TIPS, json={"listing_id": "lst-1", "statement": "x" * 60}).json()["source"] == "local"
 
 
-def test_REQ_APPLY_4_repeat_clicks_stop_calling_gemini(as_student, monkeypatch):
+def test_REQ_APPLY_6_repeat_clicks_stop_calling_gemini(as_student, monkeypatch):
     application_tips._calls.clear()
     seen = []
     _gemini(monkeypatch, lambda _: [], seen)

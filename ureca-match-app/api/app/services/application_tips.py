@@ -1,4 +1,4 @@
-"""Tips on a draft application, before it is submitted (REQ-APPLY-4).
+"""Tips on a draft application, before it is submitted (REQ-APPLY-6).
 
 Fixed checks always run. With GEMINI_API_KEY set, Gemini adds a few comments on what is missing. Gemini never scores the
 student and never writes text for them: the statement stays their own, and supervisors compare statements.

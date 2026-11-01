@@ -1,7 +1,7 @@
 """Slice D. A student can answer an offer until its deadline and not after (REQ-OUTCOME-3).
 
 The handlers check the deadline themselves, because the scheduler may not have timed a lapsed offer out yet: in
-Supabase mode the schedule runs on the daily cron, and it does nothing at all once the cycle has closed (REQ-EXEC-4).
+Supabase mode the schedule runs on the daily cron, and it does nothing at all once the cycle has closed (REQ-EXEC-6).
 """
 
 from datetime import timedelta

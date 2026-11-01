@@ -145,7 +145,7 @@ Submitting an application does not notify anyone or write to the audit log. Step
 
 The system is event-driven at the tier boundary and procedure-driven inside each request. Every user action is one synchronous HTTP request and response; there are no background workers, queues or threads. Long steps also run inside a request: the matching run is executed inside the first call to the schedule after a round's review window closes, and e-mails are handed to Resend inside the request that created the notification.
 
-Time-based changes happen the next time the schedule runs after they fall due. `advance()` in `routers/matching.py` goes through the active cycle's rounds in order: it runs matching for a round whose review window has closed (REQ-EXEC-4), publishes a round whose approval window has closed (REQ-PUB-3), keeps round statuses current, and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). It does nothing once the cycle has closed (`windows.cycle_closed()`). Each step runs once, under a lock and a round claim, so a second call changes nothing. Nobody has to be online when a window closes.
+Time-based changes happen the next time the schedule runs after they fall due. `advance()` in `routers/matching.py` goes through the active cycle's rounds in order: it runs matching for a round whose review window has closed (REQ-EXEC-6), publishes a round whose approval window has closed (REQ-PUB-4), keeps round statuses current, and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). It does nothing once the cycle has closed (`windows.cycle_closed()`). Each step runs once, under a lock and a round claim, so a second call changes nothing. Nobody has to be online when a window closes.
 
 Three things run the schedule:
 

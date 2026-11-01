@@ -50,7 +50,7 @@ export default function Apply() {
   const windowOpen = me?.phase.window === "application";
   const canSubmit = !busy && long;
 
-  /** REQ-APPLY-4. Saves nothing. A failure here must never get in the way of submitting. */
+  /** REQ-APPLY-6. Saves nothing. A failure here must never get in the way of submitting. */
   async function checkApplication() {
     setChecking(true); setTipsFailed(false);
     try { setTips(await call((api) => api.applicationTips({ listing_id: id, statement, document_ids: docs }))); }

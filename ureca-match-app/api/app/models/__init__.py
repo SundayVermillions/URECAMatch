@@ -558,7 +558,7 @@ class ApplicantScore(BaseModel):
 
 
 class ApplicationTipsRequest(BaseModel):
-    """A draft application to check before submitting (REQ-APPLY-4). Nothing is saved."""
+    """A draft application to check before submitting (REQ-APPLY-6). Nothing is saved."""
 
     listing_id: str
     statement: str = Field(default="", max_length=6000)

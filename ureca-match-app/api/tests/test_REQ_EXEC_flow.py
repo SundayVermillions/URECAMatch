@@ -1,5 +1,5 @@
 """Slice D. Matching and publishing run by themselves as the clock passes each window; offers and their deadline.
-REQ-EXEC-1..4, REQ-PUB-1..3, REQ-APPRV-4, REQ-OUTCOME-2, 3, REQ-APPLY-3, REQ-AUDIT-3."""
+REQ-EXEC-1..4, 6, REQ-PUB-1, 2, 4, REQ-APPRV-4, REQ-OUTCOME-2, 3, REQ-APPLY-5, REQ-AUDIT-3."""
 
 import threading
 from datetime import timedelta
@@ -26,7 +26,7 @@ def test_REQ_EXEC_1_matching_waits_for_the_review_window_to_close(fresh_store, a
     assert not [m for m in fresh_store.matches if m.round_id == "rnd-2"]
 
 
-def test_REQ_EXEC_4_matching_runs_by_itself_when_the_review_window_closes(fresh_store, at):
+def test_REQ_EXEC_6_matching_runs_by_itself_when_the_review_window_closes(fresh_store, at):
     at(REVIEW_CLOSED)
     r = _round_2(fresh_store)
     assert r.executed_at == REVIEW_CLOSED and r.status.value == "approval_window"
@@ -46,7 +46,7 @@ def test_REQ_EXEC_2_matching_runs_once(fresh_store, at):
     assert len(_system_entries(fresh_store, "matching_executed", "rnd-2")) == 1
 
 
-def test_REQ_PUB_3_results_publish_when_the_approval_window_closes(client_for, fresh_store, at):
+def test_REQ_PUB_4_results_publish_when_the_approval_window_closes(client_for, fresh_store, at):
     at(REVIEW_CLOSED)
     proposed = [m for m in fresh_store.matches if m.round_id == "rnd-2"]
     at(APPROVAL_CLOSED - 2 * SECOND)
@@ -73,14 +73,14 @@ def test_REQ_PUB_1_publishes_once(fresh_store, at):
     assert len(_system_entries(fresh_store, "results_published", "rnd-2")) == 1
 
 
-def test_REQ_EXEC_4_a_clock_jump_runs_matching_before_publishing(fresh_store, at):
+def test_REQ_EXEC_6_a_clock_jump_runs_matching_before_publishing(fresh_store, at):
     at(APPROVAL_CLOSED + timedelta(days=1))  # nobody used the app for a week
     r = _round_2(fresh_store)
     assert r.executed_at and r.published_at and r.executed_at <= r.published_at
     assert [m for m in fresh_store.matches if m.round_id == "rnd-2" and m.status.value == "published"]
 
 
-def test_REQ_EXEC_4_a_failed_run_leaves_nothing_half_done(fresh_store, anon, at, monkeypatch):
+def test_REQ_EXEC_6_a_failed_run_leaves_nothing_half_done(fresh_store, anon, at, monkeypatch):
     real, lookups = fresh_store.ranking, []
 
     def unavailable_after_one(listing_id, round_id):
@@ -100,7 +100,7 @@ def test_REQ_EXEC_4_a_failed_run_leaves_nothing_half_done(fresh_store, anon, at,
     assert students and len(students) == len(set(students))
 
 
-def test_REQ_EXEC_4_requests_do_not_wait_on_the_scheduler_when_nothing_is_due(as_student):
+def test_REQ_EXEC_6_requests_do_not_wait_on_the_scheduler_when_nothing_is_due(as_student):
     done = threading.Event()
     with matching._schedule_lock:  # as if another request were publishing and sending its e-mails
         threading.Thread(target=lambda: (as_student.get("/me"), done.set()), daemon=True).start()
@@ -135,11 +135,11 @@ def test_REQ_OUTCOME_2_declined_or_placed_students_are_not_matched_again(client_
     r = client_for("stu-38").post("/applications", json={"listing_id": "lst-1", "statement": "s " * 30})
     assert r.status_code == 201
     fresh_store.applicant_rankings["lst-1:rnd-2"].insert(0, r.json()["id"])  # ranked first, so only the rule can stop it
-    at(REVIEW_CLOSED)  # matching runs by itself when the review window closes (REQ-EXEC-4)
+    at(REVIEW_CLOSED)  # matching runs by itself when the review window closes (REQ-EXEC-6)
     assert not [m for m in fresh_store.matches if m.round_id == "rnd-2" and m.student_id in ("stu-33", "stu-38")]
 
 
-# ---------------------------------------------------------------- REQ-OUTCOME-3, REQ-APPLY-3 offers
+# ---------------------------------------------------------------- REQ-OUTCOME-3, REQ-APPLY-5 offers
 
 
 def _an_offer(store, round_id="rnd-2"):
@@ -189,7 +189,7 @@ def test_REQ_OUTCOME_3_a_late_offer_gets_the_next_window_still_open(fresh_store)
     assert windows.offer_deadline(c, r3, c.closing_date) is None  # the cycle has closed: no offer can be made
 
 
-def test_REQ_APPLY_3_student_with_an_open_offer_cannot_apply(client_for, fresh_store, at):
+def test_REQ_APPLY_5_student_with_an_open_offer_cannot_apply(client_for, fresh_store, at):
     at(REVIEW_CLOSED)
     at(APPROVAL_CLOSED)
     offer = _an_offer(fresh_store)
