@@ -1,8 +1,6 @@
 "use client";
 /** Student profile page. REQ-PROF-1..3. */
 import { Suspense, useEffect, useRef, useState } from "react";
-import { DEMO } from "@/lib/demo-data";
-import { demoFile, sleep, useDemoFill } from "@/lib/demo-fill";
 import { useSearchParams } from "next/navigation";
 import { CoursePicker, searchTopics } from "@/components/pickers";
 import { PageTitle } from "@/components/shell/app-shell";
@@ -191,22 +189,6 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
     }
   }
 
-  // Demo only: upload the transcript (which fills the details in), add the interests one by one, add the portfolio, then save.
-  const formRef = useRef<HTMLFormElement>(null);
-  const [saveTick, setSaveTick] = useState(0);
-  useEffect(() => { if (saveTick) formRef.current?.requestSubmit(); }, [saveTick]);
-  useDemoFill(async (role) => {
-    const d = DEMO[role];
-    const asEvent = (file: File) => ({ target: { files: [file] } }) as unknown as React.ChangeEvent<HTMLInputElement>;
-    if (!transcriptDoc) await handleTranscriptUpload(asEvent(await demoFile(d.transcript)));
-    setEditing(true);
-    await sleep(500);
-    for (const t of d.interests) { setF((x) => (x.research_interests.includes(t) ? x : { ...x, research_interests: [...x.research_interests, t] })); await sleep(450); }
-    if (d.portfolio && !allDocs.some((x) => x.kind === "supporting")) await uploadSupporting(asEvent(await demoFile(d.portfolio)));
-    await sleep(400);
-    setSaveTick((n) => n + 1);
-  });
-
   async function viewDoc(docId: string) {
     // REQ-PROF-3: open the viewer in-page; delayed signed URLs must not depend on browser popups.
     const request = ++previewRequest.current;
@@ -302,7 +284,7 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
   }
 
   return (
-    <form ref={formRef} onSubmit={save}>
+    <form onSubmit={save}>
       <PageTitle title={mustComplete ? "Complete your profile" : "My profile"} />
 
       {/* The two file inputs live here so they exist in every mode. The transcript one comes first on the page. */}

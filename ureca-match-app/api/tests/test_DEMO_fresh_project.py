@@ -1,12 +1,7 @@
 """Demo set-up: DEMO_FRESH empties the Deep Learning project, and AI match reads supporting documents. Not part of the SRS."""
 
-from pathlib import Path
-
 from app.db import seed_data
-from app.services import document_text
 from app.settings import get_settings
-
-PORTFOLIO = Path(__file__).resolve().parents[2] / "web" / "public" / "demo" / "portfolio-student1.pdf"
 
 
 def test_DEMO_fresh_leaves_the_demo_project_with_no_applicants(monkeypatch):
@@ -39,10 +34,6 @@ def test_DEMO_the_seed_is_unchanged_without_the_switch():
     data = seed_data.build()
     assert [a for a in data["applications"] if a.listing_id == "lst-1" and a.round_id == "rnd-2"]
 
-
-def test_REQ_VRANK_4_the_demo_portfolio_has_words_for_ai_match_to_read():
-    """The demo portfolio is read once, at upload, by document_text; the words must survive for AI match (REQ-VRANK-4)."""
-    assert "APTOS" in document_text.extract_text(PORTFOLIO.read_bytes())
 
 def test_DEMO_wei_ling_documents_are_read_from_their_real_files():
     """Her CV and transcript are real PDFs. Seeding must not give them made-up text (or a 'scan' with none), or AI match

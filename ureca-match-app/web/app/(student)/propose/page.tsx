@@ -13,8 +13,6 @@ import { TopicPicker } from "@/components/pickers";
 import { CycleTimeline } from "@/components/student/cycle-timeline";
 import { Avatar, Banner, Button, Card, Field, Input, Loading, Modal, Pill, Textarea } from "@/components/ui";
 import { ApiError, type Proposal, type SupervisorSummary } from "@/lib/api/models";
-import { DEMO } from "@/lib/demo-data";
-import { sleep, typeText, useDemoFill } from "@/lib/demo-fill";
 import { useApi, useCall } from "@/lib/use-api";
 import { useStanding } from "@/lib/use-standing";
 
@@ -65,22 +63,6 @@ function ProposeForm({ initial }: { initial: Proposal | null }) {
   const err = (k: string) => (error?.field === k ? error.message : null);
   const closed = me?.phase.window !== "application"; // REQ-PROPOSE-3
   const standing = useStanding(); // placed or ineligible: the form stays readable but cannot be sent
-
-  // Demo only: walk the steps and type the prepared proposal. A declined proposal being revised gets the improved text. It stops at Review, so sending stays a click.
-  useDemoFill(async (role) => {
-    const d = initial ? DEMO[role].revisedProposal : DEMO[role].proposal;
-    if (!d.title) return;
-    const prof = sups.data?.find((s) => /Marcus Chua/.test(s.name));
-    if (prof) setSupervisor(prof);
-    await sleep(500); setStep(1);
-    await typeText(setTitle, d.title);
-    await typeText(setDescription, d.description);
-    setInterests([]);
-    for (const t of d.interests) { setInterests((x) => (x.includes(t) ? x : [...x, t])); await sleep(400); }
-    await sleep(300); setStep(2);
-    await typeText(setStatement, d.statement);
-    await sleep(500); setStep(3);
-  });
 
   const checks = [
     { label: "Pick a supervisor", ok: !!supervisor },
