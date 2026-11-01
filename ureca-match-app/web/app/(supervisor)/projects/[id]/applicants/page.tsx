@@ -355,7 +355,7 @@ export default function Applicants() {
               className="group relative isolate inline-flex h-9 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-[linear-gradient(180deg,#3b4578_0%,#1c2566_55%,#151b4d_100%)] pl-4 pr-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_10px_22px_-12px_rgba(28,37,102,0.8)] ring-1 ring-white/10 transition-[box-shadow,filter] duration-200 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_12px_28px_-10px_rgba(80,100,240,0.7)] hover:brightness-110 disabled:opacity-60 disabled:hover:brightness-100">
               <span aria-hidden className="absolute inset-x-0 top-0 -z-10 h-1/2 bg-gradient-to-b from-white/15 to-transparent" />
               <span className="bg-gradient-to-b from-white to-[#c3cdf5] bg-clip-text text-[14px] font-semibold tracking-[-0.01em] text-transparent">
-                {matching ? "Scoring..." : scores ? "Rerun AI match" : "AI match"}
+                {matching ? "Scoring..." : scores ? "Rerun AI score" : "AI score"}
               </span>
               <span className={`text-white transition-transform duration-300 ${matching ? "animate-pulse" : "group-hover:rotate-12 group-hover:scale-110"}`}><Sparkle size={17} /></span>
             </button>
