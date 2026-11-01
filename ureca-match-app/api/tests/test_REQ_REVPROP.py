@@ -52,6 +52,8 @@ def test_REQ_REVPROP_1_supervisor_sees_student_profile(as_supervisor, fresh_stor
     assert p["student"]["cgpa"] == profile.cgpa
     assert p["student"]["year_of_study"] == profile.year_of_study
     assert p["student"]["completed_modules"] == profile.completed_modules
+    assert p["student"]["email"] == fresh_store.user("stu-9").email  # the drawer shows how to reach the student
+    assert p["student"]["degree"] == profile.degree
 
 
 def test_REQ_REVPROP_1_supervisor_sees_attached_documents(as_supervisor):

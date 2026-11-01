@@ -151,9 +151,11 @@ def _with_student(store, p: Proposal) -> Proposal:
     if u is None or sp is None:
         return p
     student = ApplicantStudent(
+        email=u.email,
         id=u.id,
         name=u.name,
         school=sp.school,
+        degree=sp.degree,
         year_of_study=sp.year_of_study,
         cgpa=sp.cgpa,
         completed_modules=sp.completed_modules,

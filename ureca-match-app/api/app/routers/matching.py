@@ -794,9 +794,11 @@ def match_student(match_id: str, user: SupervisorUser, store: StoreDep) -> Appli
     return Applicant(
         application_id=own.id if own else "",
         student=ApplicantStudent(
+            email=u.email,
             id=u.id,
             name=u.name,
             school=sp.school,
+            degree=sp.degree,
             year_of_study=sp.year_of_study,
             cgpa=sp.cgpa,
             completed_modules=sp.completed_modules,

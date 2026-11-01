@@ -297,6 +297,7 @@ def test_REQ_APPRV_supervisor_sees_the_student_behind_a_match(as_admin, client_f
     assert r.status_code == 200
     body = r.json()
     assert body["student"]["id"] == m["student_id"] and body["application_id"] and len(body["statement"]) >= 50
+    assert body["student"]["email"].endswith("@e.ntu.edu.sg")  # the drawer shows the real address, not a guess
     other = "sup-2" if m["supervisor_id"] != "sup-2" else "sup-1"
     assert client_for(other).get(f"/supervisor/matches/{m['id']}/student").status_code == 403
 
