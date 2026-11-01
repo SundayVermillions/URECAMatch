@@ -72,6 +72,13 @@ export const DEMO: Record<DemoRole, {
 /** What the supervisor types when they decline Student 2's first proposal. */
 export const DEMO_DECLINE_PROPOSAL = "Too broad. Pick one dataset and one question, and show a small experiment you have already run. Then send it again.";
 
+/** What the Admin types in the Justification box of the Assignments page, by action (10 characters at least). */
+export const DEMO_ASSIGNMENT_REASON = {
+  assign: "The student was not matched in this round and has passed every prerequisite. The supervisor agreed to take them on the open slot.",
+  reassign: "The first project cannot take another student this round. The student's interests fit this project and it has an open slot.",
+  unassign: "The student asked to withdraw because of an exchange semester that clashes with the project. The slot is returned for the next round.",
+} as const;
+
 /** The extra project the supervisor creates live, only to show the create-project flow. Students do not apply to it.
  *  Prerequisites are left empty on purpose. */
 export const DEMO_NEW_PROJECT = {
