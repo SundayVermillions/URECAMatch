@@ -25,6 +25,7 @@ from app.models import (
     Notification,
     Proposal,
     Round,
+    ScoreWeights,
     StudentProfile,
     SupervisorProfile,
     User,
@@ -75,6 +76,8 @@ class Store(Protocol):
     def save_notifications(self, *notifications: Notification) -> None: ...  # slice E: insert. Only services/notify.py
     def mark_notification_read(self, notification_id: str, user_id: str) -> bool: ...  # slice E: False if not theirs
     def unread_notification_count(self, user_id: str) -> int: ...  # slice E: the sidebar badge on GET /me
+    def score_weights(self, listing_id: str) -> ScoreWeights | None: ...  # slice C: None means the defaults
+    def save_score_weights(self, listing_id: str, weights: ScoreWeights) -> None: ...  # slice C
     def next_id(self, prefix: str) -> str: ...
 
     # Slice D: cycles, rounds, matches. A read may return copies, so every change is saved explicitly.
@@ -117,6 +120,7 @@ class MockStore:
                 # Prof. Chua has started ranking lst-1 for Round 2
                 "lst-1:rnd-2": [a.id for a in self.applications if a.listing_id == "lst-1" and a.round_id == "rnd-2"][:4],
             }
+        self.listing_score_weights: dict[str, ScoreWeights] = {}
         self.verification_codes: dict[str, tuple[str, datetime]] = {}
         self.passwords: dict[str, str] = {}
         self.last_activity: dict[str, datetime] = {}
@@ -228,6 +232,12 @@ class MockStore:
 
     def save_ranking(self, listing_id: str, round_id: str | None, application_ids: list[str], submitted_at: datetime) -> None:
         self.applicant_rankings[f"{listing_id}:{round_id}"] = list(application_ids)
+
+    def score_weights(self, listing_id: str) -> ScoreWeights | None:
+        return self.listing_score_weights.get(listing_id)
+
+    def save_score_weights(self, listing_id: str, weights: ScoreWeights) -> None:
+        self.listing_score_weights[listing_id] = weights
 
     # --- Slice E: notifications
     def notifications_for(self, user_id: str) -> list[Notification]:
@@ -564,6 +574,18 @@ class SupabaseStore(MockStore):
         if any(r["preference_rank"] is not None for r in rows):
             table.upsert([{**r, "preference_rank": None} for r in rows]).execute()
         table.upsert(rows).execute()
+
+    def score_weights(self, listing_id: str) -> ScoreWeights | None:
+        if not self.client:
+            return super().score_weights(listing_id)
+        res = self.client.table("project_listings").select("score_weights").eq("id", listing_id).limit(1).execute()
+        raw = res.data[0]["score_weights"] if res.data else None
+        return ScoreWeights.model_validate(raw) if raw else None
+
+    def save_score_weights(self, listing_id: str, weights: ScoreWeights) -> None:
+        if not self.client:
+            return super().save_score_weights(listing_id, weights)
+        self.client.table("project_listings").update({"score_weights": weights.model_dump()}).eq("id", listing_id).execute()
 
     def ranking(self, listing_id: str, round_id: str | None) -> list[str]:
         if not self.client:

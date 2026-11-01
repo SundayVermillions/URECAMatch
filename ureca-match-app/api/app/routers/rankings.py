@@ -14,6 +14,7 @@ from app.models import (
     ApplicantStudent,
     ApplicationStatus,
     Document,
+    ScoreWeights,
 )
 from app.services import ai_match as ai_match_service
 from app.services import windows
@@ -22,6 +23,7 @@ from app.services.storage import get_storage
 router = APIRouter(tags=["rankings"])
 
 TOP_N = 10  # REQ-VRANK-1
+MIN_WEIGHT = 5  # REQ-VRANK-5: every factor keeps some say
 
 
 def _applicants(store, listing_id: str, round_id: str | None) -> list[Applicant]:
@@ -49,7 +51,7 @@ def _applicants(store, listing_id: str, round_id: str | None) -> list[Applicant]
                 ),
                 statement=a.statement,
                 submitted_at=a.submitted_at,
-                documents=sp.documents,
+                documents=[d for d in sp.documents if d.id in a.document_ids],  # REQ-APPLY-2: only what they chose to attach
                 meets_prerequisites=all(m in sp.completed_modules for m in lst.prerequisites) if lst else True,
             )
         )
@@ -98,7 +100,35 @@ def ai_match(listing_id: str, user: SupervisorUser, store: StoreDep, settings: S
     if lst.supervisor_id != user.id:
         raise forbidden()
     phase = windows.phase(store.cycle, settings.now())
-    return ai_match_service.score_applicants(settings, lst, _applicants(store, listing_id, phase.round_id))
+    return ai_match_service.score_applicants(
+        settings, lst, _applicants(store, listing_id, phase.round_id), store.score_weights(listing_id)
+    )
+
+
+def _own_listing(store, listing_id: str, user):
+    lst = store.listing(listing_id)
+    if lst is None:
+        raise not_found("Project")
+    if lst.supervisor_id != user.id:
+        raise forbidden()
+    return lst
+
+
+@router.get("/supervisor/listings/{listing_id}/score-weights", response_model=ScoreWeights)
+def get_score_weights(listing_id: str, user: SupervisorUser, store: StoreDep) -> ScoreWeights:
+    """How much each factor counts in this project's AI match (REQ-VRANK-5). Students never see these."""
+    _own_listing(store, listing_id, user)
+    return store.score_weights(listing_id) or ScoreWeights()
+
+
+@router.put("/supervisor/listings/{listing_id}/score-weights", response_model=ScoreWeights)
+def put_score_weights(listing_id: str, body: ScoreWeights, user: SupervisorUser, store: StoreDep) -> ScoreWeights:
+    _own_listing(store, listing_id, user)
+    parts = body.model_dump().values()
+    if sum(parts) != 100 or min(parts) < MIN_WEIGHT:
+        raise invalid("bad_weights", f"The weights must add up to 100%, with at least {MIN_WEIGHT}% each.", "weights")
+    store.save_score_weights(listing_id, body)
+    return body
 
 
 @router.get("/supervisor/applicants/{application_id}", response_model=Applicant)
@@ -149,14 +179,14 @@ def put_ranking(
 
 
 def _may_view(store, user, owner_id: str, document_id: str) -> bool:
-    """Owner, admins, the supervisor of any listing the owner applied to (REQ-VRANK-3), and the
-    supervisor a proposal with this document attached was sent to (REQ-REVPROP-1). SRS 5.3.3."""
+    """Owner, admins, the supervisor of a listing the owner applied to with this document attached (REQ-VRANK-3),
+    and the supervisor a proposal with this document attached was sent to (REQ-REVPROP-1). SRS 5.3.3."""
     if user.id == owner_id or user.role.value == "admin":
         return True
     if user.role.value != "supervisor":
         return False
     applied = any(
-        (lst := store.listing(a.listing_id)) is not None and lst.supervisor_id == user.id
+        document_id in a.document_ids and (lst := store.listing(a.listing_id)) is not None and lst.supervisor_id == user.id
         for a in store.applications_for(student_id=owner_id)
     )
     return applied or any(document_id in p.document_ids for p in store.proposals_for(student_id=owner_id, supervisor_id=user.id))

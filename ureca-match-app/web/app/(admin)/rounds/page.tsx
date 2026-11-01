@@ -1,7 +1,7 @@
 "use client";
 /** ManageApplicationCycle (4.1), ManageMatchingRounds (4.2), ExecuteMatchingProcess (4.3). Screen: MatchingRoundsPage.
  *  Timeline of rounds, the selected round's panel, cycle settings in a modal. Review of matches is /rounds/[id]/matches.
- *  Matching and publishing run by themselves when the review and approval windows close (REQ-EXEC-4, REQ-PUB-3). */
+ *  Matching and publishing run by themselves when the review and approval windows close (REQ-EXEC-6, REQ-PUB-4). */
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/shell/app-shell";
@@ -96,7 +96,7 @@ export default function Rounds() {
                     <Stat label="Open slots" value={stats?.open_slots ?? "–"} />
                     <Stat label="Review window" value={fmtDate(current.review_end)} note={`ends ${fmtDeadline(current.review_end)}`} />
                   </div>
-                  {/* REQ-EXEC-4, REQ-APPRV-4, REQ-PUB-3: nobody has to be at a keyboard when a window closes */}
+                  {/* REQ-EXEC-6, REQ-APPRV-4, REQ-PUB-4: nobody has to be at a keyboard when a window closes */}
                   <div className="flex items-start gap-3 bg-accent-soft border border-accent-border rounded-row px-4 py-3.5">
                     <span className="text-accent mt-0.5"><I.Calendar /></span>
                     <div className="text-[13px]">

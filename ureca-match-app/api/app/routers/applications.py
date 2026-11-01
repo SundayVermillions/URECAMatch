@@ -10,12 +10,14 @@ from app.models import (
     Application,
     ApplicationCreate,
     ApplicationStatus,
+    ApplicationTips,
+    ApplicationTipsRequest,
     ListingStatus,
     MatchStatus,
     Ok,
     PreferenceRankingUpdate,
 )
-from app.services import cycle_scope, placement, windows
+from app.services import application_tips, cycle_scope, placement, windows
 
 router = APIRouter(tags=["applications"])
 
@@ -41,6 +43,22 @@ def _active(store, student_id: str, round_id: str | None) -> list[Application]:
     return [a for a in apps if a.status == ApplicationStatus.submitted]
 
 
+@router.post("/me/applications/tips", response_model=ApplicationTips)
+def tips(body: ApplicationTipsRequest, user: StudentUser, store: StoreDep, settings: SettingsDep) -> ApplicationTips:
+    """Tips on a draft application before it is submitted (REQ-APPLY-6). Saves nothing and never shows a score."""
+    lst = store.listing(body.listing_id)
+    if lst is None or lst.status != ListingStatus.published:
+        raise not_found("Project")
+    sp = store.student(user.id)
+    if sp is None:
+        raise not_found("Profile")
+    own = {d.id: d for d in sp.documents}
+    if any(d not in own for d in body.document_ids):
+        raise invalid("unknown_document", "Attach documents from your own profile only.", "document_ids")
+    docs = [own[d] for d in body.document_ids]
+    return application_tips.application_tips(settings, lst, sp, body.statement, docs)
+
+
 @router.post("/applications", response_model=Application, status_code=201)
 def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings: SettingsDep) -> Application:
     _require_window(store, settings)
@@ -54,7 +72,7 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
         raise conflict("already_placed", "You have already accepted a project this cycle, so you cannot apply to another.")
     if sp and not sp.eligible_for_matching:
         raise conflict("not_eligible", "You declined or did not answer an earlier offer, so you cannot apply again this cycle.")
-    if any(m.status == MatchStatus.published for m in placement.open_matches(store, user.id)):  # REQ-APPLY-3, this cycle only
+    if any(m.status == MatchStatus.published for m in placement.open_matches(store, user.id)):  # REQ-APPLY-5, this cycle only
         raise conflict("offer_open", "You have a project offer to answer, so you cannot apply this round. See My Applications.")
     if lst.filled_slots >= lst.available_slots:
         raise conflict("fully_allocated", "All slots on this project are filled.")

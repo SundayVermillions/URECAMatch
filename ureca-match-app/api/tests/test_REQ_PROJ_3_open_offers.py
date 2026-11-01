@@ -29,8 +29,8 @@ def published_round_2(fresh_store, at):
             if a.listing_id == lid and a.round_id == "rnd-2" and a.status.value == "submitted"
         ]
         fresh_store.applicant_rankings[f"{lid}:rnd-2"] = ids
-    at(REVIEW_CLOSED)  # matching runs when the review window closes (REQ-EXEC-4)
-    at(APPROVAL_CLOSED)  # nobody declines, so every match becomes an offer (REQ-APPRV-4, REQ-PUB-3)
+    at(REVIEW_CLOSED)  # matching runs when the review window closes (REQ-EXEC-6)
+    at(APPROVAL_CLOSED)  # nobody declines, so every match becomes an offer (REQ-APPRV-4, REQ-PUB-4)
     return fresh_store
 
 

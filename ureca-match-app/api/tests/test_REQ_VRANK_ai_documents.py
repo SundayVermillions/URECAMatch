@@ -50,13 +50,20 @@ def test_REQ_VRANK_1_the_words_of_a_supporting_document_reach_the_prompt(monkeyp
     storage = MockStorageService()
     storage.put("documents", "stu-1/d.pdf", _pdf("Graded retinal images on APTOS with kappa 0.89"))
     monkeypatch.setattr(ai_match, "get_storage", lambda: storage)
-    found = ai_match.supporting_text(_applicant([_doc("supporting", "documents/stu-1/d.pdf")]))
-    assert found and "APTOS" in found[0]["text"]
+    sources, unread = ai_match._sources(_applicant([_doc("supporting", "documents/stu-1/d.pdf")]))
+    assert "APTOS" in sources["d"][1] and unread == []
 
 
-def test_REQ_VRANK_1_transcripts_and_missing_files_add_nothing(monkeypatch):
+def test_REQ_VRANK_4_the_transcript_is_read_too(monkeypatch):
     storage = MockStorageService()
     storage.put("documents", "stu-1/d.pdf", _pdf("transcript text"))
     monkeypatch.setattr(ai_match, "get_storage", lambda: storage)
-    assert ai_match.supporting_text(_applicant([_doc("transcript", "documents/stu-1/d.pdf")])) == []
-    assert ai_match.supporting_text(_applicant([_doc("supporting", None), _doc("supporting", "documents/stu-1/none.pdf")])) == []
+    sources, _ = ai_match._sources(_applicant([_doc("transcript", "documents/stu-1/d.pdf")]))
+    assert "transcript text" in sources["d"][1]
+
+
+def test_REQ_VRANK_4_missing_files_add_nothing_and_are_named(monkeypatch):
+    storage = MockStorageService()
+    monkeypatch.setattr(ai_match, "get_storage", lambda: storage)
+    sources, unread = ai_match._sources(_applicant([_doc("supporting", None), _doc("supporting", "documents/stu-1/none.pdf")]))
+    assert set(sources) == {"statement", "profile"} and unread == ["portfolio.pdf", "portfolio.pdf"]

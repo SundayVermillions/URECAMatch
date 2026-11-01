@@ -222,7 +222,25 @@ def make_users() -> tuple[list[User], list[StudentProfile], list[SupervisorProfi
                 ],
             )
         )
+    _add_document_text(students)
     return users, students, supervisors
+
+
+def _add_document_text(students: list[StudentProfile]) -> None:
+    """Seeded documents have no file, so give AI match words to read (REQ-VRANK-4). Uses no rng: the rest of the seed
+    stays the same. Every fifth CV stands in for a scan."""
+    for i, s in enumerate(students):
+        focus, other = s.research_interests[0], s.research_interests[-1]
+        for d in s.documents:
+            if d.kind == "transcript":
+                d.extracted_text = f"Cumulative GPA: {s.cgpa:.2f}\nCourses passed: {', '.join(s.completed_modules)}"
+            elif i % 5:
+                d.extracted_text = (
+                    f"Curriculum vitae\nProjects: built a prototype on {focus} using Python and wrote a report on {other}.\n"
+                    f"Experience: teaching assistant for a programming class in {s.school}.\nSkills: Python, Git, SQL."
+                )
+            else:
+                d.extracted_text = ""
 
 
 # ---------------------------------------------------------------- cycle
@@ -250,7 +268,7 @@ def make_cycle() -> Cycle:
                 review_end=rev_end,
                 approval_end=rev_end + timedelta(days=2),  # REQ-APPRV-4: two days for supervisors to decline
                 status=status,
-                # REQ-EXEC-4, REQ-PUB-3: the system runs matching when review closes and publishes when approval closes
+                # REQ-EXEC-6, REQ-PUB-4: the system runs matching when review closes and publishes when approval closes
                 executed_at=rev_end + timedelta(seconds=1) if n == 1 else None,
                 published_at=rev_end + timedelta(days=2, seconds=1) if n == 1 else None,
             )
