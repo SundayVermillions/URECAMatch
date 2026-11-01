@@ -15,9 +15,10 @@ import { useApi, useCall } from "@/lib/use-api";
 const PAGE = 25; // rows shown before "Show more"
 const MOVABLE: MatchStatus[] = ["proposed", "approved", "reassigned"]; // its round's results are not out, so it can move (AF-S3)
 const STANDINGS: { value: AssignmentStatus; label: string }[] = [
-  { value: "unassigned", label: "Unassigned" }, { value: "matched", label: "Matched" }, { value: "offered", label: "Offer sent" }, { value: "accepted", label: "Accepted" },
+  { value: "unassigned", label: "No project" }, { value: "matched", label: "Matched" }, { value: "offered", label: "Offer sent" }, { value: "accepted", label: "Accepted" },
 ];
-const COLUMNS = "grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_130px_160px]";
+const COLUMNS = "grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_130px_262px]"; // the last fits two row buttons side by side
+const ROW_BUTTON = "min-w-32"; // one width for every row button, so they line up down the column
 type Action = { kind: "assign" | "reassign" | "unassign"; row: StudentAssignment };
 
 export default function Assignments() {
@@ -28,7 +29,7 @@ function AssignmentsPage() {
   const call = useCall();
   const router = useRouter();
   const { me } = useMe();
-  const linked = useSearchParams().get("student"); // "Assign" next to an unmatched student on a round's results; only they are listed
+  const linked = useSearchParams().get("student"); // "Manual Assign" next to an unmatched student on a round's results; only they are listed
   const view = useApi((api) => api.assignments(), []);
   const listings = useApi((api) => api.browse(), []);
   const [standing, setStanding] = useState<AssignmentStatus | "all">("all");
@@ -92,7 +93,7 @@ function AssignmentsPage() {
 
   return (
     <>
-      <PageTitle title="Assignments" />
+      <PageTitle title="Overrides" />
       {view.error && <div className="mb-4"><Banner tone="bad">{view.error.message}</Banner></div>}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -128,11 +129,11 @@ function AssignmentsPage() {
                     <div className="truncate text-[12.5px] text-muted">{s.match.supervisor_name} · Round {s.round_number}{s.status === "offered" && s.match.offer_expires_at ? ` · answer by ${fmtDeadline(s.match.offer_expires_at)}` : ""}</div>
                   </div>
                 ) : <div className="min-w-0 text-[13px] text-muted">{s.reason}</div>}
-                <span>{s.match ? <Status value={s.match.status} /> : <Pill>Unassigned</Pill>}</span>
+                <span>{s.match ? <Status value={s.match.status} /> : <Pill>No project</Pill>}</span>
                 <div className="flex justify-end gap-1.5">
-                  {s.status === "unassigned" && <Button size="sm" variant="soft" disabled={!v?.round} onClick={() => open("assign", s)}>Assign</Button>}
-                  {s.match && MOVABLE.includes(s.match.status) && <Button size="sm" variant="soft" onClick={() => open("reassign", s)}>Reassign</Button>}
-                  {s.match && <Button size="sm" variant="text" className="text-muted hover:text-bad-ink" onClick={() => open("unassign", s)}>Unassign</Button>}
+                  {s.status === "unassigned" && <Button size="sm" variant="soft-good" className={ROW_BUTTON} disabled={!v?.round} onClick={() => open("assign", s)}>Manual Assign</Button>}
+                  {s.match && MOVABLE.includes(s.match.status) && <Button size="sm" variant="soft" className={ROW_BUTTON} onClick={() => open("reassign", s)}>Reassign</Button>}
+                  {s.match && <Button size="sm" variant="soft-bad" className={ROW_BUTTON} onClick={() => open("unassign", s)}>Manual Unassign</Button>}
                 </div>
               </div>
             ))}
@@ -146,7 +147,7 @@ function AssignmentsPage() {
         </Card>
       )}
 
-      <Modal open={current?.kind === "assign"} onClose={close} title={`Assign ${name}`} footer={footer("Assign", !!target && why.trim().length >= 10)}>
+      <Modal open={current?.kind === "assign"} onClose={close} title={`Manually assign ${name}`} footer={footer("Manual Assign", !!target && why.trim().length >= 10)}>
         <div className="flex flex-col gap-3 text-text">
           {modalError}
           <div className="text-[13px] text-muted">{hears} The supervisor cannot decline a manual assignment.</div>
@@ -160,14 +161,14 @@ function AssignmentsPage() {
       <Modal open={current?.kind === "reassign"} onClose={close} title={`Reassign ${name}`} footer={footer("Reassign", !!target && why.trim().length >= 10)}>
         <div className="flex flex-col gap-3 text-text">
           {modalError}
-          <div className="text-[13px] text-muted">Moves {name} off {row?.match?.listing_title} before the Round {row?.round_number} results come out. The audit log keeps both projects.</div>
+          <div className="text-[13px] text-muted">Moves {name} off {row?.match?.listing_title} before the Round {row?.round_number} results come out.</div>
           <Field label="Move to project" error={error?.field === "listing_id" ? error.message : null}>
             <Select id="reassign-target" value={target} onChange={(e) => setTarget(e.target.value)}><option value="">Choose a project with an open slot</option>{projectOptions(row?.match?.listing_id)}</Select>
           </Field>
-          {whyField("Required, at least 10 characters. Recorded in the audit log with your name and the time.")}
+          {whyField("Required, at least 10 characters. Recorded in the audit log.")}
         </div>
       </Modal>
-      <Modal open={current?.kind === "unassign"} onClose={close} title={`Unassign ${name}?`} footer={footer("Unassign", why.trim().length >= 10, true)}>
+      <Modal open={current?.kind === "unassign"} onClose={close} title={`Manually unassign ${name}?`} footer={footer("Manual Unassign", why.trim().length >= 10, true)}>
         <div className="flex flex-col gap-3 text-text">
           {modalError}
           <div className="text-[13px] text-muted">{name} is taken off {row?.match?.listing_title} and the slot opens again. {row?.status === "accepted" ? "They had accepted, so they return to the pool and can be assigned elsewhere. " : ""}{row?.status === "matched" ? "The supervisor is told. The student had not heard about this match yet." : "The student and supervisor are told."}</div>

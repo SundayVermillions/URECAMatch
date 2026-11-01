@@ -7,11 +7,13 @@ import type { ApiError, MatchStatus, ProposalStatus, ApplicationStatus, AccountS
 
 // ------------------------------------------------------------------ buttons
 
-type Variant = "primary" | "secondary" | "soft" | "destructive" | "text";
+type Variant = "primary" | "secondary" | "soft" | "soft-good" | "soft-bad" | "destructive" | "text";
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white shadow-[0_1px_2px_rgba(0,113,227,0.25)] hover:bg-accent-ink active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint disabled:shadow-none",
   secondary: "bg-neutral-soft text-text hover:bg-[#e8e8ed] active:scale-[0.98] disabled:text-faint disabled:hover:bg-neutral-soft",
   soft: "bg-accent-soft text-accent-ink ring-1 ring-inset ring-accent-border/70 hover:bg-accent-border/60 hover:ring-accent-border active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint disabled:ring-0",
+  "soft-good": "bg-good-soft text-good-ink ring-1 ring-inset ring-good/20 hover:bg-good/15 hover:ring-good/35 active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint disabled:ring-0",
+  "soft-bad": "bg-bad-soft text-bad-ink ring-1 ring-inset ring-bad/15 hover:bg-bad/12 hover:ring-bad/30 active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint disabled:ring-0",
   destructive: "bg-bad text-white hover:bg-bad-ink active:scale-[0.98] disabled:bg-neutral-soft disabled:text-faint",
   text: "text-accent hover:text-accent-ink px-1 disabled:text-faint",
 };

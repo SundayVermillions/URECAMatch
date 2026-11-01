@@ -49,7 +49,7 @@ export default function ReviewMatches() {
               {published ? (
                 <>
                   <Status value="published" kind="round" />
-                  <span className="text-[12.5px] leading-snug text-muted">Results are published. Manual assignment overrides can be performed on <Link href="/assignments" className="font-medium">Assignments</Link>.</span>
+                  <span className="text-[12.5px] leading-snug text-muted">Results are published. Manual assignment overrides can be performed on <Link href="/assignments" className="font-medium">Overrides</Link>.</span>
                 </>
               ) : (
                 <>
@@ -79,7 +79,7 @@ export default function ReviewMatches() {
                 <li key={u.user.id} className="flex items-center gap-4 px-6 py-3.5">
                   <Avatar name={u.user.name} size={36} tone="auto" />
                   <div className="min-w-0 flex-1"><div className="text-[14px] font-semibold">{u.user.name}</div><div className="truncate text-[12.5px] text-muted">{[u.school, u.user.email].filter(Boolean).join(" · ")}</div></div>
-                  <span className="flex w-32 justify-end"><Link href={`/assignments?student=${encodeURIComponent(u.user.id)}`}><Button size="sm" variant="soft">Assign</Button></Link></span>
+                  <span className="flex w-32 justify-end"><Link href={`/assignments?student=${encodeURIComponent(u.user.id)}`}><Button size="sm" variant="soft-good">Manual Assign</Button></Link></span>
                 </li>
               ))}
             </ul>
