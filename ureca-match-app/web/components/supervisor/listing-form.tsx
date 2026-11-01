@@ -6,8 +6,6 @@
  *  After the cycle closes, publishing and editing are refused by the API; the form explains why instead of failing. */
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { DEMO_NEW_PROJECT as NEW } from "@/lib/demo-data";
-import { sleep, typeText, useDemoFill } from "@/lib/demo-fill";
 import { useMe } from "@/components/shell/app-provider";
 import { I } from "@/components/shell/icons";
 import { CoursePicker, TopicPicker } from "@/components/pickers";
@@ -96,26 +94,6 @@ export function ListingForm({ existing }: { existing?: Listing }) {
     try { setPhotos((await call((api) => api.removeGalleryPhoto(existing.id, i))).gallery_urls ?? []); }
     catch (e) { setPhotoError((e as ApiError).message); }
   }
-
-  // Demo only: fill a new project step by step. It stops on the last step so publishing stays a click.
-  useDemoFill(async () => {
-    if (existing) return;
-    await typeText(setTitle, NEW.title);
-    await typeText(setDescription, NEW.description);
-    setStep(1); await sleep(500);
-    setTags([]);
-    for (const t of NEW.tags) { setTags((x) => [...x, t]); await sleep(400); }
-    await typeText(setLocation, NEW.location);
-    setSlots(NEW.slots);
-    setStep(2); await sleep(500);
-    await typeText(setOutcomes, NEW.outcomes);
-    await typeText(setSkills, NEW.skills);
-    setHours(NEW.hours); setMode(NEW.mode as ListingMode); await sleep(300);
-    await typeText(setVideo, NEW.video);
-    setStep(3); await sleep(400);
-    const img = await fetch(NEW.cover);
-    await pickCover(new File([await img.blob()], "cover.jpg", { type: "image/jpeg" }));
-  });
 
   const cycleClosed = me?.phase.window === "closed";
   const isDraft = existing?.status === "draft";
