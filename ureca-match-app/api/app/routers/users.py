@@ -36,12 +36,22 @@ ConfirmCleanup = Annotated[
 WARNING = {409: {"model": CleanupWarning, "description": "Last active admin, or the user has open items to clean up first."}}
 
 
-def _guard_account_change(store, u: User, leaving_admin: bool, deactivating: bool, role_changing: bool, confirm: bool) -> list:
+def _guard_account_change(
+    store, u: User, admin: User, leaving_admin: bool, deactivating: bool, role_changing: bool, confirm: bool
+) -> list:
     """Run before anything is changed. The last-admin rule is a hard block that `confirm_cleanup` cannot override
     (there must always be one active admin). Otherwise a user with open items gets a preview until the admin
     confirms. Returns the open items to clean up once confirmed."""
     if (leaving_admin or deactivating) and is_last_admin(store, u):
         raise conflict("last_admin", "This is the only active administrator. Make another user an active admin first.")
+    # REQ-USER-3: an admin cannot remove their own access, even with another admin or a confirmation flag.
+    if u.id == admin.id:
+        if deactivating:
+            raise conflict(
+                "self_deactivation", "You cannot deactivate your own account. Ask another administrator to deactivate it."
+            )
+        if role_changing:
+            raise conflict("self_role_change", "You cannot change your own role. Ask another administrator to change it.")
     if not (deactivating or role_changing):
         return []
     items = find_active_items(store, u)
@@ -128,7 +138,7 @@ def update_user(
     deactivating = body.status is not None and body.status != AccountStatus.active and body.status != u.status
     leaving_admin = role_changing or (body.status is not None and body.status != AccountStatus.active)
     now = settings.now()
-    if _guard_account_change(store, u, leaving_admin, deactivating, role_changing, confirm_cleanup):  # REQ-USER-3
+    if _guard_account_change(store, u, admin, leaving_admin, deactivating, role_changing, confirm_cleanup):  # REQ-USER-3
         if deactivating:
             reason = "deactivated" if body.status == AccountStatus.inactive else "set to unverified"
         else:
@@ -180,7 +190,7 @@ def deactivate(
     u = store.user(user_id)
     if u is None or u.id == SYSTEM.id:  # REQ-USER-3: preserve the reserved audit actor.
         raise not_found("User")
-    if _guard_account_change(store, u, False, True, False, confirm_cleanup):  # REQ-USER-3
+    if _guard_account_change(store, u, admin, False, True, False, confirm_cleanup):  # REQ-USER-3
         clean_up(store, admin, u, settings.now(), "deactivated")
     was_active = u.status != AccountStatus.inactive
     u.status = AccountStatus.inactive

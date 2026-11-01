@@ -512,11 +512,11 @@ function ProfileForm({ p }: { p: StudentProfile | null }) {
         </Card>
         </div>
       </div>
-      <Modal open={preview !== null} onClose={closePreview} title={preview?.name ?? "Document"}
+      <Modal open={preview !== null} onClose={closePreview} title={preview?.name ?? "Document"} wide
         footer={<>{preview?.error && <Button type="button" variant="secondary" onClick={() => viewDoc(preview.id)}>Try again</Button>}<Button type="button" onClick={closePreview}>Close</Button></>}>
         {preview?.loading && <p role="status">Opening document...</p>}
         {preview?.error && <p role="alert" className="text-bad-ink">{preview.error}</p>}
-        {preview?.url && <iframe src={`${preview.url}#toolbar=0&navpanes=0`} title={preview.name} className="h-[65vh] min-h-[280px] w-full border-0" />}
+        {preview?.url && <iframe src={`${preview.url}#toolbar=0&navpanes=0&view=FitH`} title={preview.name} className="h-[78vh] min-h-[280px] w-full border-0" />}
       </Modal>
     </form>
   );

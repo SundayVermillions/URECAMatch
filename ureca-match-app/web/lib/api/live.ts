@@ -87,10 +87,12 @@ export class LiveClient implements ApiClient {
   summary = (id: string) => this.req<M.RoundSummary>("GET", `/admin/rounds/${id}/summary`);
   matches = (id: string, status?: M.MatchStatus) => this.req<M.Match[]>("GET", `/admin/rounds/${id}/matches` + this.q({ status }));
   reassign = (id: string, b: M.ReassignRequest) => this.req<M.Match>("POST", `/admin/matches/${id}/reassign`, b);
-  manualAssign = (id: string, b: M.ManualAssignRequest) => this.req<M.Match>("POST", `/admin/rounds/${id}/assign`, b);
+  assignments = () => this.req<M.AssignmentsView>("GET", "/admin/assignments");
+  listingAssignments = (id: string) => this.req<M.StudentAssignment[]>("GET", `/admin/listings/${id}/assignments`);
+  assignStudent = (b: M.ManualAssignRequest) => this.req<M.Match>("POST", "/admin/assignments", b);
   unassign = (id: string, note: string) => this.req<void>("POST", `/admin/matches/${id}/unassign`, { note });
   unmatched = (id: string) => this.req<M.UserListItem[]>("GET", `/admin/rounds/${id}/unmatched`);
-  auditLog = () => this.req<M.AuditEntry[]>("GET", "/admin/audit");
+  auditLog = (query: M.AuditQuery = {}) => this.req<M.AuditEntry[]>("GET", "/admin/audit" + this.q(query));
   supervisorMatches = () => this.req<M.Match[]>("GET", "/supervisor/matches");
   declineMatch = (id: string, note?: string) => this.req<M.Match>("POST", `/supervisor/matches/${id}/decline`, { note });
   matchStudent = (id: string) => this.req<M.Applicant>("GET", `/supervisor/matches/${id}/student`);

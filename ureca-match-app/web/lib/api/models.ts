@@ -62,6 +62,9 @@ export type Match = S["Match"];
 export type RoundSummary = S["RoundSummary"];
 export type ReassignRequest = S["ReassignRequest"];
 export type ManualAssignRequest = S["ManualAssignRequest"];
+export type AssignmentStatus = S["AssignmentStatus"];
+export type StudentAssignment = S["StudentAssignment"];
+export type AssignmentsView = S["AssignmentsView"];
 export type AuditEntry = S["AuditEntry"];
 export type ActiveItem = S["ActiveItem"];
 export type ActiveItemKind = S["ActiveItemKind"];
@@ -71,6 +74,8 @@ export type SupervisorDashboard = S["SupervisorDashboard"];
 export type ClockState = S["ClockState"];
 
 export type ListingFilters = { q?: string; school?: string; tag?: string; supervisor?: string };
+/** GET /admin/audit: newest first unless order is "asc"; `limit` entries after the entry `cursor` (an id). */
+export type AuditQuery = { operation?: AuditOperation; q?: string; order?: "desc" | "asc"; limit?: number; cursor?: string };
 export type ApplicantFilters = { school?: string; min_cgpa?: number; prerequisites_only?: boolean };
 export type UserFilters = { role?: Role; status?: AccountStatus; q?: string };
 

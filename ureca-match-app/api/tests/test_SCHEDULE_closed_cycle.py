@@ -78,7 +78,7 @@ def test_REQ_OUTCOME_3_an_offer_is_never_created_already_expired(fresh_store):
         {**template.model_dump(), "id": "mt-late", "round_id": last.id, "status": MatchStatus.proposed, "offer_expires_at": None}
     )
     fresh_store.matches.append(pending)
-    _publish(fresh_store, last, cycle.closing_date + timedelta(hours=1), [])  # the cycle has closed: no offer can be made
+    _publish(fresh_store, cycle, last, cycle.closing_date + timedelta(hours=1), [])  # the cycle has closed: no offer can be made
     assert pending.status == MatchStatus.proposed and pending.offer_expires_at is None
     assert last.published_at is None
 

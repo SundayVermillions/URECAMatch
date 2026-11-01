@@ -143,14 +143,6 @@ export default function Apply() {
               </ul>
             )}
           </Card>
-          <div className="px-2">
-            <div className="eyebrow mb-2">Before you submit</div>
-            <ul className="text-[12.5px] text-muted flex flex-col gap-2 leading-[1.5]">
-              <li>You can edit or withdraw until the window closes.</li>
-              <li>Rank all your applications; the matching uses that order.</li>
-              <li>If you receive and decline an offer, you cannot join later rounds this cycle.</li>
-            </ul>
-          </div>
         </aside>
       </div>
     </form>

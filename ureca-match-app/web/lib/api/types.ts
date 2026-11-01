@@ -898,7 +898,7 @@ export interface paths {
         /**
          * Unmatched Students
          * @description REQ-REV-1 "Unmatched": students who applied in this round and hold no match, so an admin can assign them
-         *     (REQ-ASSIGN-1). The same set as the summary's unmatched count.
+         *     (REQ-ASSIGN-1). The same set as the summary's unmatched count. Profiles and accounts are read once, not per student.
          */
         get: operations["unmatched_students_admin_rounds__round_id__unmatched_get"];
         put?: never;
@@ -981,6 +981,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Assignments
+         * @description Every active student and where they stand in the active cycle, and the round a new assignment would join.
+         *     Each table is read once: in Supabase mode every read is a query.
+         */
+        get: operations["assignments_admin_assignments_get"];
+        put?: never;
+        /**
+         * Assign Student
+         * @description REQ-ASSIGN-1..3 from the Assignments page. The API picks the round (_assignment_round), so the page cannot put
+         *     a student in the wrong one; the checks are _assign's.
+         */
+        post: operations["assign_student_admin_assignments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/listings/{listing_id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listing Assignments
+         * @description The students one project holds in the active cycle (matched, offered or accepted), for the admin's project page.
+         *     Reads that project's matches and only their students, not the whole roster as GET /admin/assignments does.
+         */
+        get: operations["listing_assignments_admin_listings__listing_id__assignments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/audit": {
         parameters: {
             query?: never;
@@ -990,8 +1037,10 @@ export interface paths {
         };
         /**
          * Audit Log
-         * @description REQ-AUDIT-1, newest first. Entries are never changed (REQ-AUDIT-2); readable names for the records they
-         *     affect are added to the copies sent out.
+         * @description REQ-AUDIT-1: newest first (order=asc for oldest first), a page at a time: up to `limit` entries after the entry
+         *     `cursor`, the id of the last one the page already shows. `q` searches the names, notes and who did it. Entries are
+         *     never changed (REQ-AUDIT-2); readable names for the records they affect are added to the copies sent out, from one
+         *     read of each table they come from, however long the log is.
          */
         get: operations["audit_log_admin_audit_get"];
         put?: never;
@@ -1532,6 +1581,23 @@ export interface components {
              * @default []
              */
             document_ids: string[];
+        };
+        /**
+         * AssignmentStatus
+         * @description Where a student stands in the active cycle, on the Assignments page (REQ-ASSIGN-1..3).
+         * @enum {string}
+         */
+        AssignmentStatus: "accepted" | "offered" | "matched" | "unassigned";
+        /**
+         * AssignmentsView
+         * @description The Assignments page (REQ-ASSIGN-1..3, use case 1-6): every active student, and where a new assignment goes.
+         */
+        AssignmentsView: {
+            round?: components["schemas"]["Round"] | null;
+            /** Offer Deadline */
+            offer_deadline?: string | null;
+            /** Students */
+            students: components["schemas"]["StudentAssignment"][];
         };
         /** AuditEntry */
         AuditEntry: {
@@ -2369,6 +2435,23 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** StudentAssignment */
+        StudentAssignment: {
+            user: components["schemas"]["User"];
+            /** School */
+            school?: string | null;
+            status: components["schemas"]["AssignmentStatus"];
+            match?: components["schemas"]["Match"] | null;
+            /** Round Number */
+            round_number?: number | null;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Eligible
+             * @default true
+             */
+            eligible: boolean;
         };
         /** StudentProfile */
         StudentProfile: {
@@ -4662,10 +4745,116 @@ export interface operations {
             };
         };
     };
+    assignments_admin_assignments_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_student_admin_assignments_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualAssignRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Match"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listing_assignments_admin_listings__listing_id__assignments_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-demo-user"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentAssignment"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     audit_log_admin_audit_get: {
         parameters: {
             query?: {
                 operation?: components["schemas"]["AuditOperation"] | null;
+                q?: string | null;
+                order?: "desc" | "asc";
+                limit?: number | null;
+                cursor?: string | null;
             };
             header?: {
                 authorization?: string | null;

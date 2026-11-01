@@ -8,7 +8,7 @@ from datetime import timedelta
 
 import pytest
 
-from app.models import MatchStatus
+from app.models import ApplicationStatus, MatchStatus
 from app.settings import get_settings
 from tests.conftest import APPROVAL_CLOSED, REVIEW_CLOSED
 
@@ -85,3 +85,18 @@ def test_REQ_OUTCOME_3_a_last_round_offer_cannot_be_answered_after_the_cycle_clo
     assert offer.status == MatchStatus.published  # the schedule leaves a closed cycle alone
     r = client_for(offer.student_id).post("/me/match/accept")
     assert r.status_code == 409 and r.json()["code"] == "offer_expired"
+
+
+def test_REQ_OUTCOME_1_taking_the_last_slot_withdraws_everyone_elses_application(round_2_offers, client_for, fresh_store):
+    offer = round_2_offers[0]
+    lst = fresh_store.listing(offer.listing_id)
+    lst.available_slots = lst.filled_slots + 1  # this offer takes the last slot
+    other = next(u.id for u in fresh_store.users if u.role.value == "student" and u.id != offer.student_id)
+    template = next(a for a in fresh_store.applications if a.listing_id == lst.id)
+    waiting = template.model_copy(
+        update={"id": "app-waiting", "student_id": other, "status": ApplicationStatus.submitted, "preference_rank": 1}
+    )
+    fresh_store.save_applications(waiting)
+    assert client_for(offer.student_id).post("/me/match/accept").status_code == 200
+    assert next(a for a in fresh_store.applications if a.id == "app-waiting").status == ApplicationStatus.withdrawn
+    assert any(n.user_id == other and "is full" in n.title for n in fresh_store.notifications_for(other))

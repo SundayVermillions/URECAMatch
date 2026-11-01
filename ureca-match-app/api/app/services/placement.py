@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.models import Match, MatchStatus, NotificationEvent, ProposalStatus
+from app.models import ApplicationStatus, Match, MatchStatus, NotificationEvent, ProposalStatus
 from app.services.notify import notify
 
 # Matches that still hold a slot until the student accepts (then it is in filled_slots) or the match ends.
@@ -23,6 +23,27 @@ def _cycle_matches(store, student_id: str) -> list[Match]:
 def is_placed(store, student_id: str) -> bool:
     """True if the student has accepted a project in the active cycle."""
     return any(m.status == MatchStatus.accepted for m in _cycle_matches(store, student_id))
+
+
+def held_by_listing(cycle, matches: list[Match]) -> dict[str, int]:
+    """Slots held per project: matches and offers in `cycle` (the active one) that are still open, counted from the
+    caller's reads. An earlier cycle's leftovers hold nothing, so they cannot shrink the next cycle's projects."""
+    rounds = {r.id for r in cycle.rounds} if cycle else set()
+    held: dict[str, int] = {}
+    for m in matches:
+        if m.round_id in rounds and m.status in OPEN:
+            held[m.listing_id] = held.get(m.listing_id, 0) + 1
+    return held
+
+
+def holds_project(cycle, matches: list[Match], student_id: str) -> bool:
+    """is_placed() or open_matches() in one pass over the caller's reads: the student has accepted a project in `cycle`
+    or holds a match there that keeps a slot (REQ-ASSIGN-3)."""
+    rounds = {r.id for r in cycle.rounds} if cycle else set()
+    return any(
+        m.student_id == student_id and m.round_id in rounds and (m.status == MatchStatus.accepted or m.status in OPEN)
+        for m in matches
+    )
 
 
 def open_matches(store, student_id: str) -> list[Match]:
@@ -47,3 +68,38 @@ def withdraw_pending_proposals(store, student_id: str, now: datetime, reason: st
                 now,
                 "/proposals",
             )
+
+
+def withdraw_applications_to_full_listing(store, listing, now: datetime) -> None:
+    """The last slot of a project was taken, so every application still under review for it is withdrawn: nobody
+    should keep a preference that can no longer be matched. Each student's remaining preferences move up and they are told."""
+    if listing.filled_slots < listing.available_slots:
+        return
+    waiting = [a for a in store.applications_for(listing_id=listing.id) if a.status == ApplicationStatus.submitted]
+    if not waiting:
+        return
+    for a in waiting:
+        a.status, a.preference_rank = ApplicationStatus.withdrawn, None
+    store.save_applications(*waiting)
+    for student_id, round_id in {(a.student_id, a.round_id) for a in waiting}:
+        left = sorted(
+            (
+                x
+                for x in store.applications_for(student_id=student_id, round_id=round_id)
+                if x.status == ApplicationStatus.submitted
+            ),
+            key=lambda x: x.preference_rank or 99,
+        )
+        for i, x in enumerate(left, start=1):
+            x.preference_rank = i
+        if left:
+            store.save_applications(*left)
+    notify(
+        store,
+        sorted({a.student_id for a in waiting}),
+        NotificationEvent.proposal_decided,
+        "A project you applied to is full",
+        f"{listing.title} has no slots left, so your application was withdrawn. Your other preferences moved up.",
+        now,
+        "/my-applications",
+    )
