@@ -31,7 +31,7 @@ def test_REQ_APPRV_1_cannot_decline_before_matching_runs(as_admin, client_for):
     assert resp.status_code == 409 and resp.json()["code"] == "not_executed"
 
 
-def test_REQ_APPRV_2_decline_frees_the_slot(as_admin, client_for, at):
+def test_REQ_APPRV_6_decline_frees_the_slot(as_admin, client_for, at):
     declined = _execute_r2(as_admin, at)[0]
     resp = _decline(client_for, declined)
     assert resp.status_code == 200 and resp.json()["status"] == "rejected"

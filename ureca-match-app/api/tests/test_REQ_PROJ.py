@@ -113,12 +113,12 @@ def test_REQ_PROJ_2_cover_upload_sets_cover_url(as_supervisor):
     assert r.json()["cover_url"].startswith("data:image/png;base64,")  # the mock API carries the picture itself
 
 
-def test_REQ_PROJ_2_cover_must_be_jpeg_or_png(as_supervisor):
+def test_REQ_PROJ_7_cover_must_be_jpeg_or_png(as_supervisor):
     r = as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": ("cover.gif", b"GIF89a", "image/gif")})
     assert r.status_code == 422 and r.json()["field"] == "file"
 
 
-def test_REQ_PROJ_2_cover_over_5mb_rejected(as_supervisor):
+def test_REQ_PROJ_7_cover_over_5mb_rejected(as_supervisor):
     big = PNG + b"0" * (5 * 1024 * 1024)
     r = as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": ("cover.png", big, "image/png")})
     assert r.status_code == 422 and r.json()["code"] == "too_large"

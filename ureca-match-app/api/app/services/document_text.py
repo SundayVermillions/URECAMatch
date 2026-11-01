@@ -24,7 +24,7 @@ PRIVATE = [
 ]
 
 
-def scrub(text: str) -> str:
+def scrub(text: str) -> str:  # REQ-VRANK-10
     for pattern in PRIVATE:
         text = pattern.sub("[removed]", text)
     return text

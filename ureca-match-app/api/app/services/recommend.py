@@ -1,4 +1,4 @@
-"""Recommended projects for a student (REQ-BROWSE-4). A local, explainable fit score; no AI needed.
+"""Recommended projects for a student (REQ-BROWSE-4, 6, 7). A local, explainable fit score; no AI needed.
 
 Score out of 100:
 - interests 50: the student's research interests against the project's topic tags. Both come from the

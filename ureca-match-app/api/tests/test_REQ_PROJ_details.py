@@ -85,7 +85,7 @@ def test_REQ_PROJ_2_at_most_four_photos(as_supervisor):
     assert r.status_code == 422 and r.json()["code"] == "gallery_full"
 
 
-def test_REQ_PROJ_2_photos_must_be_images(as_supervisor):
+def test_REQ_PROJ_7_photos_must_be_images(as_supervisor):
     r = as_supervisor.post("/supervisor/listings/lst-2/gallery", files={"file": ("notes.pdf", b"%PDF", "application/pdf")})
     assert r.status_code == 422 and r.json()["code"] == "not_image"
 

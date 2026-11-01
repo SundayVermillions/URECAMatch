@@ -23,7 +23,7 @@ from app.services.storage import get_storage
 router = APIRouter(tags=["rankings"])
 
 TOP_N = 10  # REQ-VRANK-1
-MIN_WEIGHT = 5  # REQ-VRANK-5: every factor keeps some say
+MIN_WEIGHT = 5  # REQ-VRANK-8: every factor keeps some say
 
 
 def _applicants(store, listing_id: str, round_id: str | None) -> list[Applicant]:

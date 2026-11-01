@@ -104,7 +104,7 @@ def test_REQ_PROJ_1_text_has_a_length_limit(as_supervisor):
 # ---------------------------------------------------------------- uploads are checked by their bytes
 
 
-def test_REQ_PROJ_2_a_file_labelled_png_that_is_not_an_image_is_refused(as_supervisor):
+def test_REQ_PROJ_7_a_file_labelled_png_that_is_not_an_image_is_refused(as_supervisor):
     for send in (("x.png", b"%PDF-1.4 not an image", "image/png"), ("x.png", b"<script>alert(1)</script>", "image/png")):
         r = as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": send})
         assert r.status_code == 422 and r.json()["code"] == "not_image"
@@ -112,7 +112,7 @@ def test_REQ_PROJ_2_a_file_labelled_png_that_is_not_an_image_is_refused(as_super
         assert r.status_code == 422 and r.json()["code"] == "not_image"
 
 
-def test_REQ_PROJ_2_real_images_are_accepted_whatever_the_label_says(as_supervisor):
+def test_REQ_PROJ_7_real_images_are_accepted_whatever_the_label_says(as_supervisor):
     assert as_supervisor.post("/supervisor/listings/lst-2/cover", files={"file": ("c.jpg", PNG, "image/jpeg")}).status_code == 200
     assert as_supervisor.post("/supervisor/listings/lst-3/cover", files={"file": ("c.png", JPEG, "image/png")}).status_code == 200
 

@@ -170,7 +170,7 @@ def _normal(text: str) -> str:
 
 
 def _checked_evidence(rows: list, sources: dict[str, tuple[str, str]]) -> list[ScoreEvidence]:
-    """Keep only quotes really found in the source they name (REQ-VRANK-4)."""
+    """Keep only quotes really found in the source they name (REQ-VRANK-6)."""
     out = []
     for row in rows:
         src, quote = sources.get(str(row.get("source_id"))), " ".join(str(row.get("quote", "")).split())
