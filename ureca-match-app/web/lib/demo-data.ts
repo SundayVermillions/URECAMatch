@@ -57,8 +57,10 @@ export const DEMO: Record<DemoRole, {
     applyStatement:
       "I trained ResNet-50 and EfficientNet-B3 models to grade diabetic retinopathy on the public APTOS and EyePACS datasets and reached a quadratic weighted kappa of 0.84. " +
       "I used temperature scaling to cut the expected calibration error from 0.11 to 0.03, and I made Grad-CAM heatmaps that an ophthalmology student checked. " +
-      "These are the same steps this project asks for. My CGPA is not my strongest point, but I have already built the kind of work this project needs. " +
-      "I would like to repeat it on a public fundus dataset under Prof. Chua and write it up properly.",
+      "This is the machine learning and healthcare AI work, in computer vision, that this project asks for. " +
+      "I now want to go further than my first models: I will test whether the calibration still holds on a second public fundus dataset, " +
+      "and ask whether the heatmaps actually help a clinician decide, which my earlier work did not answer. " +
+      "I would like to do this under Prof. Chua and write up the results properly.",
     proposal: NONE, // Student 2 does not self-propose in the demo
     revisedProposal: NONE,
   },
