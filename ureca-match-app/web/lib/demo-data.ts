@@ -59,9 +59,11 @@ export const DEMO: Record<DemoRole, {
       "I used temperature scaling to cut the expected calibration error from 0.11 to 0.03, and I made Grad-CAM heatmaps that an ophthalmology student checked. " +
       "This is the machine learning and healthcare AI work, in computer vision, that this project asks for. " +
       "I now want to go further than my first models: I will test whether the calibration still holds on a second public fundus dataset, " +
-      "and ask whether the heatmaps actually help a clinician decide, which my earlier work did not answer. " +
-      "I plan to measure this by comparing the heatmaps with the lesion regions that experts marked in the public IDRiD dataset, using overlap and a pointing-game score, " +
-      "so the work needs no new patient or clinician data. " +
+      "and whether the heatmaps are useful to a clinician, which my earlier work did not answer. " +
+      "This is the clinician-facing explainability the project asks for: a grader is only safe to use if a clinician can see why it flagged an eye and can trust its confidence score. " +
+      "I plan to measure this by comparing the heatmaps with the lesion regions that experts marked in the public IDRiD dataset, using overlap and a pointing-game score. " +
+      "If a heatmap points at the same microaneurysms and haemorrhages a clinician would check, it can support a referral decision; if it does not, the clinician should not rely on it. " +
+      "The work needs no new patient or clinician data. " +
       "I can commit 10 hours a week alongside my coursework and will finish the IDRiD validation in the first semester. " +
       "I would like to do this under Prof. Chua and write up the results properly.",
     proposal: NONE, // Student 2 does not self-propose in the demo
