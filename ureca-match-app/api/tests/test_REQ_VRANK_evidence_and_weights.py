@@ -274,6 +274,29 @@ def test_REQ_APPLY_6_gemini_tips_come_first_and_failure_falls_back(as_student, m
     assert as_student.post(TIPS, json={"listing_id": "lst-1", "statement": "x" * 60}).json()["source"] == "local"
 
 
+def test_REQ_APPLY_6_demo_statement_passes_every_check():
+    """Wei Ling's "Fill demo" statement and her seeded PDFs on lst-1 get no "improve" tip from the fixed checks."""
+    import re
+    from pathlib import Path
+
+    from app.db.seed_data import DEMO_MODULES
+    from app.models import Document, Listing, StudentProfile
+
+    api = Path(__file__).resolve().parents[1]
+    src = (api.parent / "web/lib/demo-data.ts").read_text(encoding="utf-8")
+    block = src[src.index("s2: {"):]
+    statement = "".join(re.findall(r'"((?:[^"\\]|\\.)*)"', block[block.index("applyStatement:"):block.index("proposal:")]))
+    docs = [
+        Document.model_construct(id=name, owner_id="stu-1", file_name=name, kind=kind,
+                                 extracted_text=document_text.extract_text((api / "app/db/demo_docs" / name).read_bytes()))
+        for kind, name in [("transcript", "Transcript_WeiLingTan.pdf"), ("supporting", "CV_WeiLingTan.pdf")]
+    ]
+    listing = Listing.model_construct(id="lst-1", prerequisites=["SC4001"], topic_tags=["Machine Learning", "Healthcare AI", "Computer Vision"])
+    sp = StudentProfile.model_construct(user_id="stu-1", completed_modules=DEMO_MODULES)
+    tips = application_tips.local_tips(listing, sp, statement, docs)
+    assert tips and all(t.tone == "good" for t in tips), [t.text for t in tips if t.tone != "good"]
+
+
 def test_REQ_APPLY_6_repeat_clicks_stop_calling_gemini(as_student, monkeypatch):
     application_tips._calls.clear()
     seen = []
