@@ -3,6 +3,6 @@ As there's a storage limit, kindly upload all deliverables format in .pdf and .j
 
 ## Submission index
 
-[URECAMatch Lab 5 submission index](LAB5/README.md)
+[**Submission Index**](LAB5/Submission%20Index.md)
 
-[Open the PDF submission index](LAB5/Submission%20Index.pdf)
+[PDF copy (optional)](LAB5/Submission%20Index.pdf)
