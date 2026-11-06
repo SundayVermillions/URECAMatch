@@ -24,7 +24,7 @@ The Lab 5 requirements and design documents are stored in this folder. They are 
 | API test cases | [API tests](../ureca-match-app/api/tests/) |
 | Web end-to-end test cases | [Web tests](../ureca-match-app/web/e2e/) |
 | Lab 4 test cases and recorded results | [Test Cases and Testing Results](../LAB4/Lab%204%20-%20Test%20Cases%20and%20Testing%20Results.pdf) |
-| White-box test CFGs | [Matching CFG](Diagrams%20%28Full%20Size%29/Test%20Case%20%28%20CFG%20for%20white%20box%20%29/matching-cfg.png); [Withdrawal CFG](Diagrams%20%28Full%20Size%29/Test%20Case%20%28%20CFG%20for%20white%20box%20%29/withdrawal-cfg.png) |
+| White-box test CFGs | [Matching CFG](../LAB4/Diagrams%20%28Full%20Size%29/Test%20Case%20%28%20CFG%20for%20white%20box%20%29/matching-cfg); [Withdrawal CFG](../LAB4/Diagrams%20%28Full%20Size%29/Test%20Case%20%28%20CFG%20for%20white%20box%20%29/withdrawal-cfg) |
 | Demo video | [Watch the URECAMatch demo](https://youtu.be/MumAAJVT7Yg) |
 | Meeting minutes and coordination record | [Retrospective team coordination summary](Meeting%20Minutes.pdf) |
 
