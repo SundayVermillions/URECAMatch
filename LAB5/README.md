@@ -16,7 +16,8 @@ The Lab 5 requirements and design documents are stored in this folder. They are 
 | Use Case descriptions | [Final Use Case descriptions](Use%20Case%20Descriptions.pdf) |
 | Key classes and relationships | [Final class diagram](Diagrams%20%28Full%20Size%29/class-diagram.pdf) |
 | UI state machine / dialog map | [Final dialog map](Diagrams%20%28Full%20Size%29/Dialog%20Map.pdf) |
-| System architecture | [System architecture diagram](../LAB4/Diagrams%20%28Full%20Size%29/System%20Architecture%20Diagram.png) |
+| System architecture | [System architecture diagram](Diagrams%20%28Full%20Size%29/System%20Architecture%20Diagram.png) |
+| Boundary diagram | [Boundary diagram](Diagrams%20%28Full%20Size%29/Boundary%20Diagram.pdf) |
 | Source code | [Application repository folder](../ureca-match-app/) |
 | API test cases | [API tests](../ureca-match-app/api/tests/) |
 | Web end-to-end test cases | [Web tests](../ureca-match-app/web/e2e/) |
