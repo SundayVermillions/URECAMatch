@@ -20,6 +20,7 @@ The Lab 5 requirements and design documents are stored in this folder. They are 
 | UI state machine / dialog map | [Final dialog map](Diagrams%20%28Full%20Size%29/Dialog%20Map.pdf) |
 | System architecture | [System architecture diagram](Diagrams%20%28Full%20Size%29/System%20Architecture%20Diagram.png) |
 | Boundary diagram | [Boundary diagram](Diagrams%20%28Full%20Size%29/Boundary%20Diagram.pdf) |
+| Live application | [Open URECAMatch](https://ureca-match-web.vercel.app/sign-in) |
 | Source code | [Application repository folder](../ureca-match-app/) |
 | API test cases | [API tests](../ureca-match-app/api/tests/) |
 | Web end-to-end test cases | [Web tests](../ureca-match-app/web/e2e/) |
