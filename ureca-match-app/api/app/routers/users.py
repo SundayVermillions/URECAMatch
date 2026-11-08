@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Query
@@ -28,12 +29,29 @@ from app.services.notify import notify
 from app.services.titles import check_title, compose, split_title
 
 router = APIRouter(prefix="/admin/users", tags=["admin: users"])
+log = logging.getLogger(__name__)
+
+# Supabase Auth ban that matches the account status (REQ-AUTH-2). Inactive accounts are banned for ~100 years, so
+# Supabase refuses their password; reactivating lifts the ban, or the user could never sign in again.
+BAN_FOR_STATUS = {AccountStatus.inactive: "876600h", AccountStatus.active: "none"}
 
 # Nothing is changed when this comes back. Send the same request again with confirm_cleanup=true to go ahead.
 ConfirmCleanup = Annotated[
     bool, Query(description="Close the user's open items first. Without it, a user with open items gets a 409 preview.")
 ]
 WARNING = {409: {"model": CleanupWarning, "description": "Last active admin, or the user has open items to clean up first."}}
+
+
+def sync_auth_ban(store, settings, user: User) -> None:
+    """Set the Supabase Auth ban to match `user.status`. Only active and inactive change the ban.
+    A failure is logged and never blocks the status change: the API also refuses inactive users itself."""
+    ban = BAN_FOR_STATUS.get(user.status)
+    if ban is None or settings.api_mode != "supabase" or not getattr(store, "client", None):
+        return
+    try:
+        store.client.auth.admin.update_user_by_id(user.id, {"ban_duration": ban})
+    except Exception as e:
+        log.warning("Could not set the Supabase Auth ban for user %s to %s: %s", user.id, ban, e)
 
 
 def _guard_account_change(
@@ -166,10 +184,13 @@ def update_user(
     if new_name != u.name:
         u.name = new_name
         changes.insert(0, f"name is now {new_name}")
-    if body.status is not None and body.status != u.status:
+    status_changed = body.status is not None and body.status != u.status
+    if status_changed:
         u.status = body.status
         changes.append(f"status is now {body.status.value.replace('_', ' ')}")
     store.save_user(u)  # in Supabase mode store.user() returns a copy, so the change must be saved
+    if status_changed:
+        sync_auth_ban(store, settings, u)  # REQ-AUTH-2: reactivated users can sign in again, deactivated ones cannot
     audit(store, admin, AuditOperation.user_updated, [u.id], now)
     if changes:
         notify(
@@ -194,12 +215,8 @@ def deactivate(
         clean_up(store, admin, u, settings.now(), "deactivated")
     was_active = u.status != AccountStatus.inactive
     u.status = AccountStatus.inactive
-    if settings.api_mode == "supabase" and hasattr(store, "client") and store.client:
-        try:
-            store.client.auth.admin.update_user_by_id(u.id, {"ban_duration": "876600h"})
-        except Exception:
-            pass
     store.save_user(u)
+    sync_auth_ban(store, settings, u)
     now = settings.now()
     audit(store, admin, AuditOperation.user_deactivated, [u.id], now)
     if was_active:  # sign-in is blocked now, so in practice the user learns this from the e-mail
