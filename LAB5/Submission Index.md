@@ -33,6 +33,7 @@ The Lab 5 requirements and design documents are stored in this folder. They are 
 
 | Material | Location |
 |---|---|
+| Project README (overview, setup, usage, architecture) | [Project README](Project%20README.md) |
 | Requirements, implementation and test mapping | [Traceability table](../ureca-match-app/docs/traceability.md) |
 | Application setup | [Setup guide](../ureca-match-app/docs/SETUP.md) |
 
