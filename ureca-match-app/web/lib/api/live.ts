@@ -1,7 +1,7 @@
 /** HTTP implementation. Sends the session token; maps the error envelope to ApiError. */
 import type { ApiClient } from "./client";
 import * as M from "./models";
-import { getSession } from "../session";
+import { getSession, refreshSessionToken } from "../session";
 
 export class LiveClient implements ApiClient {
   constructor(private base: string) {}
@@ -13,6 +13,8 @@ export class LiveClient implements ApiClient {
     if (s?.userId) headers["X-Demo-User"] = s.userId; // ignored outside API_MODE=mock on the server
     if (body !== undefined) headers["Content-Type"] = "application/json";
     const res = await fetch(this.base + path, { method, headers, body: form ?? (body !== undefined ? JSON.stringify(body) : undefined) });
+    const fresh = res.ok ? res.headers.get("X-Session-Token") : null; // sliding session (REQ-AUTH-3)
+    if (fresh) refreshSessionToken(fresh);
     if (res.status === 204) return undefined as T;
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new M.ApiError(res.status, data.code ?? "error", data.message ?? "Something went wrong.", data.field, data.items);

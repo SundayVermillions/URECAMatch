@@ -5,7 +5,6 @@ from __future__ import annotations
 import secrets
 from datetime import timedelta
 
-import jwt
 from fastapi import APIRouter
 from pydantic import BaseModel, EmailStr
 from supabase import ClientOptions, create_client
@@ -27,6 +26,7 @@ from app.models import (
 )
 from app.services import email as mail
 from app.services import windows
+from app.services.session_token import issue_session_token
 from app.services.titles import check_title, compose
 from app.settings import Settings
 
@@ -177,20 +177,10 @@ def sign_in(body: SignInRequest, store: StoreDep, settings: SettingsDep) -> Sess
     store.last_activity[user.id] = now
     store.save_user(user)
 
-    expires_at = now + timedelta(minutes=settings.session_minutes)
-
     if settings.api_mode == "supabase" and settings.supabase_jwt_secret:
-        payload = {
-            "sub": user.id,
-            "email": user.email,
-            "role": user.role.value,
-            "aud": "authenticated",
-            "iat": int(now.timestamp()),
-            "exp": int(expires_at.timestamp()),
-        }
-        token = jwt.encode(payload, settings.supabase_jwt_secret, algorithm="HS256")
+        token, expires_at = issue_session_token(user, settings, now)
     else:
-        token = user.id
+        token, expires_at = user.id, now + timedelta(minutes=settings.session_minutes)
 
     return Session(access_token=token, expires_at=expires_at, user=user)
 
