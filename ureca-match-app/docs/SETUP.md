@@ -4,6 +4,8 @@ Application and allocation portal for NTU URECA. SC2006 Software Engineering, SC
 
 Front end: Next.js 16 + TypeScript + Tailwind. Back end: FastAPI (Python 3.12). Database: Supabase. Hosting: Vercel.
 
+The deployed application is at <https://ureca-match-web.vercel.app/sign-in>. The steps below are for running a copy on your own computer. Which document is which: [docs/README.md](README.md).
+
 ## Run it in 5 minutes
 
 Requirements: Node 20+, Python 3.12, [uv](https://docs.astral.sh/uv/).
@@ -20,7 +22,7 @@ cd api
 cp .env.example .env              # API_MODE=mock
 uv sync
 uv run fastapi dev app/main.py    # http://localhost:8000/docs
-uv run pytest                     # 44 tests
+uv run pytest                     # the API test suite
 ```
 
 Sign in with any seeded account (password `password`) or use the demo buttons on the sign-in page:
@@ -101,7 +103,7 @@ The script only runs when `EMAIL_MODE` is `smtp` or `log`.
 
 ## Work split
 
-Owners: Edwin (A), Robin (B), Ian (C), Nicholas (D), Benjamin (E). The full guide is `URECAMatch-Development-Guide.docx`: goal, per-slice build steps, tests, who to talk to. [DEV-PLAN.md](DEV-PLAN.md) is the live progress board. Traceability from REQ-ID to code and tests lives in [traceability.md](traceability.md).
+Owners: Edwin (A), Robin (B), Ian (C), Nicholas (D), Benjamin (E). The full guide is `URECAMatch-Development-Guide.docx`: goal, per-slice build steps, tests, who to talk to. [DEV-PLAN.md](DEV-PLAN.md) is the progress board kept during development; the final status of every requirement is in [traceability.md](traceability.md). Traceability from REQ-ID to code and tests lives in [traceability.md](traceability.md).
 
 ## Deploy
 

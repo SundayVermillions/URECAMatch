@@ -1,8 +1,8 @@
-# SRS updates pending
+# SRS updates log (closed)
 
-Places where the app and `LAB2/LAB 2 (SRS).pdf` still differ. Checked on 1 Nov 2026 against `SC2006 Lab 3 & Lab 4 (4).pdf`. Rows 1 to 61 of the earlier log (the approval window, automatic matching and publishing, the UI refresh, the decline reason, the admin guardrails and the rest) are now in the SRS and have been removed. Row numbers are kept so old references still work.
+Status on 8 Nov 2026: every difference listed below is now in the final SRS (v1.0, 8 Nov 2026). The rows stay as a record of why the SRS changed. Nothing is pending. Two rows are worded differently in the final SRS than they are here: row 67 (backups, now "should" with the arrangement to be determined) and row 68 (the personal data notice, now a statement of what is collected and used, with the notice itself to be determined).
 
-Add a row in the same change that causes a difference. Remove the row once the SRS is updated.
+These are the differences between the app and the Lab 2 SRS that were found during development, with the reason for each. Rows 1 to 61 of the earlier log (the approval window, automatic matching and publishing, the UI refresh, the decline reason, the admin guardrails and the rest) were moved into the SRS and removed earlier. Row numbers are kept so old references still work.
 
 | # | SRS section | SRS says | App now does | Why | Changed in |
 |---|---|---|---|---|---|
