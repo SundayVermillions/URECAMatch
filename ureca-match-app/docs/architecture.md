@@ -25,7 +25,7 @@ We chose this style for three reasons.
 | A | Accounts, profiles, user management | `auth.py`, `profile.py`, `users.py` |
 | B | Project listings, self-proposed projects | `listings.py`, `proposals.py` |
 | C | Applications, preference and applicant rankings | `applications.py`, `rankings.py` |
-| D | Cycles, rounds, matching, offers | `cycles.py`, `matching.py`, `services/windows.py`, `services/matching/` |
+| D | Cycles, rounds, matching, offers | `cycles.py`, `matching/`, `services/windows.py`, `services/schedule.py`, `services/offers.py`, `services/matching/` |
 | E | Notifications, dashboards, e-mail, audit, platform | `notifications.py`, `services/notify.py`, `services/email.py`, `services/audit.py` |
 
 ## 2. Component diagram
@@ -102,7 +102,7 @@ The steps below follow one live request: a student submits an application (`POST
 10. **Persist.** The handler builds an `Application` with `preference_rank = len(active) + 1` and `round_id` from `windows.phase()`, then calls `store.save_applications(app)`. `SupabaseStore.save_applications()` upserts the row into `listing_applications` before the response is sent (NFR 5.2).
 11. **Response.** FastAPI serialises the `Application` (`response_model`) with status 201. `LiveClient` returns it typed; on any non-2xx it throws `ApiError` with the server's code and message, which the page shows. A 401 makes `handleAuthError()` clear the session and redirect to `/sign-in?reason=session_expired`. A successful call refreshes the browser session (`touchSession()`).
 
-Submitting an application does not notify anyone or write to the audit log. Steps that do, such as publishing a round's results (`_publish()` in `routers/matching.py`, run by the first request after the round's approval window closes), add two steps after the state change:
+Submitting an application does not notify anyone or write to the audit log. Steps that do, such as publishing a round's results (`publish()` in `services/matching/publish.py`, run by the first request after the round's approval window closes), add two steps after the state change:
 
 12. **Audit.** `audit(store, SYSTEM, AuditOperation.results_published, [round_id], now)` in `services/audit.py` appends an `AuditEntry` with the actor and time (REQ-AUDIT-1). An admin action passes the admin; what the system does on its own passes `SYSTEM`, shown as "System" (REQ-AUDIT-3).
 13. **Notify.** `notify(store, user_ids, NotificationEvent.offer_received, title, message, now, link)` in `services/notify.py` builds one `Notification` per recipient, stores them with `store.save_notifications()`, then calls `email.send_for()`, which sends them through Resend according to `EMAIL_MODE` (REQ-PUB-2, NFR 5.1.2). No other code inserts notifications or audit rows.
@@ -119,7 +119,7 @@ Submitting an application does not notify anyone or write to the audit log. Step
 | Lazy singleton | `_store` in `db/store.py`, `_storage` in `services/storage.py`, `get_settings()` (`lru_cache`), `_client` in `web/lib/api/client.ts` | One instance per process, created on first use, so start-up stays cheap. |
 | Single source of truth | `services/windows.py` (`phase()`, `in_application_window()`, `in_review_window()`); `Settings.now()` | Every guard, and the UI via `GET /me`, asks the same function what phase the cycle is in, so date logic cannot drift between screens and API. Every deadline reads one clock. |
 | Generated contract (code-first) | Pydantic models in `api/app/models/__init__.py` -> `app.db.export` writes `shared/openapi.json` -> `npm run gen` (openapi-typescript) writes `web/lib/api/types.ts` -> aliases in `web/lib/api/models.ts` | Web types cannot drift from the API. CI regenerates both files and fails if either differs from the committed copy. |
-| Functional core | `match()` in `services/matching/algorithm.py` (student-proposing deferred acceptance with capacities) | No database, clock or I/O inside the algorithm, so it is deterministic and unit-testable; `execute()` in `routers/matching.py` does the I/O around it. |
+| Functional core | `match()` in `services/matching/algorithm.py` (student-proposing deferred acceptance with capacities) | No database, clock or I/O inside the algorithm, so it is deterministic and unit-testable; `run_matching()` in `services/matching/run.py` does the I/O around it. |
 
 ## 5. Key design issues
 
@@ -145,13 +145,13 @@ Submitting an application does not notify anyone or write to the audit log. Step
 
 The system is event-driven at the tier boundary and procedure-driven inside each request. Every user action is one synchronous HTTP request and response; there are no background workers, queues or threads. Long steps also run inside a request: the matching run is executed inside the first call to the schedule after a round's review window closes, and e-mails are handed to Resend inside the request that created the notification.
 
-Time-based changes happen the next time the schedule runs after they fall due. `advance()` in `routers/matching.py` goes through the active cycle's rounds in order: it runs matching for a round whose review window has closed (REQ-EXEC-6), publishes a round whose approval window has closed (REQ-PUB-4), keeps round statuses current, and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). It does nothing once the cycle has closed (`windows.cycle_closed()`). Each step runs once, under a lock and a round claim, so a second call changes nothing. Nobody has to be online when a window closes.
+Time-based changes happen the next time the schedule runs after they fall due. `advance()` in `services/schedule.py` goes through the active cycle's rounds in order: it runs matching for a round whose review window has closed (REQ-EXEC-6), publishes a round whose approval window has closed (REQ-PUB-4), keeps round statuses current, and times out unanswered offers (REQ-OUTCOME-3, REQ-OUTCOME-4). It does nothing once the cycle has closed (`windows.cycle_closed()`). Each step runs once, under a lock and a round claim, so a second call changes nothing. Nobody has to be online when a window closes.
 
 Three things run the schedule:
 
 - `api/vercel.json` registers a Vercel Cron job for `/internal/tick` at `5 9 * * *` (09:05 UTC, 5:05 pm in Singapore), called with `GET` and `Authorization: Bearer <CRON_SECRET>`. Every window the admin screens create opens and closes at 5 pm in Singapore, so each step runs five minutes after it falls due, which lets a request sent just before a deadline finish first. On Vercel's Hobby plan a daily job may start at any time within its hour.
 - The admin Application Cycle screen (`web/app/(admin)/rounds/page.tsx`) calls it with `POST` and the admin's session.
-- In mock mode, `main.py` registers `keep_schedule` as an app-wide dependency, so `advance()` also runs before every request. In Supabase mode this is off unless `SCHEDULER_ON_REQUEST` is set, and the cron drives the schedule.
+- In mock mode, `main.py` registers `keep_schedule` (in `routers/matching/scheduler.py`) as an app-wide dependency, so `advance()` also runs before every request. In Supabase mode this is off unless `SCHEDULER_ON_REQUEST` is set, and the cron drives the schedule.
 
 Answering an offer does not wait for the schedule: the accept and decline handlers check the deadline themselves. Most window logic does not depend on the schedule at all, because guards compute the phase from dates on every request through `windows.phase()`.
 

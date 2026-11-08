@@ -7,7 +7,7 @@ stu-1 applied in Round 2, stu-39 has not completed their profile and has not app
 from datetime import timedelta
 
 from app.models import Match, MatchStatus
-from app.routers.matching import _open_slots
+from app.services.placement import open_slots
 from app.settings import get_settings
 from tests.conftest import APPROVAL_CLOSED, REVIEW_CLOSED
 
@@ -87,7 +87,7 @@ def test_REQ_ASSIGN_1_once_the_rounds_results_are_out_the_offer_goes_at_once(as_
     at(APPROVAL_CLOSED)  # Round 2's results are published
     view = _view(as_admin)
     assert view["round"]["id"] == "rnd-2" and view["offer_deadline"]
-    lst = next(lst for lst in fresh_store.all_listings() if lst.status == "published" and _open_slots(fresh_store, lst))
+    lst = next(lst for lst in fresh_store.all_listings() if lst.status == "published" and open_slots(fresh_store, lst))
     r = as_admin.post("/admin/assignments", json={**ASSIGN, "student_id": "stu-39", "listing_id": lst.id})
     assert r.status_code == 201 and r.json()["status"] == "published"
     assert r.json()["offer_expires_at"] == view["offer_deadline"]  # the page told the admin this deadline

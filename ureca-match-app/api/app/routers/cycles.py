@@ -28,10 +28,11 @@ from app.models import (
     ScheduleUpdate,
     User,
 )
-from app.routers.matching import _schedule_lock, moved_offer_deadlines
 from app.services import cycle_end, listing_lifecycle
 from app.services.audit import audit
 from app.services.notify import notify
+from app.services.offers import moved_offer_deadlines
+from app.services.schedule import schedule_lock
 from app.services.windows import cycle_closed, when
 
 router = APIRouter(tags=["admin: cycle"])
@@ -172,7 +173,7 @@ def _save(
     (REQ-CYCLE-2, 3, REQ-ROUND-1..3, REQ-APPRV-5, REQ-OUTCOME-3). Nothing changes if a check fails."""
     if c.status == CycleStatus.closed:  # REQ-CYCLE-4: a closed cycle keeps its dates and results
         raise conflict("cycle_closed", "This cycle is closed. Reopen it to change its dates or rounds.")
-    with _schedule_lock:  # matching, publishing and offer timeouts wait until the new schedule is in place
+    with schedule_lock:  # matching, publishing and offer timeouts wait until the new schedule is in place
         _check_dates(store, c, opening, closing, pre_days, now)
         rounds = _plan_rounds(store, c, opening, closing, pre_days, specs, now)
         planned = c.model_copy(

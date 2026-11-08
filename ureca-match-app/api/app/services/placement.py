@@ -103,3 +103,23 @@ def withdraw_applications_to_full_listing(store, listing, now: datetime) -> None
         now,
         "/my-applications",
     )
+
+
+def open_slots(store, lst, held: dict[str, int] | None = None) -> int:
+    """Slots nobody holds: accepted students are counted in filled_slots, and this cycle's pending matches and open
+    offers hold one each. Pass `held` (placement.held_by_listing) when counting many projects, to read the store once."""
+    held = held_by_listing(store.cycle, store.matches) if held is None else held
+    return max(lst.available_slots - lst.filled_slots - held.get(lst.id, 0), 0)
+
+
+def ruled_out(cycle, matches: list[Match], before=None) -> set[str]:
+    """Students this cycle's matching must skip: anyone with a match in the cycle that is not a supervisor rejection,
+    i.e. placed, holding an offer, or declined or timed out (REQ-OUTCOME-2, 4). With `before` (a round), only
+    matches from earlier rounds count, for that round's summary."""
+    rounds = {x.id for x in (cycle.rounds if cycle else []) if before is None or x.number < before.number}
+    return {m.student_id for m in matches if m.round_id in rounds and m.status != MatchStatus.rejected}
+
+
+def ineligible(store) -> set[str]:
+    """Students who declined or missed an offer this cycle (REQ-OUTCOME-2, 4), from one read of the profiles."""
+    return {p.user_id for p in store.students if not p.eligible_for_matching}

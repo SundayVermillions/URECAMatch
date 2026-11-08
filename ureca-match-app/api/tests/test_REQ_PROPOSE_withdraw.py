@@ -11,7 +11,7 @@ Seed: prp-2 is stu-9's pending proposal to sup-1; prp-1 is stu-3's to sup-2; prp
 from datetime import timedelta
 
 from app.models import Match, MatchStatus, ProposalStatus
-from app.routers.matching import _expire_offers
+from app.services.offers import expire_offers
 from app.settings import get_settings
 
 LONG = "I will build a dataset, a baseline model and an evaluation report over one semester, then write it up."
@@ -134,7 +134,7 @@ def test_REQ_OUTCOME_2_declining_an_offer_withdraws_waiting_proposals(client_for
 def test_REQ_OUTCOME_4_an_offer_that_times_out_withdraws_waiting_proposals(fresh_store):
     now = get_settings().now()
     _offer(fresh_store, "stu-9", offer_expires_at=now - timedelta(hours=1))
-    _expire_offers(fresh_store, now, fresh_store.cycle, fresh_store.matches)
+    expire_offers(fresh_store, now, fresh_store.cycle, fresh_store.matches)
     assert fresh_store.proposal("prp-2").status == ProposalStatus.withdrawn
     assert fresh_store.student("stu-9").eligible_for_matching is False
 

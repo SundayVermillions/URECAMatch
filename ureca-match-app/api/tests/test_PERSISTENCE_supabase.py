@@ -17,7 +17,8 @@ from app.db import seed_data
 from app.db.seed_db import seed_database
 from app.db.store import MockStore, SupabaseStore
 from app.models import AuditOperation, MatchStatus
-from app.routers.matching import _run_matching, advance
+from app.services.matching.run import run_matching
+from app.services.schedule import advance
 from app.settings import get_settings
 from tests.conftest import APPROVAL_CLOSED, REVIEW_CLOSED
 from tests.fake_supabase import FakeDB
@@ -144,9 +145,9 @@ def test_REQ_EXEC_2_two_servers_racing_for_a_round_run_matching_once(db):
     rb = next(r for r in b.cycle.rounds if r.number == 2)  # read before A ran: B still sees an unmatched round
     assert rb.executed_at is None
     out_a, out_b = [], []
-    _run_matching(a, a.cycle, ra, REVIEW_CLOSED, out_a)
+    run_matching(a, a.cycle, ra, REVIEW_CLOSED, out_a)
     after_a = len(matches_of(db, "rnd-2"))
-    _run_matching(b, b.cycle, rb, REVIEW_CLOSED, out_b)  # the unique (round, student) key would also reject a second run
+    run_matching(b, b.cycle, rb, REVIEW_CLOSED, out_b)  # the unique (round, student) key would also reject a second run
     assert after_a > 0 and len(matches_of(db, "rnd-2")) == after_a
     runs = [
         e
@@ -162,7 +163,7 @@ def test_REQ_EXEC_2_a_failed_matching_run_gives_the_claim_back(db):
     r = next(x for x in s.cycle.rounds if x.number == 2)
     db.fail_next("insert", "match_results")
     with pytest.raises(RuntimeError):
-        _run_matching(s, s.cycle, r, REVIEW_CLOSED, [])
+        run_matching(s, s.cycle, r, REVIEW_CLOSED, [])
     assert round_row(db)["executed_at"] is None and matches_of(db, "rnd-2") == []
     advance(make_store(db), REVIEW_CLOSED)  # the next server tries again
     assert round_row(db)["executed_at"] is not None and matches_of(db, "rnd-2")
