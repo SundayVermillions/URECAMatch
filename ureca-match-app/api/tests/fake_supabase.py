@@ -22,6 +22,7 @@ UNIQUE = {
     "match_results": [("round_id", "student_id")],
     "matching_rounds": [("cycle_id", "number")],
     "users": [("email",)],
+    "listing_applications": [("student_id", "listing_id", "round_id")],
 }
 
 
