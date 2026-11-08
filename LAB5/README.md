@@ -380,7 +380,7 @@ cd ureca-match-app/web && npm run lint && npm run typecheck
 | Contributing (branching, reviews, tests) | [`ureca-match-app/docs/CONTRIBUTING.md`](https://github.com/softwarelab3/2006-SCEF-A4/blob/main/ureca-match-app/docs/CONTRIBUTING.md) |
 | Traceability matrix | [`ureca-match-app/docs/traceability.md`](https://github.com/softwarelab3/2006-SCEF-A4/blob/main/ureca-match-app/docs/traceability.md) |
 | API specification (OpenAPI) | [`ureca-match-app/shared/openapi.json`](https://github.com/softwarelab3/2006-SCEF-A4/blob/main/ureca-match-app/shared/openapi.json); browsable at `/docs` on any running API |
-| Class diagram | [`ureca-match-app/docs/class-diagram.mermaid`](https://github.com/softwarelab3/2006-SCEF-A4/blob/main/ureca-match-app/docs/class-diagram.mermaid); SRS Appendix C |
+| Class diagram | [`LAB5/Diagrams (Full Size)/Class Diagram.pdf`](https://github.com/softwarelab3/2006-SCEF-A4/blob/main/LAB5/Diagrams%20(Full%20Size)/Class%20Diagram.pdf); SRS Appendix C |
 | Lab deliverables (Labs 1–5) | [`LAB1/` … `LAB5/`](https://github.com/softwarelab3/2006-SCEF-A4/tree/main) |
 
 ## Team
