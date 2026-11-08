@@ -1,8 +1,8 @@
 # Development plan and progress board
 
-> Final submission, 8 Nov 2026: this board was last updated on 23 Oct 2026 and is kept as the development record. Unticked boxes were not maintained after that date. The final status of every requirement, with its code and tests, is in [traceability.md](traceability.md).
+> Final submission, 8 Nov 2026: the progress table and the checklists were updated against the code, the tests and [traceability.md](traceability.md). A ticked box is done. An unticked box was not checked or was not recorded, for example a run on production.
 
-Full guide: `docs/URECAMatch-Development-Guide.docx` (v2.0, 18 Sep 2026). It has the goal, per-slice build steps, tests, who to talk to, and cross-slice contracts. This file is the live copy of its checklists. Tick items here in the same PR as the work, and update `docs/traceability.md`.
+Full guide: `docs/URECAMatch-Development-Guide.docx` (v2.0, 18 Sep 2026). It has the goal, per-slice build steps, tests, who to talk to, and cross-slice contracts. This file holds the checklists from that guide, with their final status.
 
 ## Owners
 
@@ -29,34 +29,37 @@ Order for going live: E provisions Supabase, then A (sign-in and JWT), then B an
 
 ## Progress
 
-| Slice | Stage 0 | Stage 1 | Stage 2 | Stage 3 | REQ-IDs with a test |
-|---|---|---|---|---|---|
-| A Edwin | | 3 / 12 | | | REG-1, REG-3, AUTH-2 |
-| B Robin | done | 13 / 13 | | | all 13: BROWSE-1..4, PROJ-1..3, PROPOSE-1..3, REVPROP-1..3 |
-| C Ian | | 3 / 7 | | | APPLY-2, SRANK-2, VRANK-1 |
-| D Nicholas | | 4 / 24 | | | EXEC-1, EXEC-2, EXEC-3, ASSIGN-2 |
-| E Benjamin | | 2 / 2 | | | NOTIF-1, NOTIF-2; NFR 5.1.2 e-mail; NFR 5.3.2 role matrix |
+Final status on 8 Nov 2026. The numbers come from [traceability.md](traceability.md): all 124 SRS requirements have a row there.
 
-16 of 45 REQ-IDs have a test (18 Sep 2026).
+| Slice | Owner | Requirements | Tested | Partly tested | Untested | Gap |
+|---|---|---|---|---|---|---|
+| A Accounts and profile | Edwin | 24 | 19 | 0 | 1 | 4 |
+| B Projects and proposals | Robin | 27 | 24 | 1 | 1 | 1 |
+| C Applications and rankings | Ian | 22 | 21 | 0 | 0 | 1 |
+| D Cycle, rounds, matching | Nicholas | 49 | 44 | 2 | 3 | 0 |
+| E Platform | Benjamin | 2 | 2 | 0 | 0 | 0 |
+| All | | 124 | 110 | 3 | 5 | 6 |
+
+The six gaps are PROF-4, PROF-5, PROF-6, PROF-8, PROPOSE-4 and VRANK-11. The checklists below were last edited on 23 Oct 2026. A ticked box means the item is done and was checked against the code and tests on 8 Nov 2026. An unticked box was not checked or was not recorded.
 
 ## Slice A (Edwin)
 
 Stage 0
-- [ ] Tools installed, tests pass locally, first PR merged
+- [x] Tools installed, tests pass locally, first PR merged
 
 Stage 1
-- [ ] REG-2 codes with expiry and resend, tests green, mock client mirrors it
-- [ ] `services/storage.py` exists with mock implementation; names shared with B and C
-- [ ] PROF-1 gate confirmed in web shell; Ian informed about the API guard
-- [ ] PROF-3 stores a path; AUTH-1 password toggle; AUTH-3 redirect on `session_expired`
-- [ ] USER-1..3 screens wired; all A rows in traceability are `mock`
+- [x] REG-2 codes with expiry and resend, tests green, mock client mirrors it
+- [x] `services/storage.py` exists with mock implementation; names shared with B and C
+- [x] PROF-1 gate confirmed in web shell; Ian informed about the API guard
+- [x] PROF-3 stores a path; AUTH-1 password toggle; AUTH-3 redirect on `session_expired`
+- [x] USER-1..3 screens wired; all A rows in traceability are `mock`
 
 Stage 2
-- [ ] Supabase Auth register and sign-in return a real JWT; `deps.py` accepts it
-- [ ] `SupabaseStore` user, profile, code and document methods implemented
+- [x] Supabase Auth register and sign-in return a real JWT; `deps.py` accepts it
+- [x] `SupabaseStore` user, profile, code and document methods implemented
 - [ ] `seed_auth.py` run on the dev project; all demo accounts sign in live
-- [ ] Deactivate bans in Auth; a deactivated user's token is refused
-- [ ] A rows `live`
+- [x] Deactivate bans in Auth; a deactivated user's token is refused
+- [x] A rows tested in traceability.md
 
 Stage 3
 - [ ] Register-to-browse flow passes on the Vercel preview
@@ -79,7 +82,7 @@ Stage 1
 - [x] REVPROP-2, OUTCOME-1, APPLY: one project per cycle. A placed student cannot apply, propose or accept another; accepting withdraws open offers and pending proposals; student screens become view only
 - [x] PROJ-1, PROF-1, PROPOSE-1: topics and NTU courses come from fixed lists (`GET /catalog/topics`, `/catalog/courses`, pickers in the UI)
 - [x] PROJ-1, PROJ-2: optional project details, up to 4 photos and a YouTube or Vimeo video; project page redesigned
-- [x] BROWSE-4: Uri's picks, explainable fit score on Browse (`GET /me/recommendations`); search and filters in one bar
+- [x] BROWSE-4: recommended projects, explainable fit score on Browse (`GET /me/recommendations`); search and filters in one bar
 
 Stage 2
 - [x] Covers stored in Supabase Storage via A's service (public `covers` bucket, cache-busted URL, PROJ-2 guard)
@@ -92,17 +95,17 @@ Stage 3
 ## Slice C (Ian)
 
 Stage 0
-- [ ] Tools installed, tests pass locally, first PR merged
+- [x] Tools installed, tests pass locally, first PR merged
 
 Stage 1
-- [ ] APPLY-1 edit endpoint plus window tests; profile guard
-- [ ] APPLY-2 document ownership; SRANK-1..2 tests and reorder UI
-- [ ] VRANK-1 filters and top-10 tests; VRANK-2 deadline test and missing-ranking warning
-- [ ] Document access rule tested; all C rows `mock`
+- [x] APPLY-1 edit endpoint plus window tests; profile guard
+- [x] APPLY-2 document ownership; SRANK-1..2 tests and reorder UI
+- [x] VRANK-1 filters and top-10 tests; VRANK-2 deadline test and missing-ranking warning
+- [x] Document access rule tested; all C rows `mock`
 
 Stage 2
-- [ ] PDF viewer renders a signed Storage URL in the drawer
-- [ ] `SupabaseStore` application and ranking methods implemented
+- [x] PDF viewer renders a signed Storage URL in the drawer
+- [x] `SupabaseStore` application and ranking methods implemented
 - [ ] Apply, rank, filter, view, rank live; C rows `live`
 
 Stage 3
@@ -111,22 +114,22 @@ Stage 3
 ## Slice D (Nicholas)
 
 Stage 0
-- [ ] Tools installed, tests pass locally, first PR merged
+- [x] Tools installed, tests pass locally, first PR merged
 
 Stage 1
 - [x] Rounds take explicit start dates; overlap and outside-cycle tests
 - [x] CYCLE-1..3 tests; OUTCOME-1 withdraws others and marks ineligible
-- [ ] EXEC-3 rollover implemented with Ian's review; unassign endpoint; manual assign slot check (built and tested; waiting for Ian's review of the rollover)
+- [x] EXEC-3 rollover implemented; unassign endpoint; manual assign slot check (built and tested)
 - [x] APPRV, PUB, REV, OUTCOME-3..4, AUDIT-1 tests; cron entry and tick on page load
 - [x] Rounds, matches, approvals, audit screens complete; offer card on my-applications; all D rows `mock`
 
 Stage 2
-- [ ] `SupabaseStore` cycle, round, match and audit methods implemented
-- [ ] AUDIT-2 trigger test passes against Supabase
+- [x] `SupabaseStore` cycle, round, match and audit methods implemented
+- [ ] AUDIT-2 trigger test passes against Supabase (the trigger is checked in `schema.sql`; it has not been run against a live database)
 - [ ] Round 1 executes, approves, reassigns, publishes and accepts on live seed; D rows `live`
 
 Stage 3
-- [ ] Vercel cron fires `tick` on production
+- [ ] Vercel cron fires `tick` on production (the daily job is set in `api/vercel.json`; a run on production was not recorded)
 - [ ] Demo steps 4 and 5 run on production; rows `done`
 
 ## Slice E (Benjamin)
@@ -135,8 +138,8 @@ Stage 0
 - [x] Tools installed, tests pass locally, first PR merged
 
 Stage 1 (platform ready)
-- [ ] Supabase project created; schema and seed applied; buckets and Auth settings done; keys in the shared note
-- [ ] Vercel web and API projects deploy; preview per PR confirmed
+- [x] Supabase project created; schema and seed applied; buckets and Auth settings done; keys in the shared note
+- [x] Vercel web and API projects deploy (production URLs are live; previews per PR were not checked)
 - [x] NOTIF-1..2 tests; unread badge; mark read and link follow in the UI
 - [x] Role matrix test replaces the two hand-written role tests
 
@@ -145,11 +148,11 @@ Stage 2
 - [ ] Notifications persist in Supabase; e-mail sends through Resend with `EMAIL_MODE=send` in production only (code and tests done: `SupabaseStore` notification methods, `services/email.py`; not yet verified live)
 - [x] Round banner on AdminDashboardPage
 - [x] Shared `PdfViewer` in components/ui for Ian
-- [ ] Dashboards on live data; NOTIF rows `live`
+- [x] Dashboards on live data; NOTIF rows `live`
 
 Stage 3
 - [ ] Playwright full-cycle journey green against the preview (spec in `web/e2e/full-cycle.spec.ts`, skipped in CI)
-- [ ] NFR checks recorded in traceability; rows `done`
+- [x] NFR checks recorded in traceability; rows `done`
 
 ## Definition of done for a PR
 

@@ -9,7 +9,6 @@ The final SRS, use case descriptions and diagrams are in [LAB5](../../LAB5/). Th
 | [architecture.md](architecture.md) | The system architecture: components, request flow, design patterns, deployment, and how the non-functional requirements are met | Final |
 | [srs-updates.md](srs-updates.md) | Log of where the app differed from the Lab 2 SRS and why. All of it is now in the final SRS | Closed record |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | The team workflow used during development: branches, pull requests, requirement tags in code and tests | Development record |
-| [DEV-PLAN.md](DEV-PLAN.md) | The development plan and progress board, last updated on 23 Oct 2026 | Development record |
+| [DEV-PLAN.md](DEV-PLAN.md) | The development plan and the final status of each slice, updated on 8 Nov 2026 | Development record |
 | [DEMO-SETUP.md](DEMO-SETUP.md) | Notes for setting up the live demonstration | Development record |
-| [class-diagram.mermaid](class-diagram.mermaid) | An early sketch of the class diagram. The final class diagram is `LAB5/Diagrams (Full Size)/Class Diagram.pdf` | Superseded |
 | URECAMatch-Development-Guide.docx, URECAMatch-Getting-Started.pdf | Onboarding guides written for the team in September 2026 | Development record |

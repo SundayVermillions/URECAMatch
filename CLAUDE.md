@@ -19,4 +19,4 @@ The application lives in `ureca-match-app/`.
 - Writing style for docs and copy: plain English, no em-dashes, minimal prose.
 
 ## Demo
-Fixed clock 7 Sep 2026 (Round 2 application window). Accounts stu-1, stu-33 (has offer), sup-1, adm-1. Password "password". Verify code 000000.
+Fixed demo clock 3 Nov 2026, 17:00 SGT (Round 2 application window; mock mode only). Accounts stu-1, stu-33 (has offer), sup-1, adm-1. Password "password". Verify code 000000.
