@@ -185,7 +185,6 @@ Order matters. Some steps only work in the right window.
 
 ## 10. Known issues
 
-- The verbose "Application cycle dates changed" notification appears when the admin edits dates. It has no link.
 - "Cycle closes" must be moved before Round 3's review window can be extended, because the seed leaves no slack after offers.
 - A cycle can still be created with an opening date in the past.
 - My applications can list rows from a closed cycle.

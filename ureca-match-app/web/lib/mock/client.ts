@@ -87,13 +87,14 @@ function unchanged(s: M.RoundSpec, r: M.Round) {
   return (!s.start_date || Date.parse(s.start_date) === Date.parse(r.application_start))
     && s.application_days === l.application_days && s.review_days === l.review_days && (s.approval_days ?? 2) === l.approval_days;
 }
-/** What students and supervisors are told about a schedule change (REQ-CYCLE-3, use case 1-2). */
+/** What students and supervisors are told about a schedule change (REQ-CYCLE-3, use case 1-2): one short sentence per
+ *  change. Mirror of _news in routers/cycles.py. */
 function scheduleNews(old: M.Cycle, next: M.Cycle) {
   const news = Date.parse(next.closing_date) !== Date.parse(old.closing_date) ? [`The cycle now closes on ${when(next.closing_date)}.`] : [];
   const dates = (r: M.Round) => [r.application_start, r.application_end, r.review_end, r.approval_end].map((d) => Date.parse(d)).join();
   for (const r of next.rounds) {
     const o = old.rounds.find((x) => x.number === r.number);
-    if (!o || dates(o) !== dates(r)) news.push(`Round ${r.number}: applications ${when(r.application_start)} to ${when(r.application_end)}; rankings due ${when(r.review_end)}; results out ${when(r.approval_end)}.`);
+    if (!o || dates(o) !== dates(r)) news.push(`Round ${r.number} now runs ${when(r.application_start)} to ${when(r.approval_end)}.`);
   }
   for (const o of old.rounds) if (!next.rounds.some((r) => r.number === o.number)) news.push(`Round ${o.number} has been removed.`);
   return news;
@@ -941,11 +942,18 @@ export class MockClient implements ApiClient {
       const d = this.offerDeadline(r, planned) ?? planned.closing_date;
       if (Date.parse(d) !== Date.parse(m.offer_expires_at ?? "")) moved.push([m, d]);
     }
+    const first = c.rounds.length === 0 && rounds.length > 0; // the rounds are set for the first time
     const news = scheduleNews(c, planned);
     Object.assign(c, { opening_date: openingIso, closing_date: closingIso, pre_application_days: pre, rounds, rollover_unmatched: rollover });
     for (const [m, d] of moved) m.offer_expires_at = d;
     this.audit(a, "cycle_updated", [c.id], note);
-    if (news.length) this.notify(this.db.users.filter((u) => u.role !== "admin").map((u) => u.id), "cycle_changed", "Application cycle dates changed", news.join(" "));
+    // Mirror of _announce in routers/cycles.py: students and supervisors each get the notice, linked to their own page
+    const announce = (title: string, message: string) => {
+      for (const [role, link] of [["student", "/my-applications"], ["supervisor", "/projects"]] as const)
+        this.notify(this.db.users.filter((u) => u.role === role).map((u) => u.id), "cycle_changed", title, message, link);
+    };
+    if (first) announce("Application cycle scheduled", `Round 1 applications open ${when(rounds[0].application_start)}.`);
+    else if (news.length) announce("Application cycle dates changed", news.join(" "));
     for (const [m, d] of moved) this.notify([m.student_id], "cycle_changed", "Your offer deadline has changed", `Respond to your offer for ${m.listing_title} by ${when(d)}.`, "/my-applications");
     return c;
   }
