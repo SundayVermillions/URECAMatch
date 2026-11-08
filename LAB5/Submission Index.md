@@ -16,7 +16,7 @@ The Lab 5 requirements and design documents are stored in this folder. They are 
 |---|---|
 | Software Requirements Specification, including the Use Case Model | [Final SRS](SRS.pdf) |
 | Use Case descriptions | [Final Use Case descriptions](Use%20Case%20Descriptions.pdf) |
-| Key classes and relationships | [Final class diagram](Diagrams%20%28Full%20Size%29/class-diagram.pdf) |
+| Key classes and relationships | [Final class diagram](Diagrams%20%28Full%20Size%29/Class%20Diagram.pdf) |
 | UI state machine / dialog map | [Final dialog map](Diagrams%20%28Full%20Size%29/Dialog%20Map.pdf) |
 | System architecture | [System architecture diagram](Diagrams%20%28Full%20Size%29/System%20Architecture%20Diagram.png) |
 | Boundary diagram | [Boundary diagram](Diagrams%20%28Full%20Size%29/Boundary%20Diagram.pdf) |
