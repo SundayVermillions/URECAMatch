@@ -8,8 +8,8 @@ an offer (mt-6), prp-1 and prp-2 wait for a supervisor, and AY25/26 Semester 2 i
 from datetime import UTC, datetime
 
 from app.models import Match, MatchStatus, ProposalStatus
-from app.routers.matching import _open_slots
 from app.services import placement
+from app.services.placement import open_slots
 
 AFTER_CLOSE = datetime(2026, 10, 3, 9, tzinfo=UTC)  # the day after the seeded cycle closes
 STATEMENT = "I would like to join this project again because it builds on what I learned last year."
@@ -61,7 +61,7 @@ def test_REQ_OUTCOME_3_an_offer_nobody_answered_stops_holding_its_slot(as_admin,
 def test_REQ_OUTCOME_3_an_earlier_cycles_offer_holds_no_slot_and_is_left_alone(as_admin, fresh_store):
     past = next(c for c in fresh_store.cycles if c.id != fresh_store.cycle.id)
     lst = fresh_store.listing("lst-2")
-    before = _open_slots(fresh_store, lst)
+    before = open_slots(fresh_store, lst)
     old = next(m for m in fresh_store.matches if m.id == "mt-1")
     leftover = Match(
         **{
@@ -75,7 +75,7 @@ def test_REQ_OUTCOME_3_an_earlier_cycles_offer_holds_no_slot_and_is_left_alone(a
         }
     )
     fresh_store.matches.append(leftover)
-    assert _open_slots(fresh_store, lst) == before
+    assert open_slots(fresh_store, lst) == before
     # Assigning someone times out lapsed offers first; this cycle's only, so stu-1 is not made ineligible now.
     body = {"student_id": "stu-2", "listing_id": "lst-2", "justification": "Exceptional circumstances"}
     assert as_admin.post("/admin/assignments", json=body).status_code == 201

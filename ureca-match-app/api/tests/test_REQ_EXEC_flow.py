@@ -4,8 +4,8 @@ REQ-EXEC-1..4, 6, REQ-PUB-1, 2, 4, REQ-APPRV-4, REQ-OUTCOME-2, 3, REQ-APPLY-5, R
 import threading
 from datetime import timedelta
 
-from app.routers import matching
 from app.services import windows
+from app.services.schedule import schedule_lock
 from app.settings import get_settings
 from tests.conftest import APPROVAL_CLOSED, REVIEW_CLOSED
 
@@ -102,7 +102,7 @@ def test_REQ_EXEC_6_a_failed_run_leaves_nothing_half_done(fresh_store, anon, at,
 
 def test_REQ_EXEC_6_requests_do_not_wait_on_the_scheduler_when_nothing_is_due(as_student):
     done = threading.Event()
-    with matching._schedule_lock:  # as if another request were publishing and sending its e-mails
+    with schedule_lock:  # as if another request were publishing and sending its e-mails
         threading.Thread(target=lambda: (as_student.get("/me"), done.set()), daemon=True).start()
         assert done.wait(5)
 

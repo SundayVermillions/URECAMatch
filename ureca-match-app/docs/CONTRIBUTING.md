@@ -106,7 +106,7 @@ web/lib/api/types.ts         GENERATED from the API. Never edit by hand.
 | A Accounts and profile | `auth.py` `profile.py` `users.py` | `(auth)/*` `(student)/profile` `(admin)/users` |
 | B Projects and proposals | `listings.py` `proposals.py` | `(student)/browse` `projects/[id]` `propose` `(supervisor)/projects/*` `proposals` |
 | C Applications and rankings | `applications.py` `rankings.py` | `(student)/apply/[id]` `my-applications` `(supervisor)/projects/[id]/applicants` |
-| D Cycle, rounds, matching | `cycles.py` `matching.py` `services/matching/` | `(admin)/rounds/*` `(supervisor)/approvals` offer card in `my-applications` |
+| D Cycle, rounds, matching | `cycles.py` `matching/` `services/schedule.py` `services/offers.py` `services/matching/` | `(admin)/rounds/*` `(supervisor)/approvals` offer card in `my-applications` |
 | E Platform | `notifications.py` `services/notify.py` `services/audit.py` | `notifications` `(admin)/dashboard` `components/ui` CI, deploy, e2e |
 
 5. **Find your work in the code.** Every place waiting for you is marked:
