@@ -1,5 +1,7 @@
 # Development plan and progress board
 
+> Final submission, 8 Nov 2026: this board was last updated on 23 Oct 2026 and is kept as the development record. Unticked boxes were not maintained after that date. The final status of every requirement, with its code and tests, is in [traceability.md](traceability.md).
+
 Full guide: `docs/URECAMatch-Development-Guide.docx` (v2.0, 18 Sep 2026). It has the goal, per-slice build steps, tests, who to talk to, and cross-slice contracts. This file is the live copy of its checklists. Tick items here in the same PR as the work, and update `docs/traceability.md`.
 
 ## Owners
