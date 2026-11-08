@@ -83,6 +83,24 @@ def apply(body: ApplicationCreate, user: StudentUser, store: StoreDep, settings:
     active = _active(store, user.id, phase.round_id)
     if any(a.listing_id == lst.id for a in active):
         raise conflict("already_applied", "You have already applied to this project. See My Applications.")
+    # REQ-APPLY-2: one row per student, project and round (a unique constraint in the database). A student who
+    # withdrew and applies again gets that row back, reopened at the end of their preference order.
+    withdrawn = next(
+        (
+            a
+            for a in store.applications_for(student_id=user.id, listing_id=lst.id, round_id=phase.round_id or "")
+            if a.status == ApplicationStatus.withdrawn
+        ),
+        None,
+    )
+    if withdrawn is not None:
+        withdrawn.statement = body.statement
+        withdrawn.document_ids = body.document_ids
+        withdrawn.status = ApplicationStatus.submitted
+        withdrawn.submitted_at = settings.now()
+        withdrawn.preference_rank = len(active) + 1
+        store.save_applications(withdrawn)
+        return withdrawn
     app = Application(
         id=store.next_id("app"),
         student_id=user.id,

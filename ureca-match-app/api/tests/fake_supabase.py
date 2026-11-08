@@ -22,6 +22,7 @@ UNIQUE = {
     "match_results": [("round_id", "student_id")],
     "matching_rounds": [("cycle_id", "number")],
     "users": [("email",)],
+    "listing_applications": [("student_id", "listing_id", "round_id")],
 }
 
 
@@ -40,6 +41,7 @@ class FakeDB:
         self.lock = threading.RLock()  # a statement is atomic, as in Postgres
         self.log: list[tuple[str, str]] = []  # (operation, table or rpc name)
         self.failures: dict[tuple[str, str], Exception] = {}  # (operation, name) -> raised on the next call
+        self.auth_calls: list[tuple[str, dict]] = []  # (user id, attributes) sent to client.auth.admin.update_user_by_id
         self.rpcs: dict[str, Callable[[FakeDB, dict], object]] = {"publish_outcomes": publish_outcomes}
 
     def client(self) -> FakeClient:
@@ -59,12 +61,31 @@ class FakeDB:
 class FakeClient:
     def __init__(self, db: FakeDB):
         self.db = db
+        self.auth = FakeAuth(db)
 
     def table(self, name: str) -> FakeQuery:
         return FakeQuery(self.db, name)
 
     def rpc(self, name: str, params: dict) -> FakeRpc:
         return FakeRpc(self.db, name, params)
+
+
+class FakeAuth:
+    """client.auth: only the admin calls the API makes. Calls are kept in db.auth_calls."""
+
+    def __init__(self, db: FakeDB):
+        self.admin = FakeAuthAdmin(db)
+
+
+class FakeAuthAdmin:
+    def __init__(self, db: FakeDB):
+        self.db = db
+
+    def update_user_by_id(self, user_id: str, attributes: dict) -> None:
+        with self.db.lock:
+            self.db.log.append(("auth", "update_user_by_id"))
+            self.db.check_failure("auth", "update_user_by_id")
+            self.db.auth_calls.append((user_id, dict(attributes)))
 
 
 class FakeRpc:

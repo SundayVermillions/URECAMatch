@@ -1,5 +1,6 @@
 /** Browser session. Mock mode stores the demo user id; live mode stores the Supabase access token.
- *  Expiry is 30 minutes of inactivity (REQ-AUTH-3); every API call through useApi() refreshes it.
+ *  Expiry is 30 minutes of inactivity (REQ-AUTH-3); every API call through useApi() refreshes it, and in live mode
+ *  the API also returns a refreshed token on each successful request (refreshSessionToken).
  *  Kept per tab (sessionStorage), so one browser can hold a student, a supervisor and an admin in separate tabs. */
 import type { Role } from "./api/models";
 
@@ -19,6 +20,13 @@ export function getSession(): Session | null {
 }
 export function setSession(s: Omit<Session, "expiresAt">) {
   try { sessionStorage.setItem(KEY, JSON.stringify({ ...s, expiresAt: Date.now() + MINUTES * 60_000 })); } catch {}
+}
+/** Live mode, Supabase API: each successful response carries a fresh token (X-Session-Token), because the server
+ *  checks the token's expiry. Store it and restart the expiry the same way sign-in does. The server's
+ *  X-Session-Expires is not used for the local timer: with the debug clock it is days ahead of the browser's time. */
+export function refreshSessionToken(token: string) {
+  const s = getSession();
+  if (s?.token) setSession({ ...s, token });
 }
 export function touchSession() {
   const s = getSession();

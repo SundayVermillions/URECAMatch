@@ -318,6 +318,14 @@ class MockStore:
         self.verification_codes.pop(email.lower(), None)
 
 
+def _is_duplicate_application(e: Exception) -> bool:
+    """True when Postgres refused an application row under unique (student_id, listing_id, round_id).
+    Other unique clashes, such as the preference rank index, are not this and are raised as they are."""
+    text = f"{getattr(e, 'message', '')} {getattr(e, 'details', '')} {e}"
+    duplicate = getattr(e, "code", None) == "23505" or "duplicate key" in text
+    return duplicate and "preference_rank" not in text and "student_id" in text and "listing_id" in text
+
+
 def _hash_code(code: str) -> str:
     """Keyed hash of a verification code, so a copy of the table does not reveal live codes."""
     from app.settings import get_settings
@@ -571,9 +579,16 @@ class SupabaseStore(MockStore):
         table = self.client.table("listing_applications")
         # REQ-SRANK-2: a unique index allows one rank per student per round, so clear the ranks first.
         # Otherwise swapping ranks 1 and 2 would clash halfway through the update.
-        if any(r["preference_rank"] is not None for r in rows):
-            table.upsert([{**r, "preference_rank": None} for r in rows]).execute()
-        table.upsert(rows).execute()
+        try:
+            if any(r["preference_rank"] is not None for r in rows):
+                table.upsert([{**r, "preference_rank": None} for r in rows]).execute()
+            table.upsert(rows).execute()
+        except Exception as e:
+            if _is_duplicate_application(e):  # a second row for one student, project and round: say so, do not crash
+                from app.errors import conflict
+
+                raise conflict("already_applied", "You have already applied to this project. See My Applications.") from e
+            raise
 
     def score_weights(self, listing_id: str) -> ScoreWeights | None:
         if not self.client:

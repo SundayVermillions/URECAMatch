@@ -11,7 +11,7 @@ from datetime import timedelta
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Request
 
 from app.db.store import Store, get_store
 from app.errors import ApiError, forbidden
@@ -23,6 +23,7 @@ StoreDep = Annotated[Store, Depends(get_store)]
 
 
 def current_user(
+    request: Request,
     store: StoreDep,
     settings: SettingsDep,
     authorization: Annotated[str | None, Header()] = None,
@@ -50,7 +51,15 @@ def current_user(
                 )
             except jwt.PyJWTError as e:
                 raise ApiError(401, "session_expired", "Your session has expired. Sign in again.") from e
+            # REQ-AUTH-3: exp is checked here against settings.now(), not by PyJWT against real time. The debug clock
+            # jumps days ahead, so the check is skipped when DEBUG_CLOCK is on. A token without exp never expires,
+            # so it is refused.
+            exp = claims.get("exp")
+            if not settings.debug_clock and (not isinstance(exp, int | float) or exp < settings.now().timestamp()):
+                raise ApiError(401, "session_expired", "Your session has expired. Sign in again.")
             user = store.user(claims.get("sub", "")) or store.user_by_email(claims.get("email", ""))
+            if user is not None:
+                request.state.session_user = user  # main.py sends a refreshed token once the request succeeds
 
     if user is None:
         raise ApiError(401, "unauthenticated", "Sign in to continue.")

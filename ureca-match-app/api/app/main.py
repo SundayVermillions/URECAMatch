@@ -26,6 +26,7 @@ from app.routers import (
     rankings,
     users,
 )
+from app.services.session_token import EXPIRES_HEADER, TOKEN_HEADER, issue_session_token
 from app.settings import get_settings
 
 get_settings()  # fail at start-up, not on the first request, if the settings are unsafe (EMAIL_MODE=smtp in production)
@@ -46,7 +47,24 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=[TOKEN_HEADER, EXPIRES_HEADER],  # so the browser can read the refreshed session token
 )
+
+
+@app.middleware("http")
+async def refresh_session(request: Request, call_next):
+    """REQ-AUTH-3: sliding session. A request that a JWT authenticated (deps.current_user sets session_user) and that
+    succeeded gets a fresh token, so the session ends SESSION_MINUTES after the last request, not after sign-in.
+    Mock X-Demo-User requests never set session_user, so they get no token."""
+    response = await call_next(request)
+    user = getattr(request.state, "session_user", None)
+    if user is not None and response.status_code < 400:
+        settings = get_settings()
+        token, expires_at = issue_session_token(user, settings, settings.now())
+        response.headers[TOKEN_HEADER] = token
+        response.headers[EXPIRES_HEADER] = expires_at.isoformat()
+    return response
+
 
 for r in (auth, profile, users, listings, proposals, applications, rankings, cycles, matching, notifications, catalog, debug):
     app.include_router(r.router)

@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Request
 
 from app.deps import SettingsDep, StoreDep, current_user
 from app.errors import forbidden
@@ -35,13 +35,13 @@ def keep_schedule(store: StoreDep, settings: SettingsDep) -> None:
 
 @router.get("/internal/tick", response_model=Ok, include_in_schema=False)  # Vercel Cron only sends GET
 @router.post("/internal/tick", response_model=Ok)
-def tick(store: StoreDep, settings: SettingsDep, authorization: Annotated[str | None, Header()] = None) -> Ok:
+def tick(request: Request, store: StoreDep, settings: SettingsDep, authorization: Annotated[str | None, Header()] = None) -> Ok:
     """Called by Vercel Cron daily at 5:05 pm SGT, just after windows open and close, and whenever an admin opens
     Matching Rounds. In Supabase mode this is what moves the schedule. Unlike keep_schedule, a failing step fails this
     call, so the cron log shows it."""
     # Cron sends `Bearer <CRON_SECRET>`. The admin page sends the admin's own session token.
     if settings.api_mode != "mock" and authorization != f"Bearer {settings.cron_secret}":
-        if current_user(store, settings, authorization=authorization).role != Role.admin:  # 401 if no valid session
+        if current_user(request, store, settings, authorization=authorization).role != Role.admin:  # 401 if no valid session
             raise forbidden("Only the scheduler or an admin can advance rounds.")
     advance(store, settings.now())
     return Ok()
